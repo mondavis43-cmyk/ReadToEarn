@@ -45,16 +45,15 @@ export const Quiz = ({ bookId }: QuizProps) => {
   const loadQuiz = async () => {
     if (!user) return;
 
-    const bookIdNum = parseInt(bookId);
 
     const [bookResult, questionsResult, completedResult] = await Promise.all([
-      supabase.from('books').select('*').eq('id', bookIdNum).maybeSingle(),
-      supabase.from('questions').select('*').eq('book_id', bookIdNum),
+      supabase.from('books').select('*').eq('id', bookId).maybeSingle(),
+      supabase.from('questions').select('*').eq('book_id', bookId),
       supabase
         .from('completed_books')
         .select('id')
         .eq('user_id', user.id)
-        .eq('book_id', bookIdNum)
+        .eq('book_id', bookId)
         .maybeSingle(),
     ]);
 
