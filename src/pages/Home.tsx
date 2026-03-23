@@ -93,9 +93,9 @@ export const Home = () => {
                 className="bg-[#1a1a1a] rounded-lg overflow-hidden border border-gray-800 hover:border-gray-700 transition group"
               >
                 <div className="aspect-[2/3] relative overflow-hidden bg-gray-900">
-                  {book.cover_image_url && (
+                  {book.cover_url && (
                     <img
-                      src={book.cover_image_url}
+                      src={book.cover_url}
                       alt={book.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                     />
