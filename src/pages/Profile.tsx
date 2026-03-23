@@ -171,7 +171,7 @@ export const Profile = () => {
                   className="bg-[#1a1a1a] rounded-lg overflow-hidden border border-gray-800"
                 >
                   <div className="aspect-[2/3] relative bg-gray-900">
-                    {cb.books.cover_image_url && (
+                    {cb.books.cover_url && (
                       <img
                         src={cb.books.cover_url}
                         alt={cb.books.title}
