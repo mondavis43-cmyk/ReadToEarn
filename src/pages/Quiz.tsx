@@ -5,8 +5,8 @@ import { useNavigate } from '../hooks/useNavigate';
 import { ArrowLeft, PartyPopper } from 'lucide-react';
 
 interface Question {
-  id: number;
-  book_id: number;
+  id: string;
+  book_id: string;
   question_text: string;
   option_a: string;
   option_b: string;
@@ -16,7 +16,7 @@ interface Question {
 }
 
 interface Book {
-  id: number;
+  id: string;
   title: string;
   author: string;
   bounty_amount: number;
@@ -31,7 +31,7 @@ export const Quiz = ({ bookId }: QuizProps) => {
   const { navigateTo } = useNavigate();
   const [book, setBook] = useState<Book | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
   const [passed, setPassed] = useState(false);
