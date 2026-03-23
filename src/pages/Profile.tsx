@@ -14,7 +14,7 @@ interface CompletedBook {
   books: {
     title: string;
     author: string;
-    cover_image_url: string | null;
+    cover_url: string | null;
   };
 }
 
