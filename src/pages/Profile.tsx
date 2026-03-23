@@ -10,7 +10,7 @@ interface Profile {
 }
 
 interface CompletedBook {
-  book_id: number;
+  book_id: string;
   books: {
     title: string;
     author: string;
