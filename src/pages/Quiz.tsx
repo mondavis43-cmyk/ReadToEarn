@@ -161,42 +161,54 @@ export const Quiz = ({ bookId }: QuizProps) => {
             </div>
 
             <div className="space-y-8">
-              {questions.map((question, index) => (
-                <div key={question.id} className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800">
-                  <h3 className="text-white font-medium mb-4">
-                    {index + 1}. {question.question_text}
-                  </h3>
+{questions.map((question, index) => {
+  const options = [
+    { label: question.option_a, value: 'A' },
+    { label: question.option_b, value: 'B' },
+    { label: question.option_c, value: 'C' },
+    { label: question.option_d, value: 'D' },
+  ];
 
-                  <div className="space-y-3">
-                    {['A', 'B', 'C', 'D'].map((option) => {
-                      const optionKey = `option_${option.toLowerCase()}` as keyof Question;
-                      const optionText = question[optionKey] as string;
+  // shuffle options using question id as seed so it's consistent per question
+  const shuffled = [...options].sort((a, b) => {
+    const hash = (str: string) => str.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    return (hash(question.id + a.value) % 4) - (hash(question.id + b.value) % 4);
+  });
 
-                      return (
-                        <label
-                          key={option}
-                          className="flex items-start gap-3 p-4 bg-[#0f0f0f] rounded-lg border border-gray-700 hover:border-gray-600 cursor-pointer transition"
-                        >
-                          <input
-                            type="radio"
-                            name={`question-${question.id}`}
-                            value={option}
-                            checked={answers[question.id] === option}
-                            onChange={() =>
-                              setAnswers({ ...answers, [question.id]: option })
-                            }
-                            className="mt-1 w-4 h-4 accent-white"
-                          />
-                          <span className="text-gray-300 flex-1">
-                            <span className="font-medium text-white">{option}.</span> {optionText}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
+  return (
+    <div key={question.id} className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800">
+      <h3 className="text-white font-medium mb-4">
+        {index + 1}. {question.question_text}
+      </h3>
+
+      <div className="space-y-3">
+        {shuffled.map((option, optIndex) => {
+          const displayLabel = ['A', 'B', 'C', 'D'][optIndex];
+          return (
+            <label
+              key={option.value}
+              className="flex items-start gap-3 p-4 bg-[#0f0f0f] rounded-lg border border-gray-700 hover:border-gray-600 cursor-pointer transition"
+            >
+              <input
+                type="radio"
+                name={`question-${question.id}`}
+                value={option.value}
+                checked={answers[question.id] === option.value}
+                onChange={() =>
+                  setAnswers({ ...answers, [question.id]: option.value })
+                }
+                className="mt-1 w-4 h-4 accent-white"
+              />
+              <span className="text-gray-300 flex-1">
+                <span className="font-medium text-white">{displayLabel}.</span> {option.label}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    </div>
+  );
+})}
 
             <div className="mt-8 flex justify-center">
               <button
