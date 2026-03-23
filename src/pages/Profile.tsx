@@ -38,7 +38,7 @@ export const Profile = () => {
       supabase.from('profiles').select('*').eq('id', user.id).single(),
       supabase
         .from('completed_books')
-        .select('book_id, books(title, author, cover_image_url)')
+        .select('book_id, books(title, author, cover_url)')
         .eq('user_id', user.id),
     ]);
 
@@ -173,7 +173,7 @@ export const Profile = () => {
                   <div className="aspect-[2/3] relative bg-gray-900">
                     {cb.books.cover_image_url && (
                       <img
-                        src={cb.books.cover_image_url}
+                        src={cb.books.cover_url}
                         alt={cb.books.title}
                         className="w-full h-full object-cover"
                       />
