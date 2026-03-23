@@ -209,6 +209,7 @@ export const Quiz = ({ bookId }: QuizProps) => {
     </div>
   );
 })}
+            </div>
 
             <div className="mt-8 flex justify-center">
               <button
