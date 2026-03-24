@@ -53,20 +53,9 @@ export const Profile = () => {
     setLoading(false);
   };
 
-  const handleCashOut = async () => {
-    if (!user || !profile || profile.available_balance < 5) return;
-
-    setCashingOut(true);
-
-    await Promise.all([
-      supabase.from('cashout_requests').insert({
-        user_id: user.id,
-        amount: profile.available_balance,
-        status: 'pending',
-      }),
-      supabase.from('profiles').update({ available_balance: 0.0 }).eq('id', user.id),
-    ]);
-
+  const handleCashOut = () => {
+  navigateTo('/cashout');
+};
     setProfile({ ...profile, available_balance: 0.0 });
     setCashingOut(false);
     setShowSuccess(true);
