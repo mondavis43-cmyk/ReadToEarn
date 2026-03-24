@@ -7,6 +7,7 @@ export const Signup = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
   const { navigateTo } = useNavigate();
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -14,7 +15,7 @@ export const Signup = () => {
     setLoading(true);
     setError('');
 
-    const { data: authData, error: signUpError } = await supabase.auth.signUp({
+    const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
     });
@@ -25,24 +26,34 @@ export const Signup = () => {
       return;
     }
 
-    if (authData.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: authData.user.id,
-          email: authData.user.email!,
-          available_balance: 0.00,
-        });
-
-      if (profileError) {
-        setError('Account created but profile setup failed. Please contact support.');
-        setLoading(false);
-        return;
-      }
-
-      navigateTo('/');
-    }
+    setSuccess(true);
+    setLoading(false);
   };
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center px-4">
+        <div className="w-full max-w-md text-center">
+          <h1 className="font-serif text-4xl text-white mb-4">Check your email</h1>
+          <div className="bg-[#1a1a1a] rounded-lg p-8 border border-gray-800">
+            <p className="text-gray-300 mb-2">
+              We sent a confirmation link to
+            </p>
+            <p className="text-white font-medium mb-6">{email}</p>
+            <p className="text-gray-400 text-sm mb-6">
+              Click the link in the email to confirm your account, then come back and sign in.
+            </p>
+            <button
+              onClick={() => navigateTo('/login')}
+              className="w-full bg-white text-black font-medium py-3 rounded-lg hover:bg-gray-200 transition"
+            >
+              Go to Sign In
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center px-4">
