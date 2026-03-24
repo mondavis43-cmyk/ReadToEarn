@@ -6,6 +6,7 @@ import { Signup } from '../pages/Signup';
 import { Quiz } from '../pages/Quiz';
 import { Profile } from '../pages/Profile';
 import { Cashout } from '../pages/Cashout';
+import { Admin } from '../pages/Admin';
 
 export const Router = () => {
   const { user, loading } = useAuth();
@@ -21,7 +22,7 @@ export const Router = () => {
   }, []);
 
   useEffect(() => {
-    if (!loading && !user && route !== '/login' && route !== '/signup') {
+    if (!loading && !user && route !== '/login' && route !== '/signup' && route !== '/admin') {
       window.history.pushState({}, '', '/login');
       setRoute('/login');
     }
@@ -39,6 +40,7 @@ export const Router = () => {
   if (!user) return <Login />;
   if (route === '/profile') return <Profile />;
   if (route === '/cashout') return <Cashout />;
+  if (route === '/admin') return <Admin />;
   if (route.startsWith('/quiz/')) {
     const bookId = route.split('/')[2];
     return <Quiz bookId={bookId} />;
