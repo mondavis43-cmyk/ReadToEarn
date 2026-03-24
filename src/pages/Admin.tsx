@@ -82,8 +82,6 @@ export const Admin = () => {
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState('');
-
-  // Edit state
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [editingQuestions, setEditingQuestions] = useState<Question[]>([]);
   const [editSaving, setEditSaving] = useState(false);
@@ -104,7 +102,6 @@ export const Admin = () => {
         .select('*, profiles(email)')
         .order('created_at', { ascending: false }),
     ]);
-
     if (booksResult.data) setBooks(booksResult.data);
     if (cashoutsResult.data) setCashouts(cashoutsResult.data as CashoutRequest[]);
     setLoading(false);
@@ -114,13 +111,11 @@ export const Admin = () => {
     setEditingBook({ ...book });
     setEditError('');
     setEditSuccess(false);
-
     const { data } = await supabase
       .from('questions')
       .select('*')
       .eq('book_id', book.id)
       .order('id');
-
     if (data) setEditingQuestions(data as Question[]);
   };
 
@@ -253,7 +248,6 @@ export const Admin = () => {
     loadData();
   };
 
-  // Block non-admins
   if (user?.email !== ADMIN_EMAIL) {
     return (
       <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
@@ -270,7 +264,6 @@ export const Admin = () => {
     );
   }
 
-  // Edit modal
   if (editingBook) {
     return (
       <div className="min-h-screen bg-[#0f0f0f]">
@@ -285,7 +278,6 @@ export const Admin = () => {
             <h1 className="font-serif text-3xl text-white">Edit Book</h1>
           </div>
         </header>
-
         <main className="max-w-5xl mx-auto px-4 py-12">
           {editError && (
             <div className="mb-4 p-3 bg-red-900/20 border border-red-900/50 rounded text-red-400 text-sm">
@@ -297,7 +289,6 @@ export const Admin = () => {
               Saved successfully!
             </div>
           )}
-
           <form onSubmit={handleSaveEdit}>
             <div className="bg-[#1a1a1a] rounded-lg p-8 border border-gray-800 mb-8">
               <h2 className="text-xl font-semibold text-white mb-6">Book Details</h2>
@@ -345,7 +336,6 @@ export const Admin = () => {
                 </div>
               </div>
             </div>
-
             <div className="bg-[#1a1a1a] rounded-lg p-8 border border-gray-800 mb-8">
               <h2 className="text-xl font-semibold text-white mb-6">Questions</h2>
               <div className="space-y-6">
@@ -407,7 +397,6 @@ export const Admin = () => {
                 ))}
               </div>
             </div>
-
             <button
               type="submit"
               disabled={editSaving}
@@ -434,7 +423,6 @@ export const Admin = () => {
           <h1 className="font-serif text-3xl text-white">Admin Panel</h1>
         </div>
       </header>
-
       <main className="max-w-5xl mx-auto px-4 py-12">
         <div className="flex gap-4 mb-8">
           <button
@@ -511,19 +499,16 @@ export const Admin = () => {
                 <Plus className="w-5 h-5" />
                 Add New Book
               </h2>
-
               {error && (
                 <div className="mb-4 p-3 bg-red-900/20 border border-red-900/50 rounded text-red-400 text-sm">
                   {error}
                 </div>
               )}
-
               {saveSuccess && (
                 <div className="mb-4 p-3 bg-green-900/20 border border-green-900/50 rounded text-green-400 text-sm">
                   Book and questions saved successfully!
                 </div>
               )}
-
               <form onSubmit={handleSaveBook}>
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div>
@@ -569,7 +554,6 @@ export const Admin = () => {
                     />
                   </div>
                 </div>
-
                 <h3 className="text-lg font-medium text-white mb-4">Questions (10 required)</h3>
                 <div className="space-y-6">
                   {questions.map((q, index) => (
@@ -629,7 +613,6 @@ export const Admin = () => {
                     </div>
                   ))}
                 </div>
-
                 <button
                   type="submit"
                   disabled={saving}
@@ -653,4 +636,64 @@ export const Admin = () => {
               <div className="space-y-3">
                 {cashouts.map((req) => (
                   <div key={req.id} className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800">
-                    <div
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <p className="text-white font-medium">{req.profiles?.email}</p>
+                        <p className="text-gray-400 text-sm mt-0.5">
+                          {new Date(req.created_at).toLocaleDateString()} at{' '}
+                          {new Date(req.created_at).toLocaleTimeString()}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-white text-xl font-semibold">${req.amount.toFixed(2)}</p>
+                        <p
+                          className={`text-xs mt-1 ${
+                            req.status === 'completed'
+                              ? 'text-green-400'
+                              : req.status === 'failed'
+                              ? 'text-red-400'
+                              : 'text-yellow-400'
+                          }`}
+                        >
+                          {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="bg-[#0f0f0f] rounded p-3 mb-4 text-sm">
+                      <p className="text-gray-400">
+                        <span className="text-gray-300 font-medium">Payout type:</span>{' '}
+                        {req.payout_type === 'gift_card'
+                          ? `Gift Card - ${req.gift_card_brand}`
+                          : req.payout_type === 'paypal'
+                          ? `PayPal - ${req.payout_details}`
+                          : `Venmo - ${req.payout_details}`}
+                      </p>
+                    </div>
+                    {req.status === 'pending' && (
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => handleUpdateCashoutStatus(req.id, 'completed')}
+                          className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
+                        >
+                          <Check className="w-4 h-4" />
+                          Mark Fulfilled
+                        </button>
+                        <button
+                          onClick={() => handleUpdateCashoutStatus(req.id, 'failed')}
+                          className="flex items-center gap-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-sm font-medium px-4 py-2 rounded-lg border border-red-900/50 transition"
+                        >
+                          <X className="w-4 h-4" />
+                          Mark Failed
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};
