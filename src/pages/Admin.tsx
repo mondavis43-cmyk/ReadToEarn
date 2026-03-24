@@ -5,18 +5,20 @@ import { useNavigate } from '../hooks/useNavigate';
 import { ArrowLeft, Plus, Trash2, Check, X, Pencil } from 'lucide-react';
 
 const ADMIN_EMAIL = 'mondavis43@gmail.com';
+const RATE_PER_PAGE = 0.0085;
 
 interface Book {
-  id: number;
+  id: string;
   title: string;
   author: string;
   cover_url: string | null;
   bounty_amount: number;
+  page_count: number;
 }
 
 interface Question {
-  id: number;
-  book_id: number;
+  id: string;
+  book_id: string;
   question_text: string;
   correct_answer: string;
   wrong_answer_1: string;
@@ -42,7 +44,7 @@ interface NewBook {
   title: string;
   author: string;
   cover_url: string;
-  bounty_amount: string;
+  page_count: string;
 }
 
 interface NewQuestion {
@@ -57,7 +59,7 @@ const emptyBook: NewBook = {
   title: '',
   author: '',
   cover_url: '',
-  bounty_amount: '1.00',
+  page_count: '',
 };
 
 const emptyQuestion: NewQuestion = {
@@ -96,7 +98,7 @@ export const Admin = () => {
 
   const loadData = async () => {
     const [booksResult, cashoutsResult] = await Promise.all([
-      supabase.from('books').select('*').order('id'),
+      supabase.from('books').select('*').order('title'),
       supabase
         .from('cashout_requests')
         .select('*, profiles(email)')
@@ -134,13 +136,16 @@ export const Admin = () => {
       }
     }
 
+    const bounty = Math.round(editingBook.page_count * RATE_PER_PAGE * 100) / 100;
+
     const { error: bookError } = await supabase
       .from('books')
       .update({
         title: editingBook.title,
         author: editingBook.author,
         cover_url: editingBook.cover_url || null,
-        bounty_amount: editingBook.bounty_amount,
+        page_count: editingBook.page_count,
+        bounty_amount: bounty,
       })
       .eq('id', editingBook.id);
 
@@ -193,13 +198,17 @@ export const Admin = () => {
       }
     }
 
+    const pageCount = parseInt(newBook.page_count);
+    const bounty = Math.round(pageCount * RATE_PER_PAGE * 100) / 100;
+
     const { data: bookData, error: bookError } = await supabase
       .from('books')
       .insert({
         title: newBook.title,
         author: newBook.author,
         cover_url: newBook.cover_url || null,
-        bounty_amount: parseFloat(newBook.bounty_amount),
+        page_count: pageCount,
+        bounty_amount: bounty,
       })
       .select()
       .single();
@@ -242,7 +251,7 @@ export const Admin = () => {
     loadData();
   };
 
-  const handleDeleteBook = async (id: number) => {
+  const handleDeleteBook = async (id: string) => {
     if (!confirm('Delete this book and all its questions?')) return;
     await supabase.from('books').delete().eq('id', id);
     loadData();
@@ -265,6 +274,7 @@ export const Admin = () => {
   }
 
   if (editingBook) {
+    const previewBounty = Math.round(editingBook.page_count * RATE_PER_PAGE * 100) / 100;
     return (
       <div className="min-h-screen bg-[#0f0f0f]">
         <header className="border-b border-gray-800">
@@ -323,16 +333,20 @@ export const Admin = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Bounty Amount ($)</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Page Count</label>
                   <input
                     type="number"
-                    step="0.01"
-                    min="0.01"
-                    value={editingBook.bounty_amount}
-                    onChange={(e) => setEditingBook({ ...editingBook, bounty_amount: parseFloat(e.target.value) })}
+                    min="1"
+                    value={editingBook.page_count}
+                    onChange={(e) => setEditingBook({ ...editingBook, page_count: parseInt(e.target.value) || 0 })}
                     className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500"
                     required
                   />
+                  {editingBook.page_count > 0 && (
+                    <p className="text-green-400 text-xs mt-1">
+                      Bounty: ${previewBounty.toFixed(2)} ({editingBook.page_count} pages × $0.0085)
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -380,10 +394,7 @@ export const Admin = () => {
                               value={q[`wrong_answer_${n}` as keyof Question] as string}
                               onChange={(e) => {
                                 const updated = [...editingQuestions];
-                                updated[index] = {
-                                  ...updated[index],
-                                  [`wrong_answer_${n}`]: e.target.value,
-                                };
+                                updated[index] = { ...updated[index], [`wrong_answer_${n}`]: e.target.value };
                                 setEditingQuestions(updated);
                               }}
                               className="w-full px-3 py-2 bg-[#1a1a1a] border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-gray-500"
@@ -470,6 +481,7 @@ export const Admin = () => {
                       <div>
                         <p className="text-white font-medium">{book.title}</p>
                         <p className="text-gray-400 text-sm">{book.author}</p>
+                        <p className="text-gray-500 text-xs">{book.page_count} pages</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
@@ -542,18 +554,23 @@ export const Admin = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Bounty Amount ($)</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Page Count</label>
                     <input
                       type="number"
-                      step="0.01"
-                      min="0.01"
-                      value={newBook.bounty_amount}
-                      onChange={(e) => setNewBook({ ...newBook, bounty_amount: e.target.value })}
+                      min="1"
+                      value={newBook.page_count}
+                      onChange={(e) => setNewBook({ ...newBook, page_count: e.target.value })}
                       className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500"
                       required
                     />
+                    {newBook.page_count && parseInt(newBook.page_count) > 0 && (
+                      <p className="text-green-400 text-xs mt-1">
+                        Bounty: ${(parseInt(newBook.page_count) * RATE_PER_PAGE).toFixed(2)} ({newBook.page_count} pages × $0.0085)
+                      </p>
+                    )}
                   </div>
                 </div>
+
                 <h3 className="text-lg font-medium text-white mb-4">Questions (10 required)</h3>
                 <div className="space-y-6">
                   {questions.map((q, index) => (
@@ -597,10 +614,7 @@ export const Admin = () => {
                                 value={q[`wrong_answer_${n}` as keyof NewQuestion]}
                                 onChange={(e) => {
                                   const updated = [...questions];
-                                  updated[index] = {
-                                    ...updated[index],
-                                    [`wrong_answer_${n}`]: e.target.value,
-                                  };
+                                  updated[index] = { ...updated[index], [`wrong_answer_${n}`]: e.target.value };
                                   setQuestions(updated);
                                 }}
                                 className="w-full px-3 py-2 bg-[#1a1a1a] border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-gray-500"
