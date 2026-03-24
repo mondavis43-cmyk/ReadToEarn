@@ -67,13 +67,11 @@ export const Cashout = () => {
       return;
     }
 
-    if (!payoutDetails.trim()) {
+    if (payoutType !== 'gift_card' && !payoutDetails.trim()) {
       setError(
         payoutType === 'paypal'
           ? 'Please enter your PayPal email.'
-          : payoutType === 'venmo'
-          ? 'Please enter your Venmo username.'
-          : 'Please select a gift card brand.'
+          : 'Please enter your Venmo username.'
       );
       return;
     }
@@ -98,20 +96,22 @@ export const Cashout = () => {
     // Deduct balance after successful request
     await supabase
       .from('profiles')
-      .update await emailjs.send(
-  'service_slmc47t',
-  'template_m7irrla',
-  {
-    user_email: user!.email,
-    amount: balance.toFixed(2),
-    payout_type: payoutType,
-    payout_details: payoutType === 'gift_card' ? giftCardBrand : payoutDetails,
-    gift_card_brand: giftCardBrand || 'N/A',
-  },
-  'Tm8JkdGKwkhA9fRCn'
-);
-      ({ available_balance: 0 })
+      .update({ available_balance: 0 })
       .eq('id', user!.id);
+
+    // Send email notification
+    await emailjs.send(
+      'service_slmc47t',
+      'template_m7irrla',
+      {
+        user_email: user!.email,
+        amount: balance.toFixed(2),
+        payout_type: payoutType,
+        payout_details: payoutType === 'gift_card' ? giftCardBrand : payoutDetails,
+        gift_card_brand: giftCardBrand || 'N/A',
+      },
+      'Tm8JkdGKwkhA9fRCn'
+    );
 
     setSuccess(true);
     setSubmitting(false);
@@ -170,7 +170,6 @@ export const Cashout = () => {
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-12">
-        {/* Balance Card */}
         <div className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800 mb-8 text-center">
           <p className="text-gray-400 text-sm mb-1">Available Balance</p>
           <p className="text-4xl font-semibold text-white">${balance.toFixed(2)}</p>
@@ -189,7 +188,6 @@ export const Cashout = () => {
               </div>
             )}
 
-            {/* Payout Type */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-300 mb-3">
                 How would you like to be paid?
@@ -215,7 +213,6 @@ export const Cashout = () => {
               </div>
             </div>
 
-            {/* Gift Card Brand Selector */}
             {payoutType === 'gift_card' && (
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -238,7 +235,6 @@ export const Cashout = () => {
               </div>
             )}
 
-            {/* PayPal Email */}
             {payoutType === 'paypal' && (
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -255,7 +251,6 @@ export const Cashout = () => {
               </div>
             )}
 
-            {/* Venmo Username */}
             {payoutType === 'venmo' && (
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -295,7 +290,6 @@ export const Cashout = () => {
           </div>
         )}
 
-        {/* Past Requests */}
         {pastRequests.length > 0 && (
           <div className="mt-10">
             <h2 className="text-lg font-semibold text-white mb-4">Past Requests</h2>
