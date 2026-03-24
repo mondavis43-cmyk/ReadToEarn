@@ -73,18 +73,11 @@ export const Admin = () => {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState('');
 
-  // Block non-admins
-  if (user?.email !== ADMIN_EMAIL) {
-    return (
-      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
-        <p className="text-red-400">Access denied.</p>
-      </div>
-    );
-  }
-
   useEffect(() => {
-    loadData();
-  }, []);
+    if (user?.email === ADMIN_EMAIL) {
+      loadData();
+    }
+  }, [user]);
 
   const loadData = async () => {
     const [booksResult, cashoutsResult] = await Promise.all([
@@ -105,7 +98,6 @@ export const Admin = () => {
     setError('');
     setSaving(true);
 
-    // Validate all questions filled
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
       if (!q.question_text || !q.correct_answer || !q.wrong_answer_1 || !q.wrong_answer_2 || !q.wrong_answer_3) {
@@ -115,7 +107,6 @@ export const Admin = () => {
       }
     }
 
-    // Insert book
     const { data: bookData, error: bookError } = await supabase
       .from('books')
       .insert({
@@ -133,7 +124,6 @@ export const Admin = () => {
       return;
     }
 
-    // Insert questions
     const questionsToInsert = questions.map((q) => ({
       book_id: bookData.id,
       question_text: q.question_text,
@@ -153,7 +143,6 @@ export const Admin = () => {
       return;
     }
 
-    // Reset form
     setNewBook(emptyBook);
     setQuestions(Array(10).fill(null).map(() => ({ ...emptyQuestion })));
     setSaveSuccess(true);
@@ -172,6 +161,15 @@ export const Admin = () => {
     await supabase.from('books').delete().eq('id', id);
     loadData();
   };
+
+  // Block non-admins (after all hooks)
+  if (user?.email !== ADMIN_EMAIL) {
+    return (
+      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
+        <p className="text-red-400">Access denied.</p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -196,7 +194,6 @@ export const Admin = () => {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-12">
-        {/* Tabs */}
         <div className="flex gap-4 mb-8">
           <button
             onClick={() => setActiveTab('books')}
@@ -220,10 +217,8 @@ export const Admin = () => {
           </button>
         </div>
 
-        {/* BOOKS TAB */}
         {activeTab === 'books' && (
           <div>
-            {/* Existing Books */}
             <div className="mb-10">
               <h2 className="text-xl font-semibold text-white mb-4">
                 Current Books ({books.length})
@@ -263,7 +258,6 @@ export const Admin = () => {
               </div>
             </div>
 
-            {/* Add New Book */}
             <div className="bg-[#1a1a1a] rounded-lg p-8 border border-gray-800">
               <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
                 <Plus className="w-5 h-5" />
@@ -283,7 +277,6 @@ export const Admin = () => {
               )}
 
               <form onSubmit={handleSaveBook}>
-                {/* Book Details */}
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">Title</label>
@@ -306,9 +299,7 @@ export const Admin = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Cover URL
-                    </label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Cover URL</label>
                     <input
                       type="text"
                       value={newBook.cover_url}
@@ -318,9 +309,7 @@ export const Admin = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Bounty Amount ($)
-                    </label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Bounty Amount ($)</label>
                     <input
                       type="number"
                       step="0.01"
@@ -333,19 +322,14 @@ export const Admin = () => {
                   </div>
                 </div>
 
-                {/* Questions */}
-                <h3 className="text-lg font-medium text-white mb-4">
-                  Questions (10 required)
-                </h3>
+                <h3 className="text-lg font-medium text-white mb-4">Questions (10 required)</h3>
                 <div className="space-y-6">
                   {questions.map((q, index) => (
                     <div
                       key={index}
                       className="bg-[#0f0f0f] rounded-lg p-6 border border-gray-700"
                     >
-                      <p className="text-gray-400 text-sm font-medium mb-4">
-                        Question {index + 1}
-                      </p>
+                      <p className="text-gray-400 text-sm font-medium mb-4">Question {index + 1}</p>
                       <div className="space-y-3">
                         <div>
                           <label className="block text-xs text-gray-500 mb-1">Question</label>
@@ -362,9 +346,7 @@ export const Admin = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-xs text-green-500 mb-1">
-                            Correct Answer
-                          </label>
+                          <label className="block text-xs text-green-500 mb-1">Correct Answer</label>
                           <input
                             type="text"
                             value={q.correct_answer}
@@ -380,9 +362,7 @@ export const Admin = () => {
                         <div className="grid grid-cols-3 gap-3">
                           {[1, 2, 3].map((n) => (
                             <div key={n}>
-                              <label className="block text-xs text-gray-500 mb-1">
-                                Wrong Answer {n}
-                              </label>
+                              <label className="block text-xs text-gray-500 mb-1">Wrong Answer {n}</label>
                               <input
                                 type="text"
                                 value={q[`wrong_answer_${n}` as keyof NewQuestion]}
@@ -417,12 +397,9 @@ export const Admin = () => {
           </div>
         )}
 
-        {/* CASHOUTS TAB */}
         {activeTab === 'cashouts' && (
           <div>
-            <h2 className="text-xl font-semibold text-white mb-4">
-              Cashout Requests
-            </h2>
+            <h2 className="text-xl font-semibold text-white mb-4">Cashout Requests</h2>
             {cashouts.length === 0 ? (
               <div className="bg-[#1a1a1a] rounded-lg p-12 border border-gray-800 text-center">
                 <p className="text-gray-400">No cashout requests yet.</p>
@@ -443,9 +420,7 @@ export const Admin = () => {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-white text-xl font-semibold">
-                          ${req.amount.toFixed(2)}
-                        </p>
+                        <p className="text-white text-xl font-semibold">${req.amount.toFixed(2)}</p>
                         <p
                           className={`text-xs mt-1 ${
                             req.status === 'completed'
@@ -498,57 +473,4 @@ export const Admin = () => {
       </main>
     </div>
   );
-};
-
-2. update Router.tsx — add the /admin route:
-
-import { useEffect, useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { Home } from '../pages/Home';
-import { Login } from '../pages/Login';
-import { Signup } from '../pages/Signup';
-import { Quiz } from '../pages/Quiz';
-import { Profile } from '../pages/Profile';
-import { Cashout } from '../pages/Cashout';
-import { Admin } from '../pages/Admin';
-
-export const Router = () => {
-  const { user, loading } = useAuth();
-  const [route, setRoute] = useState(window.location.pathname);
-
-  useEffect(() => {
-    const handleRouteChange = () => {
-      setRoute(window.location.pathname);
-    };
-
-    window.addEventListener('popstate', handleRouteChange);
-    return () => window.removeEventListener('popstate', handleRouteChange);
-  }, []);
-
-  useEffect(() => {
-    if (!loading && !user && route !== '/login' && route !== '/signup') {
-      window.history.pushState({}, '', '/login');
-      setRoute('/login');
-    }
-  }, [user, loading, route]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
-        <div className="text-white">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!user && route === '/signup') return <Signup />;
-  if (!user) return <Login />;
-  if (route === '/profile') return <Profile />;
-  if (route === '/cashout') return <Cashout />;
-  if (route === '/admin') return <Admin />;
-  if (route.startsWith('/quiz/')) {
-    const bookId = route.split('/')[2];
-    return <Quiz bookId={bookId} />;
-  }
-
-  return <Home />;
 };
