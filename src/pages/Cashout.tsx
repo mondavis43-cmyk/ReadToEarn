@@ -1,4 +1,3 @@
-import emailjs from '@emailjs/browser';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -93,25 +92,10 @@ export const Cashout = () => {
       return;
     }
 
-    // Deduct balance after successful request
     await supabase
       .from('profiles')
       .update({ available_balance: 0 })
       .eq('id', user!.id);
-
-    // Send email notification
-    await emailjs.send(
-      'service_slmc47t',
-      'template_m7irrla',
-      {
-        user_email: user!.email,
-        amount: balance.toFixed(2),
-        payout_type: payoutType,
-        payout_details: payoutType === 'gift_card' ? giftCardBrand : payoutDetails,
-        gift_card_brand: giftCardBrand || 'N/A',
-      },
-      'Tm8JkdGKwkhA9fRCn'
-    );
 
     setSuccess(true);
     setSubmitting(false);
