@@ -24,8 +24,6 @@ export const Profile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [completedBooks, setCompletedBooks] = useState<CompletedBook[]>([]);
   const [loading, setLoading] = useState(true);
-  const [cashingOut, setCashingOut] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -54,15 +52,7 @@ export const Profile = () => {
   };
 
   const handleCashOut = () => {
-  navigateTo('/cashout');
-};
-    setProfile({ ...profile, available_balance: 0.0 });
-    setCashingOut(false);
-    setShowSuccess(true);
-
-    setTimeout(() => {
-      setShowSuccess(false);
-    }, 5000);
+    navigateTo('/cashout');
   };
 
   if (loading) {
@@ -91,14 +81,6 @@ export const Profile = () => {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-12">
-        {showSuccess && (
-          <div className="mb-6 p-4 bg-green-900/20 border border-green-900/50 rounded-lg">
-            <p className="text-green-400 font-medium">
-              Your cash out request has been submitted. You'll receive a gift card within 24 hours.
-            </p>
-          </div>
-        )}
-
         <div className="bg-[#1a1a1a] rounded-lg p-8 border border-gray-800 mb-8">
           <div className="flex items-start justify-between mb-6">
             <div>
@@ -116,7 +98,7 @@ export const Profile = () => {
           <div className="border-t border-gray-800 pt-6">
             <button
               onClick={handleCashOut}
-              disabled={!canCashOut || cashingOut}
+              disabled={!canCashOut}
               className={`w-full flex items-center justify-center gap-2 font-medium px-6 py-3 rounded-lg transition ${
                 canCashOut
                   ? 'bg-green-600 text-white hover:bg-green-700'
@@ -125,7 +107,7 @@ export const Profile = () => {
               title={!canCashOut ? 'Minimum $5.00 to cash out' : ''}
             >
               <DollarSign className="w-5 h-5" />
-              {cashingOut ? 'Processing...' : 'Cash Out'}
+              Cash Out
             </button>
             {!canCashOut && (
               <p className="text-gray-500 text-sm text-center mt-2">
@@ -183,3 +165,4 @@ export const Profile = () => {
     </div>
   );
 };
+
