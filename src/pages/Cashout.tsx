@@ -1,3 +1,4 @@
+import emailjs from '@emailjs/browser';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -97,7 +98,19 @@ export const Cashout = () => {
     // Deduct balance after successful request
     await supabase
       .from('profiles')
-      .update({ available_balance: 0 })
+      .update await emailjs.send(
+  'YOUR_SERVICE_ID',
+  'YOUR_TEMPLATE_ID',
+  {
+    user_email: user!.email,
+    amount: balance.toFixed(2),
+    payout_type: payoutType,
+    payout_details: payoutType === 'gift_card' ? giftCardBrand : payoutDetails,
+    gift_card_brand: giftCardBrand || 'N/A',
+  },
+  'YOUR_PUBLIC_KEY'
+);
+      ({ available_balance: 0 })
       .eq('id', user!.id);
 
     setSuccess(true);
