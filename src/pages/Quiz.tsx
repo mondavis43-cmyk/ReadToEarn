@@ -8,11 +8,10 @@ interface Question {
   id: string;
   book_id: string;
   question_text: string;
-  option_a: string;
-  option_b: string;
-  option_c: string;
-  option_d: string;
   correct_answer: string;
+  wrong_answer_1: string;
+  wrong_answer_2: string;
+  wrong_answer_3: string;
 }
 
 interface Book {
@@ -26,11 +25,22 @@ interface QuizProps {
   bookId: string;
 }
 
+// shuffle array deterministically based on a seed string
+const seededShuffle = <T,>(arr: T[], seed: string): T[] => {
+  const hash = seed.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return [...arr].sort((a, b) => {
+    const hashA = (JSON.stringify(a) + seed).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    const hashB = (JSON.stringify(b) + seed).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    return (hashA % 4) - (hashB % 4);
+  });
+};
+
 export const Quiz = ({ bookId }: QuizProps) => {
   const { user } = useAuth();
   const { navigateTo } = useNavigate();
   const [book, setBook] = useState<Book | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [shuffledOptions, setShuffledOptions] = useState<Record<string, string[]>>({});
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
@@ -45,7 +55,6 @@ export const Quiz = ({ bookId }: QuizProps) => {
   const loadQuiz = async () => {
     if (!user) return;
 
-
     const [bookResult, questionsResult, completedResult] = await Promise.all([
       supabase.from('books').select('*').eq('id', bookId).maybeSingle(),
       supabase.from('questions').select('*').eq('book_id', bookId),
@@ -57,17 +66,22 @@ export const Quiz = ({ bookId }: QuizProps) => {
         .maybeSingle(),
     ]);
 
-    if (bookResult.data) {
-      setBook(bookResult.data);
-    }
+    if (bookResult.data) setBook(bookResult.data);
 
     if (questionsResult.data) {
-      setQuestions(questionsResult.data);
+      const qs = questionsResult.data as Question[];
+      setQuestions(qs);
+
+      // build shuffled options per question
+      const optionsMap: Record<string, string[]> = {};
+      qs.forEach((q) => {
+        const opts = [q.correct_answer, q.wrong_answer_1, q.wrong_answer_2, q.wrong_answer_3];
+        optionsMap[q.id] = seededShuffle(opts, q.id);
+      });
+      setShuffledOptions(optionsMap);
     }
 
-    if (completedResult.data) {
-      setAlreadyCompleted(true);
-    }
+    if (completedResult.data) setAlreadyCompleted(true);
 
     setLoading(false);
   };
@@ -95,22 +109,18 @@ export const Quiz = ({ bookId }: QuizProps) => {
     });
 
     if (userPassed && !alreadyCompleted) {
-      const [profileResult] = await Promise.all([
-        supabase.from('profiles').select('available_balance').eq('id', user.id).single(),
-      ]);
+      const profileResult = await supabase
+        .from('profiles')
+        .select('available_balance')
+        .eq('id', user.id)
+        .single();
 
       if (profileResult.data) {
         const newBalance = Number(profileResult.data.available_balance) + Number(book.bounty_amount);
 
         await Promise.all([
-          supabase
-            .from('profiles')
-            .update({ available_balance: newBalance })
-            .eq('id', user.id),
-          supabase.from('completed_books').insert({
-            user_id: user.id,
-            book_id: book.id,
-          }),
+          supabase.from('profiles').update({ available_balance: newBalance }).eq('id', user.id),
+          supabase.from('completed_books').insert({ user_id: user.id, book_id: book.id }),
         ]);
       }
     }
@@ -152,63 +162,46 @@ export const Quiz = ({ bookId }: QuizProps) => {
         {!submitted ? (
           <>
             <div className="mb-8">
-              <h2 className="text-2xl font-semibold text-white mb-2">
-                Quiz: {book.title}
-              </h2>
+              <h2 className="text-2xl font-semibold text-white mb-2">Quiz: {book.title}</h2>
               <p className="text-gray-400">
                 Answer at least 8 out of 10 questions correctly to earn ${book.bounty_amount.toFixed(2)}
               </p>
             </div>
 
             <div className="space-y-8">
-{questions.map((question, index) => {
-  const options = [
-    { label: question.option_a, value: 'A' },
-    { label: question.option_b, value: 'B' },
-    { label: question.option_c, value: 'C' },
-    { label: question.option_d, value: 'D' },
-  ];
-
-  // shuffle options using question id as seed so it's consistent per question
-  const shuffled = [...options].sort((a, b) => {
-    const hash = (str: string) => str.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    return (hash(question.id + a.value) % 4) - (hash(question.id + b.value) % 4);
-  });
-
-  return (
-    <div key={question.id} className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800">
-      <h3 className="text-white font-medium mb-4">
-        {index + 1}. {question.question_text}
-      </h3>
-
-      <div className="space-y-3">
-        {shuffled.map((option, optIndex) => {
-          const displayLabel = ['A', 'B', 'C', 'D'][optIndex];
-          return (
-            <label
-              key={option.value}
-              className="flex items-start gap-3 p-4 bg-[#0f0f0f] rounded-lg border border-gray-700 hover:border-gray-600 cursor-pointer transition"
-            >
-              <input
-                type="radio"
-                name={`question-${question.id}`}
-                value={option.value}
-                checked={answers[question.id] === option.value}
-                onChange={() =>
-                  setAnswers({ ...answers, [question.id]: option.value })
-                }
-                className="mt-1 w-4 h-4 accent-white"
-              />
-              <span className="text-gray-300 flex-1">
-                <span className="font-medium text-white">{displayLabel}.</span> {option.label}
-              </span>
-            </label>
-          );
-        })}
-      </div>
-    </div>
-  );
-})}
+              {questions.map((question, index) => {
+                const options = shuffledOptions[question.id] || [];
+                return (
+                  <div key={question.id} className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800">
+                    <h3 className="text-white font-medium mb-4">
+                      {index + 1}. {question.question_text}
+                    </h3>
+                    <div className="space-y-3">
+                      {options.map((option, optIndex) => {
+                        const displayLabel = ['A', 'B', 'C', 'D'][optIndex];
+                        return (
+                          <label
+                            key={optIndex}
+                            className="flex items-start gap-3 p-4 bg-[#0f0f0f] rounded-lg border border-gray-700 hover:border-gray-600 cursor-pointer transition"
+                          >
+                            <input
+                              type="radio"
+                              name={`question-${question.id}`}
+                              value={option}
+                              checked={answers[question.id] === option}
+                              onChange={() => setAnswers({ ...answers, [question.id]: option })}
+                              className="mt-1 w-4 h-4 accent-white"
+                            />
+                            <span className="text-gray-300 flex-1">
+                              <span className="font-medium text-white">{displayLabel}.</span> {option}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="mt-8 flex justify-center">
