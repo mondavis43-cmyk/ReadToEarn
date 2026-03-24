@@ -5,6 +5,7 @@ import { Login } from '../pages/Login';
 import { Signup } from '../pages/Signup';
 import { Quiz } from '../pages/Quiz';
 import { Profile } from '../pages/Profile';
+import { Cashout } from '../pages/Cashout';
 
 export const Router = () => {
   const { user, loading } = useAuth();
@@ -34,18 +35,10 @@ export const Router = () => {
     );
   }
 
-  if (!user && route === '/signup') {
-    return <Signup />;
-  }
-
-  if (!user) {
-    return <Login />;
-  }
-
-  if (route === '/profile') {
-    return <Profile />;
-  }
-
+  if (!user && route === '/signup') return <Signup />;
+  if (!user) return <Login />;
+  if (route === '/profile') return <Profile />;
+  if (route === '/cashout') return <Cashout />;
   if (route.startsWith('/quiz/')) {
     const bookId = route.split('/')[2];
     return <Quiz bookId={bookId} />;
