@@ -61,12 +61,18 @@ export const Home = () => {
         <div className="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
           <h1 className="font-serif text-3xl text-white">Read to Earn</h1>
           <div className="flex gap-4">
-            <button
-              onClick={() => navigateTo('/profile')}
-              className="text-gray-300 hover:text-white transition"
-            >
-              Profile
-            </button>
+           <button
+  onClick={() => navigateTo('/profile')}
+  className="text-gray-300 hover:text-white transition"
+>
+  Profile
+</button>
+<button
+  onClick={() => navigateTo('/cashout')}
+  className="bg-green-600 hover:bg-green-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
+>
+  Cash Out
+</button>
             <button
               onClick={handleLogout}
               className="text-gray-400 hover:text-gray-300 transition"
