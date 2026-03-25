@@ -8,6 +8,10 @@ import { Profile } from '../pages/Profile';
 import { Cashout } from '../pages/Cashout';
 import { Admin } from '../pages/Admin';
 import { BookPage } from '../pages/BookPage';
+import { Waitlist } from '../pages/Waitlist'; // ADD THIS
+
+// WAITLIST MODE: set to false when ready to go live
+const WAITLIST_MODE = true;
 
 export const Router = () => {
   const { user, loading } = useAuth();
@@ -24,8 +28,11 @@ export const Router = () => {
 
   useEffect(() => {
     if (!loading && !user && route !== '/login' && route !== '/signup' && route !== '/admin') {
-      window.history.pushState({}, '', '/login');
-      setRoute('/login');
+      // If waitlist mode is on, don't redirect to login — show waitlist instead
+      if (!WAITLIST_MODE) {
+        window.history.pushState({}, '', '/login');
+        setRoute('/login');
+      }
     }
   }, [user, loading, route]);
 
@@ -37,11 +44,16 @@ export const Router = () => {
     );
   }
 
+  // Admin always accessible
+  if (route === '/admin') return <Admin />;
+
+  // Waitlist mode: non-logged-in users see waitlist, logged-in users pass through
+  if (WAITLIST_MODE && !user) return <Waitlist />;
+
   if (!user && route === '/signup') return <Signup />;
   if (!user) return <Login />;
   if (route === '/profile') return <Profile />;
   if (route === '/cashout') return <Cashout />;
-  if (route === '/admin') return <Admin />;
   if (route.startsWith('/quiz/')) {
     const bookId = route.split('/')[2];
     return <Quiz bookId={bookId} />;
