@@ -96,8 +96,8 @@ export const Admin = () => {
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
   const [editSuccess, setEditSuccess] = useState(false);
-  const [sendingGiftCard, setSendingGiftCard] = useState<string | null>(null);
-  const [giftCardError, setGiftCardError] = useState<string | null>(null);
+  const [markingAsSent, setMarkingAsSent] = useState<string | null>(null);
+  const [markError, setMarkError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.email === ADMIN_EMAIL) {
@@ -118,20 +118,16 @@ export const Admin = () => {
     setLoading(false);
   };
 
-  const handleSendGiftCard = async (cashoutId: string) => {
-    setSendingGiftCard(cashoutId);
-    setGiftCardError(null);
-    try {
-      const { data, error } = await supabase.functions.invoke('reloadly-giftcard', {
-        body: { action: 'send_gift_card', cashout_request_id: cashoutId },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(JSON.stringify(data.error));
-      loadData();
-    } catch (err) {
-      setGiftCardError(`Failed to send gift card: ${String(err)}`);
-    }
-    setSendingGiftCard(null);
+  const handleMarkAsSent = async (cashoutId: string) => {
+    setMarkingAsSent(cashoutId);
+    setMarkError(null);
+    const { error } = await supabase
+      .from('cashout_requests')
+      .update({ status: 'completed' })
+      .eq('id', cashoutId);
+    if (error) setMarkError(`Failed to update status: ${error.message}`);
+    else loadData();
+    setMarkingAsSent(null);
   };
 
   const handleEditBook = async (book: Book) => {
@@ -710,9 +706,9 @@ export const Admin = () => {
         {activeTab === 'cashouts' && (
           <div>
             <h2 className="text-xl font-semibold text-white mb-4">Cashout Requests</h2>
-            {giftCardError && (
+            {markError && (
               <div className="mb-4 p-3 bg-red-900/20 border border-red-900/50 rounded text-red-400 text-sm">
-                {giftCardError}
+                {markError}
               </div>
             )}
             {cashouts.length === 0 ? (
@@ -753,24 +749,21 @@ export const Admin = () => {
                     </div>
                     {req.status === 'pending' && (
                       <div className="flex gap-3">
-                        {req.payout_type === 'gift_card' ? (
-                          <button
-                            onClick={() => handleSendGiftCard(req.id)}
-                            disabled={sendingGiftCard === req.id}
-                            className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <Check className="w-4 h-4" />
-                            {sendingGiftCard === req.id ? 'Sending...' : 'Send Gift Card'}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleUpdateCashoutStatus(req.id, 'completed')}
-                            className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
-                          >
-                            <Check className="w-4 h-4" />
-                            Mark Fulfilled
-                          </button>
-                        )}
+                        <button
+                          onClick={() => req.payout_type === 'gift_card'
+                            ? handleMarkAsSent(req.id)
+                            : handleUpdateCashoutStatus(req.id, 'completed')
+                          }
+                          disabled={markingAsSent === req.id}
+                          className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Check className="w-4 h-4" />
+                          {markingAsSent === req.id
+                            ? 'Updating...'
+                            : req.payout_type === 'gift_card'
+                            ? 'Mark as Sent'
+                            : 'Mark Fulfilled'}
+                        </button>
                         <button
                           onClick={() => handleUpdateCashoutStatus(req.id, 'failed')}
                           className="flex items-center gap-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-sm font-medium px-4 py-2 rounded-lg border border-red-900/50 transition"
