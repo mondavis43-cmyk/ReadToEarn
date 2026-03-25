@@ -80,7 +80,7 @@ export const Waitlist = () => {
             </div>
             <h3 className="text-white font-semibold mb-2">3. Cash out</h3>
             <p className="text-gray-400 text-sm">
-              Redeem your earnings via PayPal, Venmo, or gift cards from your favorite brands.
+              Redeem your earnings via PayPal, Venmo, or gift cards from your favorite brands once you hit $5.
             </p>
           </div>
         </div>
