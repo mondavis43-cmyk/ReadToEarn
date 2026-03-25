@@ -35,6 +35,7 @@ interface CashoutRequest {
   payout_type: string;
   payout_details: string;
   gift_card_brand: string | null;
+  reloadly_product_id: number | null;
   status: string;
   created_at: string;
   profiles: {
@@ -95,6 +96,8 @@ export const Admin = () => {
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
   const [editSuccess, setEditSuccess] = useState(false);
+  const [sendingGiftCard, setSendingGiftCard] = useState<string | null>(null);
+  const [giftCardError, setGiftCardError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.email === ADMIN_EMAIL) {
@@ -113,6 +116,22 @@ export const Admin = () => {
     if (booksResult.data) setBooks(booksResult.data);
     if (cashoutsResult.data) setCashouts(cashoutsResult.data as CashoutRequest[]);
     setLoading(false);
+  };
+
+  const handleSendGiftCard = async (cashoutId: string) => {
+    setSendingGiftCard(cashoutId);
+    setGiftCardError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('reloadly-giftcard', {
+        body: { action: 'send_gift_card', cashout_request_id: cashoutId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(JSON.stringify(data.error));
+      loadData();
+    } catch (err) {
+      setGiftCardError(`Failed to send gift card: ${String(err)}`);
+    }
+    setSendingGiftCard(null);
   };
 
   const handleEditBook = async (book: Book) => {
@@ -364,7 +383,6 @@ export const Admin = () => {
                     value={editingBook.description || ''}
                     onChange={(e) => setEditingBook({ ...editingBook, description: e.target.value })}
                     rows={4}
-                    placeholder="Brief description of the book for readers who may not be familiar with it..."
                     className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 resize-none"
                   />
                 </div>
@@ -605,7 +623,7 @@ export const Admin = () => {
                       value={newBook.description}
                       onChange={(e) => setNewBook({ ...newBook, description: e.target.value })}
                       rows={4}
-                      placeholder="Brief description of the book for readers who may not be familiar with it..."
+                      placeholder="Brief description of the book..."
                       className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 resize-none"
                     />
                   </div>
@@ -692,6 +710,11 @@ export const Admin = () => {
         {activeTab === 'cashouts' && (
           <div>
             <h2 className="text-xl font-semibold text-white mb-4">Cashout Requests</h2>
+            {giftCardError && (
+              <div className="mb-4 p-3 bg-red-900/20 border border-red-900/50 rounded text-red-400 text-sm">
+                {giftCardError}
+              </div>
+            )}
             {cashouts.length === 0 ? (
               <div className="bg-[#1a1a1a] rounded-lg p-12 border border-gray-800 text-center">
                 <p className="text-gray-400">No cashout requests yet.</p>
@@ -710,15 +733,10 @@ export const Admin = () => {
                       </div>
                       <div className="text-right">
                         <p className="text-white text-xl font-semibold">${req.amount.toFixed(2)}</p>
-                        <p
-                          className={`text-xs mt-1 ${
-                            req.status === 'completed'
-                              ? 'text-green-400'
-                              : req.status === 'failed'
-                              ? 'text-red-400'
-                              : 'text-yellow-400'
-                          }`}
-                        >
+                        <p className={`text-xs mt-1 ${
+                          req.status === 'completed' ? 'text-green-400' :
+                          req.status === 'failed' ? 'text-red-400' : 'text-yellow-400'
+                        }`}>
                           {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
                         </p>
                       </div>
@@ -735,13 +753,24 @@ export const Admin = () => {
                     </div>
                     {req.status === 'pending' && (
                       <div className="flex gap-3">
-                        <button
-                          onClick={() => handleUpdateCashoutStatus(req.id, 'completed')}
-                          className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
-                        >
-                          <Check className="w-4 h-4" />
-                          Mark Fulfilled
-                        </button>
+                        {req.payout_type === 'gift_card' ? (
+                          <button
+                            onClick={() => handleSendGiftCard(req.id)}
+                            disabled={sendingGiftCard === req.id}
+                            className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Check className="w-4 h-4" />
+                            {sendingGiftCard === req.id ? 'Sending...' : 'Send Gift Card'}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleUpdateCashoutStatus(req.id, 'completed')}
+                            className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
+                          >
+                            <Check className="w-4 h-4" />
+                            Mark Fulfilled
+                          </button>
+                        )}
                         <button
                           onClick={() => handleUpdateCashoutStatus(req.id, 'failed')}
                           className="flex items-center gap-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-sm font-medium px-4 py-2 rounded-lg border border-red-900/50 transition"
