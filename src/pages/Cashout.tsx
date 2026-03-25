@@ -59,23 +59,22 @@ export const Cashout = () => {
     setLoading(false);
   };
 
-  const loadProducts = async () => {
-    setProductsLoading(true);
-    setProductsError('');
-    try {
-      const { data, error } = await supabase.functions.invoke('reloadly-giftcard', {
-        method: 'GET',
-        headers: { 'x-action': 'products' },
-      });
-      if (error) throw error;
-      const content = data?.content || [];
-      setProducts(content);
-      if (content.length > 0) setSelectedProduct(content[0]);
-    } catch (err) {
-      setProductsError('Could not load gift card options. Try again.');
-    }
-    setProductsLoading(false);
-  };
+const loadProducts = async () => {
+  setProductsLoading(true);
+  setProductsError('');
+  try {
+    const { data, error } = await supabase.functions.invoke('reloadly-giftcard', {
+      body: { action: 'get_products' },
+    });
+    if (error) throw error;
+    const content = data?.content || [];
+    setProducts(content);
+    if (content.length > 0) setSelectedProduct(content[0]);
+  } catch (err) {
+    setProductsError('Could not load gift card options. Try again.');
+  }
+  setProductsLoading(false);
+};
 
   const isValidAmount = (product: ReloadlyProduct) => {
     if (product.denominationType === 'FIXED') {
