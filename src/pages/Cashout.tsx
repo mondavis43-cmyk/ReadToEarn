@@ -4,18 +4,19 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { ArrowLeft } from 'lucide-react';
 
-const GIFT_CARD_BRANDS = [
-  'Amazon',
-  'Target',
-  'Walmart',
-  'DoorDash',
-  'Uber Eats',
-  'Starbucks',
-  'Barnes & Noble',
-  'Netflix',
-  'Apple',
-  'Google Play',
-];
+interface ReloadlyProduct {
+  productId: number;
+  productName: string;
+  brand: {
+    brandName: string;
+    brandId: number;
+  };
+  denominationType: string;
+  fixedRecipientDenominations: number[];
+  minRecipientDenomination: number | null;
+  maxRecipientDenomination: number | null;
+  logoUrls: string[];
+}
 
 export const Cashout = () => {
   const { user } = useAuth();
@@ -23,20 +24,28 @@ export const Cashout = () => {
   const [balance, setBalance] = useState(0);
   const [payoutType, setPayoutType] = useState<'paypal' | 'venmo' | 'gift_card'>('gift_card');
   const [payoutDetails, setPayoutDetails] = useState('');
-  const [giftCardBrand, setGiftCardBrand] = useState(GIFT_CARD_BRANDS[0]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [pastRequests, setPastRequests] = useState<any[]>([]);
+  const [products, setProducts] = useState<ReloadlyProduct[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<ReloadlyProduct | null>(null);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productsError, setProductsError] = useState('');
 
   useEffect(() => {
     loadData();
   }, [user]);
 
+  useEffect(() => {
+    if (payoutType === 'gift_card') {
+      loadProducts();
+    }
+  }, [payoutType]);
+
   const loadData = async () => {
     if (!user) return;
-
     const [profileResult, requestsResult] = await Promise.all([
       supabase.from('profiles').select('available_balance').eq('id', user.id).single(),
       supabase
@@ -45,16 +54,40 @@ export const Cashout = () => {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false }),
     ]);
-
-    if (profileResult.data) {
-      setBalance(profileResult.data.available_balance);
-    }
-
-    if (requestsResult.data) {
-      setPastRequests(requestsResult.data);
-    }
-
+    if (profileResult.data) setBalance(profileResult.data.available_balance);
+    if (requestsResult.data) setPastRequests(requestsResult.data);
     setLoading(false);
+  };
+
+  const loadProducts = async () => {
+    setProductsLoading(true);
+    setProductsError('');
+    try {
+      const { data, error } = await supabase.functions.invoke('reloadly-giftcard', {
+        method: 'GET',
+        headers: { 'x-action': 'products' },
+      });
+      if (error) throw error;
+      const content = data?.content || [];
+      setProducts(content);
+      if (content.length > 0) setSelectedProduct(content[0]);
+    } catch (err) {
+      setProductsError('Could not load gift card options. Try again.');
+    }
+    setProductsLoading(false);
+  };
+
+  const isValidAmount = (product: ReloadlyProduct) => {
+    if (product.denominationType === 'FIXED') {
+      return product.fixedRecipientDenominations.includes(balance);
+    }
+    if (product.denominationType === 'RANGE') {
+      return (
+        balance >= (product.minRecipientDenomination || 0) &&
+        balance <= (product.maxRecipientDenomination || 9999)
+      );
+    }
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -66,11 +99,23 @@ export const Cashout = () => {
       return;
     }
 
+    if (payoutType === 'gift_card' && !selectedProduct) {
+      setError('Please select a gift card.');
+      return;
+    }
+
+    if (payoutType === 'gift_card' && selectedProduct && !isValidAmount(selectedProduct)) {
+      setError(
+        selectedProduct.denominationType === 'FIXED'
+          ? `${selectedProduct.productName} only supports these amounts: $${selectedProduct.fixedRecipientDenominations.join(', $')}. Your balance doesn't match.`
+          : `Your balance must be between $${selectedProduct.minRecipientDenomination} and $${selectedProduct.maxRecipientDenomination} for this card.`
+      );
+      return;
+    }
+
     if (payoutType !== 'gift_card' && !payoutDetails.trim()) {
       setError(
-        payoutType === 'paypal'
-          ? 'Please enter your PayPal email.'
-          : 'Please enter your Venmo username.'
+        payoutType === 'paypal' ? 'Please enter your PayPal email.' : 'Please enter your Venmo username.'
       );
       return;
     }
@@ -81,8 +126,9 @@ export const Cashout = () => {
       user_id: user!.id,
       amount: balance,
       payout_type: payoutType,
-      payout_details: payoutType === 'gift_card' ? giftCardBrand : payoutDetails,
-      gift_card_brand: payoutType === 'gift_card' ? giftCardBrand : null,
+      payout_details: payoutType === 'gift_card' ? selectedProduct!.productName : payoutDetails,
+      gift_card_brand: payoutType === 'gift_card' ? selectedProduct!.brand.brandName : null,
+      reloadly_product_id: payoutType === 'gift_card' ? selectedProduct!.productId : null,
       status: 'pending',
     });
 
@@ -92,10 +138,7 @@ export const Cashout = () => {
       return;
     }
 
-    await supabase
-      .from('profiles')
-      .update({ available_balance: 0 })
-      .eq('id', user!.id);
+    await supabase.from('profiles').update({ available_balance: 0 }).eq('id', user!.id);
 
     setSuccess(true);
     setSubmitting(false);
@@ -121,7 +164,7 @@ export const Cashout = () => {
             <p className="text-gray-400 text-sm mb-6">
               has been submitted. You'll receive your{' '}
               {payoutType === 'gift_card'
-                ? `${giftCardBrand} gift card`
+                ? `${selectedProduct?.productName} gift card`
                 : payoutType === 'paypal'
                 ? 'PayPal payment'
                 : 'Venmo payment'}{' '}
@@ -143,10 +186,7 @@ export const Cashout = () => {
     <div className="min-h-screen bg-[#0f0f0f]">
       <header className="border-b border-gray-800">
         <div className="max-w-7xl mx-auto px-4 py-6 flex items-center gap-4">
-          <button
-            onClick={() => navigateTo('/')}
-            className="text-gray-400 hover:text-white transition"
-          >
+          <button onClick={() => navigateTo('/')} className="text-gray-400 hover:text-white transition">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <h1 className="font-serif text-3xl text-white">Cash Out</h1>
@@ -181,10 +221,7 @@ export const Cashout = () => {
                   <button
                     key={type}
                     type="button"
-                    onClick={() => {
-                      setPayoutType(type);
-                      setPayoutDetails('');
-                    }}
+                    onClick={() => { setPayoutType(type); setPayoutDetails(''); }}
                     className={`py-3 px-2 rounded-lg border text-sm font-medium transition ${
                       payoutType === type
                         ? 'bg-white text-black border-white'
@@ -202,28 +239,55 @@ export const Cashout = () => {
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Select a gift card
                 </label>
-                <select
-                  value={giftCardBrand}
-                  onChange={(e) => setGiftCardBrand(e.target.value)}
-                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 transition"
-                >
-                  {GIFT_CARD_BRANDS.map((brand) => (
-                    <option key={brand} value={brand}>
-                      {brand}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-gray-500 text-xs mt-2">
-                  Gift card will be delivered to your email on file.
-                </p>
+                {productsLoading ? (
+                  <p className="text-gray-400 text-sm">Loading gift cards...</p>
+                ) : productsError ? (
+                  <div>
+                    <p className="text-red-400 text-sm mb-2">{productsError}</p>
+                    <button
+                      type="button"
+                      onClick={loadProducts}
+                      className="text-white text-sm underline"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <select
+                      value={selectedProduct?.productId || ''}
+                      onChange={(e) => {
+                        const product = products.find(
+                          (p) => p.productId === parseInt(e.target.value)
+                        );
+                        setSelectedProduct(product || null);
+                      }}
+                      className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 transition"
+                    >
+                      {products.map((product) => (
+                        <option key={product.productId} value={product.productId}>
+                          {product.productName}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedProduct && (
+                      <p className="text-gray-500 text-xs mt-2">
+                        {selectedProduct.denominationType === 'FIXED'
+                          ? `Available amounts: $${selectedProduct.fixedRecipientDenominations.join(', $')}`
+                          : `Available range: $${selectedProduct.minRecipientDenomination} - $${selectedProduct.maxRecipientDenomination}`}
+                      </p>
+                    )}
+                    <p className="text-gray-500 text-xs mt-1">
+                      Gift card will be delivered to your email on file.
+                    </p>
+                  </>
+                )}
               </div>
             )}
 
             {payoutType === 'paypal' && (
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  PayPal Email
-                </label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">PayPal Email</label>
                 <input
                   type="email"
                   value={payoutDetails}
@@ -237,9 +301,7 @@ export const Cashout = () => {
 
             {payoutType === 'venmo' && (
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Venmo Username
-                </label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Venmo Username</label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">@</span>
                   <input
@@ -256,7 +318,7 @@ export const Cashout = () => {
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || (payoutType === 'gift_card' && productsLoading)}
               className="w-full bg-white text-black font-medium py-3 rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? 'Submitting...' : `Request $${balance.toFixed(2)} Cashout`}
