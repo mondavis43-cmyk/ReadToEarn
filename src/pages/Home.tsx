@@ -61,18 +61,18 @@ export const Home = () => {
         <div className="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
           <h1 className="font-serif text-3xl text-white">Read to Earn</h1>
           <div className="flex gap-4">
-           <button
-  onClick={() => navigateTo('/profile')}
-  className="text-gray-300 hover:text-white transition"
->
-  Profile
-</button>
-<button
-  onClick={() => navigateTo('/cashout')}
-  className="bg-green-600 hover:bg-green-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
->
-  Cash Out
-</button>
+            <button
+              onClick={() => navigateTo('/profile')}
+              className="text-gray-300 hover:text-white transition"
+            >
+              Profile
+            </button>
+            <button
+              onClick={() => navigateTo('/cashout')}
+              className="bg-green-600 hover:bg-green-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
+            >
+              Cash Out
+            </button>
             <button
               onClick={handleLogout}
               className="text-gray-400 hover:text-gray-300 transition"
@@ -96,7 +96,8 @@ export const Home = () => {
             return (
               <div
                 key={book.id}
-                className="bg-[#1a1a1a] rounded-lg overflow-hidden border border-gray-800 hover:border-gray-700 transition group"
+                onClick={() => navigateTo(`/book/${book.id}`)}
+                className="bg-[#1a1a1a] rounded-lg overflow-hidden border border-gray-800 hover:border-gray-700 transition group cursor-pointer"
               >
                 <div className="aspect-[2/3] relative overflow-hidden bg-gray-900">
                   {book.cover_url && (
@@ -125,12 +126,9 @@ export const Home = () => {
                       Completed
                     </div>
                   ) : (
-                    <button
-                      onClick={() => navigateTo(`/quiz/${book.id}`)}
-                      className="w-full bg-white text-black font-medium py-2.5 rounded-lg hover:bg-gray-200 transition"
-                    >
-                      Take Quiz
-                    </button>
+                    <div className="w-full bg-white text-black font-medium py-2.5 rounded-lg text-center text-sm">
+                      View Book
+                    </div>
                   )}
                 </div>
               </div>
