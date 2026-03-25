@@ -59,36 +59,39 @@ export const Cashout = () => {
     setLoading(false);
   };
 
-const loadProducts = async () => {
-  setProductsLoading(true);
-  setProductsError('');
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-const { data, error } = await supabase.functions.invoke('bright-worker', {
-      body: { action: 'get_products' },
-      headers: {
-        Authorization: `Bearer ${session?.access_token}`,
-      },
-    });
-    if (error) throw error;
-    const content = data?.content || [];
-    setProducts(content);
-    if (content.length > 0) setSelectedProduct(content[0]);
-  } catch (err) {
-    setProductsError('Could not load gift card options. Try again.');
-  }
-  setProductsLoading(false);
-};
+  const loadProducts = async () => {
+    setProductsLoading(true);
+    setProductsError('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data, error } = await supabase.functions.invoke('bright-worker', {
+        body: { action: 'get_products' },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+      });
+      if (error) throw error;
+      const content = data?.content || [];
+      const topBrands = ['Amazon', 'Starbucks', 'Target', 'Walmart', 'Netflix', 'Apple', 'Google Play', 'Sephora', 'DoorDash', 'Uber'];
+      const filtered = content.filter((p: ReloadlyProduct) =>
+        topBrands.some(brand => p.productName.toLowerCase().includes(brand.toLowerCase()))
+      );
+      const finalList = filtered.length > 0 ? filtered.slice(0, 12) : content.slice(0, 12);
+      setProducts(finalList);
+      if (finalList.length > 0) setSelectedProduct(finalList[0]);
+    } catch (err) {
+      setProductsError('Could not load gift card options. Try again.');
+    }
+    setProductsLoading(false);
+  };
 
   const isValidAmount = (product: ReloadlyProduct) => {
     if (product.denominationType === 'FIXED') {
-      return product.fixedRecipientDenominations.includes(balance);
+      return product.fixedRecipientDenominations.some(d => d <= balance);
     }
     if (product.denominationType === 'RANGE') {
-      return (
-        balance >= (product.minRecipientDenomination || 0) &&
-        balance <= (product.maxRecipientDenomination || 9999)
-      );
+      return balance >= (product.minRecipientDenomination || 0) &&
+        balance <= (product.maxRecipientDenomination || 9999);
     }
     return true;
   };
@@ -142,7 +145,6 @@ const { data, error } = await supabase.functions.invoke('bright-worker', {
     }
 
     await supabase.from('profiles').update({ available_balance: 0 }).eq('id', user!.id);
-
     setSuccess(true);
     setSubmitting(false);
   };
@@ -239,7 +241,7 @@ const { data, error } = await supabase.functions.invoke('bright-worker', {
 
             {payoutType === 'gift_card' && (
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-3">
                   Select a gift card
                 </label>
                 {productsLoading ? (
@@ -247,41 +249,60 @@ const { data, error } = await supabase.functions.invoke('bright-worker', {
                 ) : productsError ? (
                   <div>
                     <p className="text-red-400 text-sm mb-2">{productsError}</p>
-                    <button
-                      type="button"
-                      onClick={loadProducts}
-                      className="text-white text-sm underline"
-                    >
+                    <button type="button" onClick={loadProducts} className="text-white text-sm underline">
                       Try again
                     </button>
                   </div>
                 ) : (
                   <>
-                    <select
-                      value={selectedProduct?.productId || ''}
-                      onChange={(e) => {
-                        const product = products.find(
-                          (p) => p.productId === parseInt(e.target.value)
+                    <div className="grid grid-cols-3 gap-3">
+                      {products.map((product) => {
+                        const canAfford = isValidAmount(product);
+                        const isSelected = selectedProduct?.productId === product.productId;
+                        return (
+                          <button
+                            key={product.productId}
+                            type="button"
+                            onClick={() => canAfford && setSelectedProduct(product)}
+                            className={`relative rounded-lg border p-3 flex flex-col items-center gap-2 transition ${
+                              isSelected
+                                ? 'border-white bg-white/10'
+                                : canAfford
+                                ? 'border-gray-700 hover:border-gray-500 cursor-pointer'
+                                : 'border-gray-800 opacity-40 cursor-not-allowed'
+                            }`}
+                          >
+                            {product.logoUrls?.[0] ? (
+                              <img
+                                src={product.logoUrls[0]}
+                                alt={product.productName}
+                                className="w-12 h-12 object-contain rounded"
+                              />
+                            ) : (
+                              <div className="w-12 h-12 bg-gray-700 rounded flex items-center justify-center text-xs text-gray-400">
+                                {product.brand?.brandName?.charAt(0)}
+                              </div>
+                            )}
+                            <span className="text-xs text-center text-gray-300 leading-tight">
+                              {product.brand?.brandName || product.productName}
+                            </span>
+                            {!canAfford && (
+                              <span className="text-[10px] text-yellow-500">Need more</span>
+                            )}
+                          </button>
                         );
-                        setSelectedProduct(product || null);
-                      }}
-                      className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 transition"
-                    >
-                      {products.map((product) => (
-                        <option key={product.productId} value={product.productId}>
-                          {product.productName}
-                        </option>
-                      ))}
-                    </select>
+                      })}
+                    </div>
                     {selectedProduct && (
-                      <p className="text-gray-500 text-xs mt-2">
+                      <p className="text-gray-500 text-xs mt-3">
+                        Selected: {selectedProduct.productName} —{' '}
                         {selectedProduct.denominationType === 'FIXED'
-                          ? `Available amounts: $${selectedProduct.fixedRecipientDenominations.join(', $')}`
-                          : `Available range: $${selectedProduct.minRecipientDenomination} - $${selectedProduct.maxRecipientDenomination}`}
+                          ? `$${selectedProduct.fixedRecipientDenominations.join(', $')}`
+                          : `$${selectedProduct.minRecipientDenomination} - $${selectedProduct.maxRecipientDenomination}`}
                       </p>
                     )}
                     <p className="text-gray-500 text-xs mt-1">
-                      Gift card will be delivered to your email on file.
+                      Gift card delivered to your email on file.
                     </p>
                   </>
                 )}
@@ -362,15 +383,13 @@ const { data, error } = await supabase.functions.invoke('bright-worker', {
                   </div>
                   <div className="text-right">
                     <p className="text-white font-semibold">${req.amount.toFixed(2)}</p>
-                    <p
-                      className={`text-xs mt-0.5 ${
-                        req.status === 'completed'
-                          ? 'text-green-400'
-                          : req.status === 'failed'
-                          ? 'text-red-400'
-                          : 'text-yellow-400'
-                      }`}
-                    >
+                    <p className={`text-xs mt-0.5 ${
+                      req.status === 'completed'
+                        ? 'text-green-400'
+                        : req.status === 'failed'
+                        ? 'text-red-400'
+                        : 'text-yellow-400'
+                    }`}>
                       {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
                     </p>
                   </div>
