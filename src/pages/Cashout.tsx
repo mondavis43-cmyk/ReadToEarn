@@ -4,19 +4,26 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { ArrowLeft } from 'lucide-react';
 
-interface ReloadlyProduct {
-  productId: number;
-  productName: string;
-  brand: {
-    brandName: string;
-    brandId: number;
-  };
-  denominationType: string;
-  fixedRecipientDenominations: number[];
-  minRecipientDenomination: number | null;
-  maxRecipientDenomination: number | null;
-  logoUrls: string[];
+interface GiftCardOption {
+  id: string;
+  name: string;
+  logo: string;
 }
+
+const GIFT_CARDS: GiftCardOption[] = [
+  { id: 'amazon', name: 'Amazon', logo: '🛒' },
+  { id: 'starbucks', name: 'Starbucks', logo: '☕' },
+  { id: 'target', name: 'Target', logo: '🎯' },
+  { id: 'walmart', name: 'Walmart', logo: '🏪' },
+  { id: 'netflix', name: 'Netflix', logo: '🎬' },
+  { id: 'apple', name: 'Apple', logo: '🍎' },
+  { id: 'google_play', name: 'Google Play', logo: '▶️' },
+  { id: 'doordash', name: 'DoorDash', logo: '🍔' },
+  { id: 'uber', name: 'Uber', logo: '🚗' },
+  { id: 'sephora', name: 'Sephora', logo: '💄' },
+  { id: 'nike', name: 'Nike', logo: '👟' },
+  { id: 'visa', name: 'Visa Prepaid', logo: '💳' },
+];
 
 export const Cashout = () => {
   const { user } = useAuth();
@@ -29,20 +36,11 @@ export const Cashout = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [pastRequests, setPastRequests] = useState<any[]>([]);
-  const [products, setProducts] = useState<ReloadlyProduct[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<ReloadlyProduct | null>(null);
-  const [productsLoading, setProductsLoading] = useState(false);
-  const [productsError, setProductsError] = useState('');
+  const [selectedCard, setSelectedCard] = useState<GiftCardOption>(GIFT_CARDS[0]);
 
   useEffect(() => {
     loadData();
   }, [user]);
-
-  useEffect(() => {
-    if (payoutType === 'gift_card') {
-      loadProducts();
-    }
-  }, [payoutType]);
 
   const loadData = async () => {
     if (!user) return;
@@ -59,63 +57,12 @@ export const Cashout = () => {
     setLoading(false);
   };
 
-  const loadProducts = async () => {
-    setProductsLoading(true);
-    setProductsError('');
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const { data, error } = await supabase.functions.invoke('bright-worker', {
-        body: { action: 'get_products' },
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-      });
-      if (error) throw error;
-      const content = data?.content || [];
-      const topBrands = ['Amazon', 'Starbucks', 'Target', 'Walmart', 'Netflix', 'Apple', 'Google Play', 'Sephora', 'DoorDash', 'Uber'];
-      const filtered = content.filter((p: ReloadlyProduct) =>
-        topBrands.some(brand => p.productName.toLowerCase().includes(brand.toLowerCase()))
-      );
-      const finalList = filtered.length > 0 ? filtered.slice(0, 12) : content.slice(0, 12);
-      setProducts(finalList);
-      if (finalList.length > 0) setSelectedProduct(finalList[0]);
-    } catch (err) {
-      setProductsError('Could not load gift card options. Try again.');
-    }
-    setProductsLoading(false);
-  };
-
-  const isValidAmount = (product: ReloadlyProduct) => {
-    if (product.denominationType === 'FIXED') {
-      return product.fixedRecipientDenominations.some(d => d <= balance);
-    }
-    if (product.denominationType === 'RANGE') {
-      return balance >= (product.minRecipientDenomination || 0) &&
-        balance <= (product.maxRecipientDenomination || 9999);
-    }
-    return true;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     if (balance < 5) {
       setError('You need at least $5.00 to cash out.');
-      return;
-    }
-
-    if (payoutType === 'gift_card' && !selectedProduct) {
-      setError('Please select a gift card.');
-      return;
-    }
-
-    if (payoutType === 'gift_card' && selectedProduct && !isValidAmount(selectedProduct)) {
-      setError(
-        selectedProduct.denominationType === 'FIXED'
-          ? `${selectedProduct.productName} only supports these amounts: $${selectedProduct.fixedRecipientDenominations.join(', $')}. Your balance doesn't match.`
-          : `Your balance must be between $${selectedProduct.minRecipientDenomination} and $${selectedProduct.maxRecipientDenomination} for this card.`
-      );
       return;
     }
 
@@ -130,11 +77,12 @@ export const Cashout = () => {
 
     const { error: insertError } = await supabase.from('cashout_requests').insert({
       user_id: user!.id,
+      email: user!.email,
       amount: balance,
       payout_type: payoutType,
-      payout_details: payoutType === 'gift_card' ? selectedProduct!.productName : payoutDetails,
-      gift_card_brand: payoutType === 'gift_card' ? selectedProduct!.brand.brandName : null,
-      reloadly_product_id: payoutType === 'gift_card' ? selectedProduct!.productId : null,
+      payout_details: payoutType === 'gift_card' ? selectedCard.name : payoutDetails,
+      gift_card_brand: payoutType === 'gift_card' ? selectedCard.name : null,
+      reloadly_product_id: payoutType === 'gift_card' ? selectedCard.id : null,
       status: 'pending',
     });
 
@@ -169,7 +117,7 @@ export const Cashout = () => {
             <p className="text-gray-400 text-sm mb-6">
               has been submitted. You'll receive your{' '}
               {payoutType === 'gift_card'
-                ? `${selectedProduct?.productName} gift card`
+                ? `${selectedCard.name} gift card`
                 : payoutType === 'paypal'
                 ? 'PayPal payment'
                 : 'Venmo payment'}{' '}
@@ -244,68 +192,28 @@ export const Cashout = () => {
                 <label className="block text-sm font-medium text-gray-300 mb-3">
                   Select a gift card
                 </label>
-                {productsLoading ? (
-                  <p className="text-gray-400 text-sm">Loading gift cards...</p>
-                ) : productsError ? (
-                  <div>
-                    <p className="text-red-400 text-sm mb-2">{productsError}</p>
-                    <button type="button" onClick={loadProducts} className="text-white text-sm underline">
-                      Try again
+                <div className="grid grid-cols-3 gap-3">
+                  {GIFT_CARDS.map((card) => (
+                    <button
+                      key={card.id}
+                      type="button"
+                      onClick={() => setSelectedCard(card)}
+                      className={`rounded-lg border p-3 flex flex-col items-center gap-2 transition ${
+                        selectedCard.id === card.id
+                          ? 'border-white bg-white/10'
+                          : 'border-gray-700 hover:border-gray-500 cursor-pointer'
+                      }`}
+                    >
+                      <span className="text-3xl">{card.logo}</span>
+                      <span className="text-xs text-center text-gray-300 leading-tight">
+                        {card.name}
+                      </span>
                     </button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-3 gap-3">
-                      {products.map((product) => {
-                        const canAfford = isValidAmount(product);
-                        const isSelected = selectedProduct?.productId === product.productId;
-                        return (
-                          <button
-                            key={product.productId}
-                            type="button"
-                            onClick={() => canAfford && setSelectedProduct(product)}
-                            className={`relative rounded-lg border p-3 flex flex-col items-center gap-2 transition ${
-                              isSelected
-                                ? 'border-white bg-white/10'
-                                : canAfford
-                                ? 'border-gray-700 hover:border-gray-500 cursor-pointer'
-                                : 'border-gray-800 opacity-40 cursor-not-allowed'
-                            }`}
-                          >
-                            {product.logoUrls?.[0] ? (
-                              <img
-                                src={product.logoUrls[0]}
-                                alt={product.productName}
-                                className="w-12 h-12 object-contain rounded"
-                              />
-                            ) : (
-                              <div className="w-12 h-12 bg-gray-700 rounded flex items-center justify-center text-xs text-gray-400">
-                                {product.brand?.brandName?.charAt(0)}
-                              </div>
-                            )}
-                            <span className="text-xs text-center text-gray-300 leading-tight">
-                              {product.brand?.brandName || product.productName}
-                            </span>
-                            {!canAfford && (
-                              <span className="text-[10px] text-yellow-500">Need more</span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {selectedProduct && (
-                      <p className="text-gray-500 text-xs mt-3">
-                        Selected: {selectedProduct.productName} —{' '}
-                        {selectedProduct.denominationType === 'FIXED'
-                          ? `$${selectedProduct.fixedRecipientDenominations.join(', $')}`
-                          : `$${selectedProduct.minRecipientDenomination} - $${selectedProduct.maxRecipientDenomination}`}
-                      </p>
-                    )}
-                    <p className="text-gray-500 text-xs mt-1">
-                      Gift card delivered to your email on file.
-                    </p>
-                  </>
-                )}
+                  ))}
+                </div>
+                <p className="text-gray-500 text-xs mt-3">
+                  Selected: {selectedCard.name} — gift card delivered to your email on file.
+                </p>
               </div>
             )}
 
@@ -342,7 +250,7 @@ export const Cashout = () => {
 
             <button
               type="submit"
-              disabled={submitting || (payoutType === 'gift_card' && productsLoading)}
+              disabled={submitting}
               className="w-full bg-white text-black font-medium py-3 rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? 'Submitting...' : `Request $${balance.toFixed(2)} Cashout`}
