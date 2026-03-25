@@ -7,6 +7,7 @@ import { Quiz } from '../pages/Quiz';
 import { Profile } from '../pages/Profile';
 import { Cashout } from '../pages/Cashout';
 import { Admin } from '../pages/Admin';
+import { BookPage } from '../pages/BookPage';
 
 export const Router = () => {
   const { user, loading } = useAuth();
@@ -45,6 +46,7 @@ export const Router = () => {
     const bookId = route.split('/')[2];
     return <Quiz bookId={bookId} />;
   }
+  if (route.startsWith('/book/')) return <BookPage />;
 
   return <Home />;
 };
