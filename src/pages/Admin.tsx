@@ -14,6 +14,8 @@ interface Book {
   cover_url: string | null;
   bounty_amount: number;
   page_count: number;
+  description: string | null;
+  geniuslink_url: string | null;
 }
 
 interface Question {
@@ -45,6 +47,8 @@ interface NewBook {
   author: string;
   cover_url: string;
   page_count: string;
+  description: string;
+  geniuslink_url: string;
 }
 
 interface NewQuestion {
@@ -60,6 +64,8 @@ const emptyBook: NewBook = {
   author: '',
   cover_url: '',
   page_count: '',
+  description: '',
+  geniuslink_url: '',
 };
 
 const emptyQuestion: NewQuestion = {
@@ -146,6 +152,8 @@ export const Admin = () => {
         cover_url: editingBook.cover_url || null,
         page_count: editingBook.page_count,
         bounty_amount: bounty,
+        description: editingBook.description || null,
+        geniuslink_url: editingBook.geniuslink_url || null,
       })
       .eq('id', editingBook.id);
 
@@ -209,6 +217,8 @@ export const Admin = () => {
         cover_url: newBook.cover_url || null,
         page_count: pageCount,
         bounty_amount: bounty,
+        description: newBook.description || null,
+        geniuslink_url: newBook.geniuslink_url || null,
       })
       .select()
       .single();
@@ -347,6 +357,26 @@ export const Admin = () => {
                       Bounty: ${previewBounty.toFixed(2)} ({editingBook.page_count} pages × $0.0085)
                     </p>
                   )}
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
+                  <textarea
+                    value={editingBook.description || ''}
+                    onChange={(e) => setEditingBook({ ...editingBook, description: e.target.value })}
+                    rows={4}
+                    placeholder="Brief description of the book for readers who may not be familiar with it..."
+                    className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 resize-none"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Geniuslink URL</label>
+                  <input
+                    type="text"
+                    value={editingBook.geniuslink_url || ''}
+                    onChange={(e) => setEditingBook({ ...editingBook, geniuslink_url: e.target.value })}
+                    placeholder="https://geni.us/..."
+                    className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500"
+                  />
                 </div>
               </div>
             </div>
@@ -568,6 +598,26 @@ export const Admin = () => {
                         Bounty: ${(parseInt(newBook.page_count) * RATE_PER_PAGE).toFixed(2)} ({newBook.page_count} pages × $0.0085)
                       </p>
                     )}
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
+                    <textarea
+                      value={newBook.description}
+                      onChange={(e) => setNewBook({ ...newBook, description: e.target.value })}
+                      rows={4}
+                      placeholder="Brief description of the book for readers who may not be familiar with it..."
+                      className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 resize-none"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Geniuslink URL</label>
+                    <input
+                      type="text"
+                      value={newBook.geniuslink_url}
+                      onChange={(e) => setNewBook({ ...newBook, geniuslink_url: e.target.value })}
+                      placeholder="https://geni.us/..."
+                      className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500"
+                    />
                   </div>
                 </div>
 
