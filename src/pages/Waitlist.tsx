@@ -47,7 +47,7 @@ export const Waitlist = () => {
             Coming Soon
           </div>
           <h2 className="font-serif text-5xl text-white mb-6 leading-tight">
-            Get paid to read<br />classic literature.
+            Get paid to read<br />the books you already love.
           </h2>
           <p className="text-gray-400 text-lg max-w-xl mx-auto">
             Read books, take quizzes on them, and earn real money. No subscriptions, no gimmicks — just read and get paid.
@@ -62,7 +62,7 @@ export const Waitlist = () => {
             </div>
             <h3 className="text-white font-semibold mb-2">1. Pick a book</h3>
             <p className="text-gray-400 text-sm">
-              Browse our library of classic literature. Every book has a listed payout based on its page count.
+              Browse our library of classic literature, popular new releases, and indie titles. Every book has a listed payout based on its page count.
             </p>
           </div>
           <div className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800">
