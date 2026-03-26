@@ -25,7 +25,7 @@ interface QuizProps {
   bookId: string;
 }
 
-const QUIZ_DURATION = 8 * 60; // 8 minutes in seconds
+const QUIZ_DURATION = 8 * 60;
 
 const seededShuffle = <T,>(arr: T[], seed: string): T[] => {
   const hash = seed.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
@@ -57,6 +57,7 @@ export const Quiz = ({ bookId }: QuizProps) => {
   const [timeLeft, setTimeLeft] = useState(QUIZ_DURATION);
   const [timedOut, setTimedOut] = useState(false);
   const [timerStarted, setTimerStarted] = useState(false);
+  const [streakBonus, setStreakBonus] = useState<{ amount: number; milestone: number } | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -66,7 +67,6 @@ export const Quiz = ({ bookId }: QuizProps) => {
     };
   }, [bookId, user]);
 
-  // Start timer once quiz loads
   useEffect(() => {
     if (!loading && !submitted && !timerStarted && questions.length > 0) {
       setTimerStarted(true);
@@ -115,11 +115,77 @@ export const Quiz = ({ bookId }: QuizProps) => {
     setLoading(false);
   };
 
+  const updateStreak = async (userId: string, bookBounty: number, wasAlreadyCompleted: boolean) => {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('available_balance, streak_count, last_quiz_date, streak_bonus_7_claimed, streak_bonus_30_claimed')
+      .eq('id', userId)
+      .single();
+
+    if (!profile) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    const lastDate = profile.last_quiz_date;
+
+    // Calculate streak
+    let newStreak = profile.streak_count || 0;
+    if (!lastDate) {
+      newStreak = 1;
+    } else {
+      const last = new Date(lastDate);
+      const todayDate = new Date(today);
+      const diffDays = Math.floor((todayDate.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays === 0) {
+        // Already quizzed today, no streak change
+      } else if (diffDays === 1) {
+        newStreak += 1;
+      } else {
+        // Streak broken
+        newStreak = 1;
+      }
+    }
+
+    // Base balance update (only if not already completed)
+    let newBalance = Number(profile.available_balance);
+    if (!wasAlreadyCompleted) {
+      newBalance += Number(bookBounty);
+    }
+
+    // Check streak milestones
+    let bonusEarned = 0;
+    let bonusMilestone = 0;
+    let updates: Record<string, unknown> = {
+      streak_count: newStreak,
+      last_quiz_date: today,
+      available_balance: newBalance,
+    };
+
+    // 7-day bonus - once per streak cycle
+    if (newStreak >= 7 && profile.streak_bonus_7_claimed < Math.floor(newStreak / 7)) {
+      bonusEarned += 0.05;
+      bonusMilestone = 7;
+      updates.streak_bonus_7_claimed = Math.floor(newStreak / 7);
+    }
+
+    // 30-day bonus - once per streak cycle
+    if (newStreak >= 30 && profile.streak_bonus_30_claimed < Math.floor(newStreak / 30)) {
+      bonusEarned += 0.25;
+      bonusMilestone = 30;
+      updates.streak_bonus_30_claimed = Math.floor(newStreak / 30);
+    }
+
+    if (bonusEarned > 0) {
+      updates.available_balance = Number(updates.available_balance) + bonusEarned;
+      setStreakBonus({ amount: bonusEarned, milestone: bonusMilestone });
+    }
+
+    await supabase.from('profiles').update(updates).eq('id', userId);
+  };
+
   const handleSubmit = async (fromTimer = false) => {
     if (!user || !book) return;
     if (timerRef.current) clearInterval(timerRef.current);
 
-    // Use a ref-safe snapshot of answers when called from timer
     setAnswers((currentAnswers) => {
       const answersToScore = fromTimer ? currentAnswers : answers;
 
@@ -140,21 +206,13 @@ export const Quiz = ({ bookId }: QuizProps) => {
         passed: userPassed,
       });
 
-      if (userPassed && !alreadyCompleted) {
-        supabase
-          .from('profiles')
-          .select('available_balance')
-          .eq('id', user.id)
-          .single()
-          .then(({ data }) => {
-            if (data) {
-              const newBalance = Number(data.available_balance) + Number(book.bounty_amount);
-              Promise.all([
-                supabase.from('profiles').update({ available_balance: newBalance }).eq('id', user.id),
-                supabase.from('completed_books').insert({ user_id: user.id, book_id: book.id }),
-              ]);
-            }
-          });
+      if (userPassed) {
+        // Insert completed_books if not already done
+        if (!alreadyCompleted) {
+          supabase.from('completed_books').insert({ user_id: user.id, book_id: book.id });
+        }
+        // Always update streak on a pass (handles balance too)
+        updateStreak(user.id, book.bounty_amount, alreadyCompleted);
       }
 
       return currentAnswers;
@@ -196,7 +254,6 @@ export const Quiz = ({ bookId }: QuizProps) => {
               <h1 className="font-serif text-3xl text-white mb-1">{book.title}</h1>
               <p className="text-gray-400">{book.author}</p>
             </div>
-            {/* Timer - only shows during active quiz */}
             {!submitted && (
               <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition ${
                 isCritical
@@ -221,10 +278,9 @@ export const Quiz = ({ bookId }: QuizProps) => {
               <p className="text-gray-400 mb-3">
                 Answer at least 8 out of 10 questions correctly to earn ${book.bounty_amount.toFixed(2)}
               </p>
-              {/* Timer explanation - subtle, one line */}
               <p className="text-gray-600 text-xs flex items-center gap-1">
                 <Timer className="w-3 h-3" />
-                8-minute time limit is here to combat cheating like Googling or using AI to find answers. This is how we keep things fair for everyone.
+                8-minute time limit to keep things fair for everyone.
               </p>
             </div>
 
@@ -291,9 +347,17 @@ export const Quiz = ({ bookId }: QuizProps) => {
                   You scored {score} out of {questions.length}
                 </p>
                 {!alreadyCompleted && (
-                  <div className="bg-green-900/20 border border-green-900/50 rounded-lg p-4 mb-6">
+                  <div className="bg-green-900/20 border border-green-900/50 rounded-lg p-4 mb-4">
                     <p className="text-green-400 font-medium">
                       ${book.bounty_amount.toFixed(2)} has been added to your balance!
+                    </p>
+                  </div>
+                )}
+                {/* Streak bonus notification */}
+                {streakBonus && (
+                  <div className="bg-orange-900/20 border border-orange-700/50 rounded-lg p-4 mb-4">
+                    <p className="text-orange-400 font-medium">
+                      🔥 {streakBonus.milestone}-day streak bonus! +${streakBonus.amount.toFixed(2)} added to your balance!
                     </p>
                   </div>
                 )}
@@ -330,6 +394,7 @@ export const Quiz = ({ bookId }: QuizProps) => {
                     setTimedOut(false);
                     setTimeLeft(QUIZ_DURATION);
                     setTimerStarted(false);
+                    setStreakBonus(null);
                   }}
                   className="bg-gray-700 text-white font-medium px-6 py-3 rounded-lg hover:bg-gray-600 transition"
                 >
