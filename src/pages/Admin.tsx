@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
-import { ArrowLeft, Plus, Trash2, Check, X, Pencil } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Check, X, Pencil, Mail } from 'lucide-react';
 
 const ADMIN_EMAIL = 'mondavis43@gmail.com';
 const RATE_PER_PAGE = 0.0085;
@@ -43,6 +43,12 @@ interface CashoutRequest {
   };
 }
 
+interface WaitlistEntry {
+  id: string;
+  email: string;
+  created_at: string;
+}
+
 interface NewBook {
   title: string;
   author: string;
@@ -80,9 +86,10 @@ const emptyQuestion: NewQuestion = {
 export const Admin = () => {
   const { user } = useAuth();
   const { navigateTo } = useNavigate();
-  const [activeTab, setActiveTab] = useState<'books' | 'cashouts'>('books');
+  const [activeTab, setActiveTab] = useState<'books' | 'cashouts' | 'waitlist'>('books');
   const [books, setBooks] = useState<Book[]>([]);
   const [cashouts, setCashouts] = useState<CashoutRequest[]>([]);
+  const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [newBook, setNewBook] = useState<NewBook>(emptyBook);
   const [questions, setQuestions] = useState<NewQuestion[]>(
@@ -106,15 +113,20 @@ export const Admin = () => {
   }, [user]);
 
   const loadData = async () => {
-    const [booksResult, cashoutsResult] = await Promise.all([
+    const [booksResult, cashoutsResult, waitlistResult] = await Promise.all([
       supabase.from('books').select('*').order('title'),
       supabase
         .from('cashout_requests')
         .select('*, profiles(email)')
         .order('created_at', { ascending: false }),
+      supabase
+        .from('waitlist')
+        .select('*')
+        .order('created_at', { ascending: false }),
     ]);
     if (booksResult.data) setBooks(booksResult.data);
     if (cashoutsResult.data) setCashouts(cashoutsResult.data as CashoutRequest[]);
+    if (waitlistResult.data) setWaitlist(waitlistResult.data as WaitlistEntry[]);
     setLoading(false);
   };
 
@@ -128,6 +140,11 @@ export const Admin = () => {
     if (error) setMarkError(`Failed to update status: ${error.message}`);
     else loadData();
     setMarkingAsSent(null);
+  };
+
+  const handleDeleteWaitlistEntry = async (id: string) => {
+    await supabase.from('waitlist').delete().eq('id', id);
+    loadData();
   };
 
   const handleEditBook = async (book: Book) => {
@@ -500,6 +517,16 @@ export const Admin = () => {
           >
             Cashout Requests ({cashouts.filter(c => c.status === 'pending').length} pending)
           </button>
+          <button
+            onClick={() => setActiveTab('waitlist')}
+            className={`px-6 py-2 rounded-lg font-medium transition ${
+              activeTab === 'waitlist'
+                ? 'bg-white text-black'
+                : 'bg-[#1a1a1a] text-gray-300 border border-gray-700 hover:border-gray-500'
+            }`}
+          >
+            Waitlist ({waitlist.length})
+          </button>
         </div>
 
         {activeTab === 'books' && (
@@ -773,6 +800,46 @@ export const Admin = () => {
                         </button>
                       </div>
                     )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'waitlist' && (
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-white">
+                Waitlist ({waitlist.length} {waitlist.length === 1 ? 'person' : 'people'})
+              </h2>
+            </div>
+            {waitlist.length === 0 ? (
+              <div className="bg-[#1a1a1a] rounded-lg p-12 border border-gray-800 text-center">
+                <p className="text-gray-400">No waitlist signups yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {waitlist.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="bg-[#1a1a1a] rounded-lg px-5 py-4 border border-gray-800 flex justify-between items-center"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Mail className="w-4 h-4 text-gray-500" />
+                      <span className="text-white">{entry.email}</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="text-gray-500 text-sm">
+                        {new Date(entry.created_at).toLocaleDateString()}
+                      </span>
+                      <button
+                        onClick={() => handleDeleteWaitlistEntry(entry.id)}
+                        className="text-red-400 hover:text-red-300 transition"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
