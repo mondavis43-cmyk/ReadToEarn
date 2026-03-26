@@ -9,6 +9,8 @@ interface Profile {
   available_balance: number;
   birthday: string | null;
   birthday_bonus_last_claimed: number | null;
+  streak_count: number | null;        // ADD
+  last_quiz_date: string | null;      // ADD
 }
 
 interface CompletedBook {
@@ -216,6 +218,40 @@ export const Profile = () => {
           </div>
         </div>
 
+{/* Streak display */}
+{profile && (
+  <div className="bg-[#1a1a1a] rounded-lg p-8 border border-gray-800 mb-6">
+    <div className="flex items-center justify-between">
+      <div>
+        <h2 className="text-xl font-semibold text-white mb-1">Reading Streak 🔥</h2>
+        <p className="text-gray-400 text-sm">Pass a quiz every day to keep your streak alive.</p>
+      </div>
+      <div className="text-right">
+        <div className="text-4xl font-serif text-orange-400">{profile.streak_count ?? 0}</div>
+        <div className="text-gray-500 text-xs mt-1">day{profile.streak_count !== 1 ? 's' : ''}</div>
+      </div>
+    </div>
+    <div className="mt-4 pt-4 border-t border-gray-800 flex gap-6">
+      <div className="text-center">
+        <p className="text-gray-500 text-xs mb-1">7-day bonus</p>
+        <p className="text-white text-sm font-medium">$0.05</p>
+      </div>
+      <div className="text-center">
+        <p className="text-gray-500 text-xs mb-1">30-day bonus</p>
+        <p className="text-white text-sm font-medium">$0.25</p>
+      </div>
+      <div className="text-center">
+        <p className="text-gray-500 text-xs mb-1">last quiz</p>
+        <p className="text-white text-sm font-medium">
+          {profile.last_quiz_date
+            ? new Date(profile.last_quiz_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            : 'none yet'}
+        </p>
+      </div>
+    </div>
+  </div>
+)}
+        
         {/* Birthday section */}
         <div className="bg-[#1a1a1a] rounded-lg p-8 border border-gray-800 mb-8">
           <div className="flex items-center gap-2 mb-2">
