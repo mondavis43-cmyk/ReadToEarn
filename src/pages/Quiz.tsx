@@ -224,7 +224,7 @@ export const Quiz = ({ bookId }: QuizProps) => {
               {/* Timer explanation - subtle, one line */}
               <p className="text-gray-600 text-xs flex items-center gap-1">
                 <Timer className="w-3 h-3" />
-                8-minute time limit to keep things fair for everyone.
+                8-minute time limit is here to combat cheating like Googling or using AI to find answers. This is how we keep things fair for everyone.
               </p>
             </div>
 
