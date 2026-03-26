@@ -8,9 +8,9 @@ import { Profile } from '../pages/Profile';
 import { Cashout } from '../pages/Cashout';
 import { Admin } from '../pages/Admin';
 import { BookPage } from '../pages/BookPage';
-import { Waitlist } from '../pages/Waitlist'; // ADD THIS
+import { Waitlist } from '../pages/Waitlist';
+import { ResetPassword } from '../pages/ResetPassword'; // ADD THIS
 
-// WAITLIST MODE: set to false when ready to go live
 const WAITLIST_MODE = true;
 
 export const Router = () => {
@@ -18,17 +18,13 @@ export const Router = () => {
   const [route, setRoute] = useState(window.location.pathname);
 
   useEffect(() => {
-    const handleRouteChange = () => {
-      setRoute(window.location.pathname);
-    };
-
+    const handleRouteChange = () => setRoute(window.location.pathname);
     window.addEventListener('popstate', handleRouteChange);
     return () => window.removeEventListener('popstate', handleRouteChange);
   }, []);
 
   useEffect(() => {
-    if (!loading && !user && route !== '/login' && route !== '/signup' && route !== '/admin') {
-      // If waitlist mode is on, don't redirect to login — show waitlist instead
+    if (!loading && !user && route !== '/login' && route !== '/signup' && route !== '/admin' && route !== '/reset-password') {
       if (!WAITLIST_MODE) {
         window.history.pushState({}, '', '/login');
         setRoute('/login');
@@ -44,10 +40,11 @@ export const Router = () => {
     );
   }
 
-  // Admin always accessible
+  // Always accessible
   if (route === '/admin') return <Admin />;
+  if (route === '/reset-password') return <ResetPassword />; // ADD THIS
 
-  // Waitlist mode: non-logged-in users see waitlist, logged-in users pass through
+  // Waitlist mode
   if (WAITLIST_MODE && !user) return <Waitlist />;
 
   if (!user && route === '/signup') return <Signup />;
