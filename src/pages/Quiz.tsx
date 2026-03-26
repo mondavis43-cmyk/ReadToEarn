@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
-import { ArrowLeft, PartyPopper } from 'lucide-react';
+import { ArrowLeft, PartyPopper, Timer } from 'lucide-react';
 
 interface Question {
   id: string;
@@ -25,7 +25,8 @@ interface QuizProps {
   bookId: string;
 }
 
-// shuffle array deterministically based on a seed string
+const QUIZ_DURATION = 8 * 60; // 8 minutes in seconds
+
 const seededShuffle = <T,>(arr: T[], seed: string): T[] => {
   const hash = seed.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
   return [...arr].sort((a, b) => {
@@ -33,6 +34,12 @@ const seededShuffle = <T,>(arr: T[], seed: string): T[] => {
     const hashB = (JSON.stringify(b) + seed).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
     return (hashA % 4) - (hashB % 4);
   });
+};
+
+const formatTime = (seconds: number) => {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
 export const Quiz = ({ bookId }: QuizProps) => {
@@ -47,10 +54,35 @@ export const Quiz = ({ bookId }: QuizProps) => {
   const [passed, setPassed] = useState(false);
   const [alreadyCompleted, setAlreadyCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [timeLeft, setTimeLeft] = useState(QUIZ_DURATION);
+  const [timedOut, setTimedOut] = useState(false);
+  const [timerStarted, setTimerStarted] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     loadQuiz();
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, [bookId, user]);
+
+  // Start timer once quiz loads
+  useEffect(() => {
+    if (!loading && !submitted && !timerStarted && questions.length > 0) {
+      setTimerStarted(true);
+      timerRef.current = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(timerRef.current!);
+            setTimedOut(true);
+            handleSubmit(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+  }, [loading, submitted, timerStarted, questions]);
 
   const loadQuiz = async () => {
     if (!user) return;
@@ -71,8 +103,6 @@ export const Quiz = ({ bookId }: QuizProps) => {
     if (questionsResult.data) {
       const qs = questionsResult.data as Question[];
       setQuestions(qs);
-
-      // build shuffled options per question
       const optionsMap: Record<string, string[]> = {};
       qs.forEach((q) => {
         const opts = [q.correct_answer, q.wrong_answer_1, q.wrong_answer_2, q.wrong_answer_3];
@@ -82,49 +112,57 @@ export const Quiz = ({ bookId }: QuizProps) => {
     }
 
     if (completedResult.data) setAlreadyCompleted(true);
-
     setLoading(false);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (fromTimer = false) => {
     if (!user || !book) return;
+    if (timerRef.current) clearInterval(timerRef.current);
 
-    let correctCount = 0;
-    questions.forEach((q) => {
-      if (answers[q.id] === q.correct_answer) {
-        correctCount++;
+    // Use a ref-safe snapshot of answers when called from timer
+    setAnswers((currentAnswers) => {
+      const answersToScore = fromTimer ? currentAnswers : answers;
+
+      let correctCount = 0;
+      questions.forEach((q) => {
+        if (answersToScore[q.id] === q.correct_answer) correctCount++;
+      });
+
+      const userPassed = correctCount >= 8;
+      setScore(correctCount);
+      setPassed(userPassed);
+      setSubmitted(true);
+
+      supabase.from('quiz_attempts').insert({
+        user_id: user.id,
+        book_id: book.id,
+        score: correctCount,
+        passed: userPassed,
+      });
+
+      if (userPassed && !alreadyCompleted) {
+        supabase
+          .from('profiles')
+          .select('available_balance')
+          .eq('id', user.id)
+          .single()
+          .then(({ data }) => {
+            if (data) {
+              const newBalance = Number(data.available_balance) + Number(book.bounty_amount);
+              Promise.all([
+                supabase.from('profiles').update({ available_balance: newBalance }).eq('id', user.id),
+                supabase.from('completed_books').insert({ user_id: user.id, book_id: book.id }),
+              ]);
+            }
+          });
       }
+
+      return currentAnswers;
     });
-
-    const userPassed = correctCount >= 8;
-    setScore(correctCount);
-    setPassed(userPassed);
-    setSubmitted(true);
-
-    await supabase.from('quiz_attempts').insert({
-      user_id: user.id,
-      book_id: book.id,
-      score: correctCount,
-      passed: userPassed,
-    });
-
-    if (userPassed && !alreadyCompleted) {
-      const profileResult = await supabase
-        .from('profiles')
-        .select('available_balance')
-        .eq('id', user.id)
-        .single();
-
-      if (profileResult.data) {
-        const newBalance = Number(profileResult.data.available_balance) + Number(book.bounty_amount);
-
-        await Promise.all([
-          supabase.from('profiles').update({ available_balance: newBalance }).eq('id', user.id),
-          supabase.from('completed_books').insert({ user_id: user.id, book_id: book.id }),
-        ]);
-      }
-    }
   };
+
+  const isWarning = timeLeft <= 60;
+  const isCritical = timeLeft <= 30;
 
   if (loading) {
     return (
@@ -153,8 +191,25 @@ export const Quiz = ({ bookId }: QuizProps) => {
             <ArrowLeft className="w-4 h-4" />
             Back to Library
           </button>
-          <h1 className="font-serif text-3xl text-white mb-1">{book.title}</h1>
-          <p className="text-gray-400">{book.author}</p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="font-serif text-3xl text-white mb-1">{book.title}</h1>
+              <p className="text-gray-400">{book.author}</p>
+            </div>
+            {/* Timer - only shows during active quiz */}
+            {!submitted && (
+              <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition ${
+                isCritical
+                  ? 'bg-red-900/30 border-red-700/50 text-red-400'
+                  : isWarning
+                  ? 'bg-yellow-900/30 border-yellow-700/50 text-yellow-400'
+                  : 'bg-[#1a1a1a] border-gray-700 text-gray-300'
+              }`}>
+                <Timer className="w-4 h-4" />
+                <span className="font-mono font-medium text-lg">{formatTime(timeLeft)}</span>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -163,8 +218,13 @@ export const Quiz = ({ bookId }: QuizProps) => {
           <>
             <div className="mb-8">
               <h2 className="text-2xl font-semibold text-white mb-2">Quiz: {book.title}</h2>
-              <p className="text-gray-400">
+              <p className="text-gray-400 mb-3">
                 Answer at least 8 out of 10 questions correctly to earn ${book.bounty_amount.toFixed(2)}
+              </p>
+              {/* Timer explanation - subtle, one line */}
+              <p className="text-gray-600 text-xs flex items-center gap-1">
+                <Timer className="w-3 h-3" />
+                8-minute time limit to keep things fair for everyone.
               </p>
             </div>
 
@@ -206,7 +266,7 @@ export const Quiz = ({ bookId }: QuizProps) => {
 
             <div className="mt-8 flex justify-center">
               <button
-                onClick={handleSubmit}
+                onClick={() => handleSubmit(false)}
                 disabled={Object.keys(answers).length !== questions.length}
                 className="bg-white text-black font-medium px-8 py-3 rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -216,6 +276,11 @@ export const Quiz = ({ bookId }: QuizProps) => {
           </>
         ) : (
           <div className="bg-[#1a1a1a] rounded-lg p-8 border border-gray-800 text-center max-w-2xl mx-auto">
+            {timedOut && (
+              <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-3 mb-6">
+                <p className="text-yellow-400 text-sm">Time's up — your answers were automatically submitted.</p>
+              </div>
+            )}
             {passed ? (
               <>
                 <div className="flex justify-center mb-4">
@@ -262,6 +327,9 @@ export const Quiz = ({ bookId }: QuizProps) => {
                     setSubmitted(false);
                     setAnswers({});
                     setScore(0);
+                    setTimedOut(false);
+                    setTimeLeft(QUIZ_DURATION);
+                    setTimerStarted(false);
                   }}
                   className="bg-gray-700 text-white font-medium px-6 py-3 rounded-lg hover:bg-gray-600 transition"
                 >
