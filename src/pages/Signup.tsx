@@ -8,6 +8,8 @@ export const Signup = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSent, setResendSent] = useState(false);
   const { navigateTo } = useNavigate();
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -15,10 +17,7 @@ export const Signup = () => {
     setLoading(true);
     setError('');
 
-    const { error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    const { error: signUpError } = await supabase.auth.signUp({ email, password });
 
     if (signUpError) {
       setError(signUpError.message);
@@ -30,15 +29,26 @@ export const Signup = () => {
     setLoading(false);
   };
 
+  const handleResend = async () => {
+    setResendLoading(true);
+    setResendSent(false);
+
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+    });
+
+    if (!error) setResendSent(true);
+    setResendLoading(false);
+  };
+
   if (success) {
     return (
       <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center px-4">
         <div className="w-full max-w-md text-center">
           <h1 className="font-serif text-4xl text-white mb-4">Check your email</h1>
           <div className="bg-[#1a1a1a] rounded-lg p-8 border border-gray-800">
-            <p className="text-gray-300 mb-2">
-              We sent a confirmation link to
-            </p>
+            <p className="text-gray-300 mb-2">We sent a confirmation link to</p>
             <p className="text-white font-medium mb-6">{email}</p>
             <p className="text-gray-400 text-sm mb-6">
               Click the link in the email to confirm your account, then come back and sign in.
@@ -49,6 +59,22 @@ export const Signup = () => {
             >
               Go to Sign In
             </button>
+
+            {/* Resend section */}
+            <div className="mt-6 pt-6 border-t border-gray-700">
+              <p className="text-gray-500 text-sm mb-3">Didn't get the email?</p>
+              {resendSent ? (
+                <p className="text-green-400 text-sm">Resent! Check your inbox (and spam folder).</p>
+              ) : (
+                <button
+                  onClick={handleResend}
+                  disabled={resendLoading}
+                  className="text-white hover:underline text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {resendLoading ? 'Sending...' : 'Resend confirmation email'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
