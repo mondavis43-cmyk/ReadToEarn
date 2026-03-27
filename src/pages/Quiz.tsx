@@ -207,6 +207,41 @@ export const Quiz = ({ bookId }: QuizProps) => {
       });
 
       if (userPassed) {
+        // Credit referrer on first ever pass
+if (userPassed && !alreadyCompleted) {
+  // Check if this is their very first completed book
+  supabase
+    .from('completed_books')
+    .select('id', { count: 'exact' })
+    .eq('user_id', user.id)
+    .then(({ count }) => {
+      if (count === 1) {
+        // This is their first - find and credit referrer
+        supabase
+          .from('profiles')
+          .select('referred_by, referral_bonus_claimed')
+          .eq('id', user.id)
+          .single()
+          .then(({ data: profile }) => {
+            if (profile?.referred_by && !profile.referral_bonus_claimed) {
+              // Find referrer by code
+              supabase
+                .from('profiles')
+                .select('id, available_balance')
+                .eq('referral_code', profile.referred_by)
+                .single()
+                .then(({ data: referrer }) => {
+                  if (referrer) {
+                    Promise.all([
+                      supabase
+                        .from('profiles')
+                        .update({ available_balance: Number(referrer.available_balance) + 0.5 })
+                        .eq('id', referrer.id),
+                      supabase
+                        .from('profiles')
+                        .update({ referral_bonus_claimed: true })
+                        .eq('id', user.id),
+        }
         // Insert completed_books if not already done
         if (!alreadyCompleted) {
           supabase.from('completed_books').insert({ user_id: user.id, book_id: book.id });
