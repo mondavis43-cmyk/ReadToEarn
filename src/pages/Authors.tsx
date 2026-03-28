@@ -48,8 +48,8 @@ export const Authors = () => {
           <ul className="space-y-3 mb-6">
             {[
               'Unlike bestsellers, indie books don\'t have ready-made quiz questions floating around online. We build them from scratch for every book.',
-              'Without an existing fanbase or demand, readers won\'t seek your book out on their own. The bounty system creates that demand artificially — but someone has to fund it.',
-              'Paying for the service means your book doesn\'t need to already be popular to get read. That\'s the whole point.',
+              'Without an existing fanbase or demand, readers won\'t request your books on their own. Only the popular releases they're already familiar with.',
+              'Paying for this service means your book doesn\'t need to already be popular to get read. Readers will discover your book by featuring on the site.',
             ].map((point, i) => (
               <li key={i} className="flex gap-3 items-start">
                 <span className="text-gray-500 mt-0.5">—</span>
