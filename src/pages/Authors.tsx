@@ -1,4 +1,4 @@
-import { BookOpen, DollarSign, Users, Star, ArrowRight } from 'lucide-react';
+import { BookOpen, Users, Star, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useNavigate } from '../hooks/useNavigate';
 
 export const Authors = () => {
@@ -18,22 +18,17 @@ export const Authors = () => {
         </div>
 
         {/* Value props */}
-        <div className="grid md:grid-cols-3 gap-6 mb-16">
+        <div className="grid md:grid-cols-2 gap-6 mb-16">
           {[
             {
               icon: BookOpen,
               title: 'Proven Readership',
-              desc: 'Readers only earn their reward after passing a 10-question quiz. No skimming, no shortcuts.',
+              desc: 'Readers only earn their reward after passing a 10-question quiz. No skimming, no shortcuts — just people who actually finished your book.',
             },
             {
               icon: Users,
               title: 'Built-in Audience',
-              desc: 'Your book gets listed in our library and promoted to active readers who are already motivated to read.',
-            },
-            {
-              icon: DollarSign,
-              title: 'You Set the Bounty',
-              desc: 'Pay per page at our standard rate. A 300-page book costs $2.55 per reader who completes it.',
+              desc: 'Your book gets listed in our library and shown to active readers who are already motivated to read and earn.',
             },
           ].map(({ icon: Icon, title, desc }) => (
             <div key={title} className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800">
@@ -42,6 +37,40 @@ export const Authors = () => {
               <p className="text-gray-400 text-sm leading-relaxed">{desc}</p>
             </div>
           ))}
+        </div>
+
+        {/* Pricing + why it's paid */}
+        <div className="bg-[#1a1a1a] rounded-lg p-8 border border-gray-800 mb-16">
+          <h2 className="font-serif text-2xl text-white mb-3">This is a paid service</h2>
+          <p className="text-gray-400 text-sm leading-relaxed mb-4">
+            Listing your book on Read to Earn requires a one-time submission fee. Here's why:
+          </p>
+          <ul className="space-y-3 mb-6">
+            {[
+              'Unlike bestsellers, indie books don\'t have ready-made quiz questions floating around online. We build them from scratch for every book.',
+              'Without an existing fanbase or demand, readers won\'t seek your book out on their own. The bounty system creates that demand artificially — but someone has to fund it.',
+              'Paying for the service means your book doesn\'t need to already be popular to get read. That\'s the whole point.',
+            ].map((point, i) => (
+              <li key={i} className="flex gap-3 items-start">
+                <span className="text-gray-500 mt-0.5">—</span>
+                <p className="text-gray-400 text-sm leading-relaxed">{point}</p>
+              </li>
+            ))}
+          </ul>
+          <p className="text-gray-300 text-sm">
+            The fee covers quiz creation and reader bounties. A 300-page book costs <span className="text-white font-medium">$2.55 per verified reader</span> who completes it.
+          </p>
+        </div>
+
+        {/* Approval guarantee */}
+        <div className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800 mb-16 flex gap-4 items-start">
+          <ShieldCheck className="w-6 h-6 text-green-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-white font-medium mb-1">Guaranteed approval</h3>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              Every book that's submitted and paid for is approved — no popularity requirements, no gatekeeping. The only exceptions are books with hateful content or AI-generated covers or writing.
+            </p>
+          </div>
         </div>
 
         {/* How it works */}
