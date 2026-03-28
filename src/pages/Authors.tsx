@@ -58,7 +58,7 @@ export const Authors = () => {
             ))}
           </ul>
           <p className="text-gray-300 text-sm">
-            One book listing fee cost $7 USD. We offer bundles with discounts that get higher the listings you purchase. If you do not use all the listings as once, you keep those credits forever. They never expire.
+            One book listing fee cost $7 USD. We offer bundles with discounts that get higher the more listings you purchase. If you do not use all the listings as once, you keep those credits forever. They never expire.
           </p>
         </div>
 
