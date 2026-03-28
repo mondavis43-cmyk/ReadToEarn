@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from '../hooks/useNavigate';
 
+const generateReferralCode = () =>
+  Math.random().toString(36).substring(2, 10).toUpperCase();
+
 export const Signup = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,12 +20,30 @@ export const Signup = () => {
     setLoading(true);
     setError('');
 
-    const { error: signUpError } = await supabase.auth.signUp({ email, password });
+    const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
 
     if (signUpError) {
       setError(signUpError.message);
       setLoading(false);
       return;
+    }
+
+    const userId = data.user?.id;
+
+    if (userId) {
+      // Read referral code from URL if present
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get('ref');
+
+      // Assign a unique referral code to the new user + save referred_by if applicable
+      const profileUpdates: Record<string, string> = {
+        referral_code: generateReferralCode(),
+      };
+      if (ref) {
+        profileUpdates.referred_by = ref;
+      }
+
+      await supabase.from('profiles').update(profileUpdates).eq('id', userId);
     }
 
     setSuccess(true);
@@ -60,7 +81,6 @@ export const Signup = () => {
               Go to Sign In
             </button>
 
-            {/* Resend section */}
             <div className="mt-6 pt-6 border-t border-gray-700">
               <p className="text-gray-500 text-sm mb-3">Didn't get the email?</p>
               {resendSent ? (
