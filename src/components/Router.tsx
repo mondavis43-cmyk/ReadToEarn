@@ -13,6 +13,7 @@ import { ResetPassword } from '../pages/ResetPassword';
 import { RequestBook } from '../pages/RequestBook';
 import { Refer } from '../pages/Refer';
 import { Authors } from '../pages/Authors';
+import { AuthorSubmit } from '../pages/AuthorSubmit';
 import { FAQ } from '../pages/FAQ';
 import { NavBar } from '../components/NavBar';
 
@@ -65,12 +66,13 @@ export const Router = () => {
       {route === '/refer' && <Refer />}
       {route === '/request-book' && <RequestBook />}
       {route === '/authors' && <Authors />}
+      {route === '/author-submit' && <AuthorSubmit />}
       {route === '/faq' && <FAQ />}
       {route.startsWith('/quiz/') && <Quiz bookId={route.split('/')[2]} />}
       {route.startsWith('/book/') && <BookPage />}
-      {![ '/profile', '/cashout', '/refer', '/request-book', '/authors', '/faq' ].includes(route) &&
-        !route.startsWith('/quiz/') &&
-        !route.startsWith('/book/') && <Home />}
+      {![ '/profile', '/cashout', '/refer', '/request-book', '/authors', '/faq', '/author-submit' ].includes(route) &&
+  !route.startsWith('/quiz/') &&
+  !route.startsWith('/book/') && <Home />}
     </>
   );
 };
