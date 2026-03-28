@@ -74,21 +74,3 @@ export const Router = () => {
     </>
   );
 };
-
-two things to note:
-
-    NavBar moved here from App.tsx - this is the right place since it needs to know auth state and route context. you can clean up the NavBar import from App.tsx since it's no longer used there
-    App.tsx - also remove the RequestBook, Refer, Authors, and FAQ imports from it since they're now imported here instead. your App.tsx should go back to just being:
-
-import { AuthProvider } from './contexts/AuthContext';
-import { Router } from './components/Router';
-
-function App() {
-  return (
-    <AuthProvider>
-      <Router />
-    </AuthProvider>
-  );
-}
-
-export default App;
