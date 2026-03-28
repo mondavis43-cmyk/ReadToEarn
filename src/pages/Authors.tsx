@@ -13,7 +13,7 @@ export const Authors = () => {
             Get Your Book Read.<br />Really Read.
           </h1>
           <p className="text-gray-400 text-lg max-w-xl mx-auto">
-            Read to Earn pays readers to finish books and prove it. As an indie author, that means real engagement — not just downloads that sit unopened.
+            Read to Earn pays readers to finish books and prove it. For indie and small press authors, that means real engagement, not just downloads that sit unopened.
           </p>
         </div>
 
@@ -23,7 +23,7 @@ export const Authors = () => {
             {
               icon: BookOpen,
               title: 'Proven Readership',
-              desc: 'Readers only earn their reward after passing a 10-question quiz. No skimming, no shortcuts — just people who actually finished your book.',
+              desc: 'Readers only earn their reward after passing a 10-question quiz. No skimming, no shortcuts. Just people who actually finished your book.',
             },
             {
               icon: Users,
@@ -58,7 +58,7 @@ export const Authors = () => {
             ))}
           </ul>
           <p className="text-gray-300 text-sm">
-            The fee covers quiz creation and reader bounties. A 300-page book costs <span className="text-white font-medium">$2.55 per verified reader</span> who completes it.
+            One book listing fee cost $7 USD. We offer bundles with discounts that get higher the listings you purchase. If you do not use all the listings as once, you keep those credits forever. They never expire.
           </p>
         </div>
 
