@@ -252,6 +252,9 @@ export const AuthorSubmit = () => {
           <p className="text-gray-400">
             Fill out the form below and complete payment to get your book listed in the Read to Earn library.
           </p>
+          <p className="text-gray-600 text-xs text-center mb-12">
+  Already purchased a bundle? Enter your email below and click away from the field — your remaining credits will load automatically.
+</p>
         </div>
 
         {/* Bundle Picker - hidden if author has credits */}
