@@ -127,7 +127,6 @@ export const Quiz = ({ bookId }: QuizProps) => {
     const today = new Date().toISOString().split('T')[0];
     const lastDate = profile.last_quiz_date;
 
-    // Calculate streak
     let newStreak = profile.streak_count || 0;
     if (!lastDate) {
       newStreak = 1;
@@ -136,38 +135,33 @@ export const Quiz = ({ bookId }: QuizProps) => {
       const todayDate = new Date(today);
       const diffDays = Math.floor((todayDate.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
       if (diffDays === 0) {
-        // Already quizzed today, no streak change
+        // Already quizzed today, no change
       } else if (diffDays === 1) {
         newStreak += 1;
       } else {
-        // Streak broken
         newStreak = 1;
       }
     }
 
-    // Base balance update (only if not already completed)
     let newBalance = Number(profile.available_balance);
     if (!wasAlreadyCompleted) {
       newBalance += Number(bookBounty);
     }
 
-    // Check streak milestones
     let bonusEarned = 0;
     let bonusMilestone = 0;
-    let updates: Record<string, unknown> = {
+    const updates: Record<string, unknown> = {
       streak_count: newStreak,
       last_quiz_date: today,
       available_balance: newBalance,
     };
 
-    // 7-day bonus - once per streak cycle
     if (newStreak >= 7 && profile.streak_bonus_7_claimed < Math.floor(newStreak / 7)) {
       bonusEarned += 0.05;
       bonusMilestone = 7;
       updates.streak_bonus_7_claimed = Math.floor(newStreak / 7);
     }
 
-    // 30-day bonus - once per streak cycle
     if (newStreak >= 30 && profile.streak_bonus_30_claimed < Math.floor(newStreak / 30)) {
       bonusEarned += 0.25;
       bonusMilestone = 30;
@@ -180,6 +174,43 @@ export const Quiz = ({ bookId }: QuizProps) => {
     }
 
     await supabase.from('profiles').update(updates).eq('id', userId);
+  };
+
+  const creditReferrer = async (userId: string) => {
+    // Only fires on first ever completed book
+    const { count } = await supabase
+      .from('completed_books')
+      .select('id', { count: 'exact' })
+      .eq('user_id', userId);
+
+    if (count !== 1) return;
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('referred_by, referral_bonus_claimed')
+      .eq('id', userId)
+      .single();
+
+    if (!profile?.referred_by || profile.referral_bonus_claimed) return;
+
+    const { data: referrer } = await supabase
+      .from('profiles')
+      .select('id, available_balance')
+      .eq('referral_code', profile.referred_by)
+      .single();
+
+    if (!referrer) return;
+
+    await Promise.all([
+      supabase
+        .from('profiles')
+        .update({ available_balance: Number(referrer.available_balance) + 0.5 })
+        .eq('id', referrer.id),
+      supabase
+        .from('profiles')
+        .update({ referral_bonus_claimed: true })
+        .eq('id', userId),
+    ]);
   };
 
   const handleSubmit = async (fromTimer = false) => {
@@ -207,46 +238,16 @@ export const Quiz = ({ bookId }: QuizProps) => {
       });
 
       if (userPassed) {
-        // Credit referrer on first ever pass
-if (userPassed && !alreadyCompleted) {
-  // Check if this is their very first completed book
-  supabase
-    .from('completed_books')
-    .select('id', { count: 'exact' })
-    .eq('user_id', user.id)
-    .then(({ count }) => {
-      if (count === 1) {
-        // This is their first - find and credit referrer
-        supabase
-          .from('profiles')
-          .select('referred_by, referral_bonus_claimed')
-          .eq('id', user.id)
-          .single()
-          .then(({ data: profile }) => {
-            if (profile?.referred_by && !profile.referral_bonus_claimed) {
-              // Find referrer by code
-              supabase
-                .from('profiles')
-                .select('id, available_balance')
-                .eq('referral_code', profile.referred_by)
-                .single()
-                .then(({ data: referrer }) => {
-                  if (referrer) {
-                    Promise.all([
-                      supabase
-                        .from('profiles')
-                        .update({ available_balance: Number(referrer.available_balance) + 0.5 })
-                        .eq('id', referrer.id),
-                      supabase
-                        .from('profiles')
-                        .update({ referral_bonus_claimed: true })
-                        .eq('id', user.id),
-        }
-        // Insert completed_books if not already done
         if (!alreadyCompleted) {
-          supabase.from('completed_books').insert({ user_id: user.id, book_id: book.id });
+          supabase
+            .from('completed_books')
+            .insert({ user_id: user.id, book_id: book.id })
+            .then(() => {
+              // Credit referrer after insert so count is accurate
+              creditReferrer(user.id);
+            });
         }
-        // Always update streak on a pass (handles balance too)
+        // Always update streak on a pass
         updateStreak(user.id, book.bounty_amount, alreadyCompleted);
       }
 
@@ -388,7 +389,6 @@ if (userPassed && !alreadyCompleted) {
                     </p>
                   </div>
                 )}
-                {/* Streak bonus notification */}
                 {streakBonus && (
                   <div className="bg-orange-900/20 border border-orange-700/50 rounded-lg p-4 mb-4">
                     <p className="text-orange-400 font-medium">
