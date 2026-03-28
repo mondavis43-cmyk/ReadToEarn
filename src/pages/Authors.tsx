@@ -47,9 +47,9 @@ export const Authors = () => {
           </p>
           <ul className="space-y-3 mb-6">
             {[
-              'Unlike bestsellers, indie books don\'t have ready-made quiz questions floating around online. We build them from scratch for every book.',
-              'Without an existing fanbase or demand, readers won\'t request your books on their own. Only the popular releases they're already familiar with.',
-              'Paying for this service means your book doesn\'t need to already be popular to get read. Readers will discover your book by featuring on the site.',
+              "Unlike bestsellers, indie books don't have ready-made quiz questions floating around online. We build them from scratch for every book.",
+              "Without an existing fanbase or demand, readers won't request your books on their own. Only the popular releases they're already familiar with.",
+              "Paying for this service means your book doesn't need to already be popular to get read. Readers will discover your book by featuring on the site.",
             ].map((point, i) => (
               <li key={i} className="flex gap-3 items-start">
                 <span className="text-gray-500 mt-0.5">—</span>
@@ -109,7 +109,7 @@ export const Authors = () => {
           <h2 className="font-serif text-2xl text-white mb-3">Ready to get started?</h2>
           <p className="text-gray-400 mb-6">Submit your book and we'll be in touch within 48 hours.</p>
           <button
-            onClick={() => navigateTo('author-submit')}
+            onClick={() => navigateTo('/author-submit')}
             className="inline-flex items-center gap-2 bg-white text-black font-medium px-8 py-3 rounded-lg hover:bg-gray-200 transition"
           >
             Submit Your Book
