@@ -9,7 +9,12 @@ import { Cashout } from '../pages/Cashout';
 import { Admin } from '../pages/Admin';
 import { BookPage } from '../pages/BookPage';
 import { Waitlist } from '../pages/Waitlist';
-import { ResetPassword } from '../pages/ResetPassword'; // ADD THIS
+import { ResetPassword } from '../pages/ResetPassword';
+import { RequestBook } from '../pages/RequestBook';
+import { Refer } from '../pages/Refer';
+import { Authors } from '../pages/Authors';
+import { FAQ } from '../pages/FAQ';
+import { NavBar } from '../components/NavBar';
 
 const WAITLIST_MODE = true;
 
@@ -40,22 +45,50 @@ export const Router = () => {
     );
   }
 
-  // Always accessible
+  // Always accessible, no NavBar
   if (route === '/admin') return <Admin />;
-  if (route === '/reset-password') return <ResetPassword />; // ADD THIS
+  if (route === '/reset-password') return <ResetPassword />;
 
-  // Waitlist mode
+  // Waitlist mode - no NavBar
   if (WAITLIST_MODE && !user) return <Waitlist />;
 
+  // Auth pages - no NavBar
   if (!user && route === '/signup') return <Signup />;
   if (!user) return <Login />;
-  if (route === '/profile') return <Profile />;
-  if (route === '/cashout') return <Cashout />;
-  if (route.startsWith('/quiz/')) {
-    const bookId = route.split('/')[2];
-    return <Quiz bookId={bookId} />;
-  }
-  if (route.startsWith('/book/')) return <BookPage />;
 
-  return <Home />;
+  // Authenticated routes - all get NavBar
+  return (
+    <>
+      <NavBar />
+      {route === '/profile' && <Profile />}
+      {route === '/cashout' && <Cashout />}
+      {route === '/refer' && <Refer />}
+      {route === '/request-book' && <RequestBook />}
+      {route === '/authors' && <Authors />}
+      {route === '/faq' && <FAQ />}
+      {route.startsWith('/quiz/') && <Quiz bookId={route.split('/')[2]} />}
+      {route.startsWith('/book/') && <BookPage />}
+      {![ '/profile', '/cashout', '/refer', '/request-book', '/authors', '/faq' ].includes(route) &&
+        !route.startsWith('/quiz/') &&
+        !route.startsWith('/book/') && <Home />}
+    </>
+  );
 };
+
+two things to note:
+
+    NavBar moved here from App.tsx - this is the right place since it needs to know auth state and route context. you can clean up the NavBar import from App.tsx since it's no longer used there
+    App.tsx - also remove the RequestBook, Refer, Authors, and FAQ imports from it since they're now imported here instead. your App.tsx should go back to just being:
+
+import { AuthProvider } from './contexts/AuthContext';
+import { Router } from './components/Router';
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router />
+    </AuthProvider>
+  );
+}
+
+export default App;
