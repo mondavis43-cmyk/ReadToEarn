@@ -3,12 +3,12 @@ import { createContext, useContext, useEffect, useState } from 'react';
 type Theme = 'light' | 'dark';
 
 interface ThemeContextType {
-  theme: Theme;
+  isDark: boolean;
   toggleTheme: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: 'light',
+  isDark: false,
   toggleTheme: () => {},
 });
 
@@ -17,15 +17,23 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     return (localStorage.getItem('rte-theme') as Theme) || 'light';
   });
 
+  const isDark = theme === 'dark';
+
   useEffect(() => {
     localStorage.setItem('rte-theme', theme);
-    document.documentElement.classList.toggle('dark', theme === 'dark');
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   }, [theme]);
 
-  const toggleTheme = () => setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ isDark, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );
