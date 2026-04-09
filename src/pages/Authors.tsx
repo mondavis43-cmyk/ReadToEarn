@@ -76,13 +76,13 @@ export const Authors = () => {
             This is a paid service
           </h2>
           <p className={`text-sm leading-relaxed mb-4 transition-colors ${isDark ? 'text-[#F5F0E8]/65' : 'text-[#1B2A4A]/65'}`}>
-            Listing your book on Read to Earn requires a one-time listing fee. Here&apos;s why:
+            Listing your book on Read to Earn requires a one-time listing fee. Here is why:
           </p>
           <ul className="space-y-3 mb-6">
             {[
-              "Unlike bestsellers, indie books don't have ready-made quiz questions floating around online. Authors write their own questions, and our team reviews every submission to make sure they're fair and accurate.",
-              "Without an existing fanbase or demand, readers won't seek out your book on their own. Only popular releases they already know get requested organically.",
-              "Paying for a listing means your book doesn't need to already be popular to get read. Readers will discover it by browsing the library.",
+              "Unlike bestsellers, indie books do not have ready-made quiz questions floating around online. Authors write their own questions, and our team reviews every submission to make sure they are fair and accurate.",
+              "Without an existing fanbase or demand, readers will not seek out your book on their own. Only popular releases they already know get requested organically.",
+              "Paying for a listing means your book does not need to already be popular to get read. Readers will discover it by browsing the library.",
             ].map((point, i) => (
               <li key={i} className="flex gap-3 items-start">
                 <span className={`mt-0.5 transition-colors ${isDark ? 'text-[#D4A843]/60' : 'text-[#1B2A4A]/40'}`}>—</span>
@@ -123,7 +123,7 @@ export const Authors = () => {
           </div>
 
           <p className={`text-sm mt-4 transition-colors ${isDark ? 'text-[#F5F0E8]/65' : 'text-[#1B2A4A]/65'}`}>
-            Unused listings never expire. Buy a bundle now and use your credits whenever you&apos;re ready.
+            Unused listings never expire. Buy a bundle now and use your credits whenever you are ready.
           </p>
         </div>
 
@@ -135,7 +135,7 @@ export const Authors = () => {
               Guaranteed approval
             </h3>
             <p className={`text-sm leading-relaxed transition-colors ${isDark ? 'text-[#F5F0E8]/65' : 'text-[#1B2A4A]/65'}`}>
-              Every book that&apos;s submitted and paid for is approved — no popularity requirements, no gatekeeping. The only exceptions are books with hateful content or AI-generated covers or writing.
+              Every book that is submitted and paid for is approved — no popularity requirements, no gatekeeping. The only exceptions are books with hateful content or AI-generated covers or writing.
             </p>
           </div>
         </div>
@@ -150,7 +150,7 @@ export const Authors = () => {
               {
                 step: '1',
                 title: 'Submit your book',
-                desc: "Fill out the form with your book details, page count, and genre. You'll also write the 10 quiz questions — our team reviews them before your listing goes live.",
+                desc: 'Fill out the form with your book details, page count, and genre. You will also write the 10 quiz questions — our team reviews them before your listing goes live.',
               },
               {
                 step: '2',
@@ -160,7 +160,7 @@ export const Authors = () => {
               {
                 step: '3',
                 title: 'Readers earn, you grow',
-                desc: "Readers complete your book, pass the quiz, and earn their bounty. You get verified reads and genuine word-of-mouth.",
+                desc: 'Readers complete your book, pass the quiz, and earn their bounty. You get verified reads and genuine word-of-mouth.',
               },
             ].map(({ step, title, desc }) => (
               <div key={step} className="flex gap-4 items-start">
@@ -180,7 +180,7 @@ export const Authors = () => {
         <div className={`rounded-lg p-6 border mb-12 text-center transition-colors ${isDark ? 'bg-[#1B2A4A]/60 border-[#D4A843]/20' : 'bg-white border-[#D4A843]/30'}`}>
           <Star className="w-5 h-5 text-[#D4A843] mx-auto mb-3" />
           <p className={`italic mb-3 transition-colors ${isDark ? 'text-[#F5F0E8]/80' : 'text-[#1B2A4A]/80'}`}>
-            &ldquo;I&apos;ve tried every book promotion platform out there. Read to Earn is the only one where I know people actually finished my book.&rdquo;
+            "I have tried every book promotion platform out there. Read to Earn is the only one where I know people actually finished my book."
           </p>
           <p className={`text-sm transition-colors ${isDark ? 'text-[#F5F0E8]/40' : 'text-[#1B2A4A]/40'}`}>
             — Indie author, early access
@@ -193,7 +193,7 @@ export const Authors = () => {
             Ready to get started?
           </h2>
           <p className={`mb-6 transition-colors ${isDark ? 'text-[#F5F0E8]/65' : 'text-[#1B2A4A]/65'}`}>
-            Submit your book and we&apos;ll have it reviewed within a few business days.
+            Submit your book and we will have it reviewed within a few business days.
           </p>
           <button
             onClick={() => navigateTo('/author-submit')}
