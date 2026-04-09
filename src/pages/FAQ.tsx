@@ -9,11 +9,15 @@ const faqs = [
   },
   {
     question: 'How much can I earn per book?',
-    answer: 'Bounties are calculated at $0.0085 per page. A 200-page book pays $1.70, a 300-page book pays $2.55. The exact amount is shown on every book in the library. Monthly earning caps apply based on your subscription tier.',
+    answer: 'It depends on the type of book. Sponsored books pay based on page count at $0.0085 per page, up to $5 per quiz. Platform books pay a flat rate per quiz that increases with your subscription tier: $0.50 on Free, $0.65 on Casual Reader, $0.80 on Avid Reader, and $0.95 on Voracious Reader.',
+  },
+  {
+    question: 'What is the difference between sponsored books and platform books?',
+    answer: 'Sponsored books are submitted by independent authors who pay a listing fee to be featured on the platform. Their quizzes are reviewed by our team and their payouts are calculated by page count at $0.0085 per page, up to $5 per quiz, regardless of your subscription tier. Platform books are popular traditionally published titles that we add to attract readers. They pay a flat rate per quiz that varies by tier. Platform books pay less per quiz because they are funded through ads and affiliate revenue rather than author listing fees. Think of them as a way to get started earning while you explore the library.',
   },
   {
     question: 'What are the subscription tiers?',
-    answer: 'There are four tiers. Free: earn up to $5 per month. Casual Reader ($5.99/mo): earn up to $20 per month. Avid Reader ($10.99/mo): earn up to $55 per month. Voracious Reader ($24.99/mo): earn up to $120 per month. Higher tiers also unlock referral bonuses and streak rewards.',
+    answer: 'There are four tiers. Free: earn up to $5 per month. Casual Reader ($5.99/mo): earn up to $20 per month. Avid Reader ($10.99/mo): earn up to $55 per month. Voracious Reader ($24.99/mo): earn up to $120 per month. Higher tiers also unlock referral bonuses, streak rewards, and higher platform book payouts.',
   },
   {
     question: 'Can I take the same quiz more than once?',
@@ -53,7 +57,7 @@ const faqs = [
   },
   {
     question: 'I am an author. Can I list my book?',
-    answer: 'Yes! Visit the For Authors page to learn how it works and submit your book.',
+    answer: 'Yes! Visit the For Authors page to learn how it works and submit your book. Listing fees start at $45 for a single title.',
   },
   {
     question: 'What are the tax requirements?',
