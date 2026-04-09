@@ -32,70 +32,70 @@ export const Waitlist = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] flex flex-col">
+    <div className="min-h-screen bg-[#F5F0E8] flex flex-col">
       {/* Header */}
-      <header className="border-b border-gray-800">
+      <header className="border-b border-[#1B2A4A]/10">
         <div className="max-w-5xl mx-auto px-4 py-6">
-          <h1 className="font-serif text-3xl text-white">Read to Earn</h1>
+          <h1 className="font-serif text-3xl text-[#1B2A4A]">Read to Earn</h1>
         </div>
       </header>
 
       <main className="flex-1 max-w-5xl mx-auto px-4 py-20 w-full">
         {/* Hero */}
         <div className="text-center mb-20">
-          <div className="inline-block bg-green-900/30 border border-green-900/50 text-green-400 text-sm font-medium px-4 py-1.5 rounded-full mb-6">
+          <div className="inline-block bg-[#D4A843]/20 border border-[#D4A843]/40 text-[#1B2A4A] text-sm font-medium px-4 py-1.5 rounded-full mb-6">
             Coming Soon
           </div>
-          <h2 className="font-serif text-5xl text-white mb-6 leading-tight">
-            Get paid to read<br />the books you already love.
+          <h2 className="font-serif text-5xl text-[#1B2A4A] mb-6 leading-tight">
+            Prove you read it.<br />Get paid for it.
           </h2>
-          <p className="text-gray-400 text-lg max-w-xl mx-auto">
-            Read books, take quizzes on them, and earn real money. No subscriptions, no gimmicks — just read and get paid.
+          <p className="text-[#2C2C2C]/60 text-lg max-w-xl mx-auto">
+            Read books, pass a 10-question quiz, and earn real money. Every book has a listed payout — pass the quiz and it's yours.
           </p>
         </div>
 
         {/* How it works */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
-          <div className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800">
-            <div className="w-10 h-10 bg-green-900/30 rounded-lg flex items-center justify-center mb-4">
-              <BookOpen className="w-5 h-5 text-green-400" />
+          <div className="bg-white rounded-lg p-6 border border-[#e8e0d5]">
+            <div className="w-10 h-10 bg-[#D4A843]/15 rounded-lg flex items-center justify-center mb-4">
+              <BookOpen className="w-5 h-5 text-[#D4A843]" />
             </div>
-            <h3 className="text-white font-semibold mb-2">1. Pick a book</h3>
-            <p className="text-gray-400 text-sm">
-              Browse our library of classic literature, popular new releases, and indie titles. Every book has a listed payout based on its page count.
+            <h3 className="text-[#1B2A4A] font-semibold mb-2">1. Pick a book</h3>
+            <p className="text-[#2C2C2C]/60 text-sm">
+              Browse our library of classic literature and sponsored titles. Every book shows its payout upfront — no surprises.
             </p>
           </div>
-          <div className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800">
-            <div className="w-10 h-10 bg-green-900/30 rounded-lg flex items-center justify-center mb-4">
-              <Brain className="w-5 h-5 text-green-400" />
+          <div className="bg-white rounded-lg p-6 border border-[#e8e0d5]">
+            <div className="w-10 h-10 bg-[#D4A843]/15 rounded-lg flex items-center justify-center mb-4">
+              <Brain className="w-5 h-5 text-[#D4A843]" />
             </div>
-            <h3 className="text-white font-semibold mb-2">2. Take the quiz</h3>
-            <p className="text-gray-400 text-sm">
-              Answer 10 questions about the book to prove you read it. Pass and the bounty is yours.
+            <h3 className="text-[#1B2A4A] font-semibold mb-2">2. Pass the quiz</h3>
+            <p className="text-[#2C2C2C]/60 text-sm">
+              Answer 10 questions in 8 minutes to prove you actually read it. Questions go deep — no skimming your way through.
             </p>
           </div>
-          <div className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800">
-            <div className="w-10 h-10 bg-green-900/30 rounded-lg flex items-center justify-center mb-4">
-              <DollarSign className="w-5 h-5 text-green-400" />
+          <div className="bg-white rounded-lg p-6 border border-[#e8e0d5]">
+            <div className="w-10 h-10 bg-[#D4A843]/15 rounded-lg flex items-center justify-center mb-4">
+              <DollarSign className="w-5 h-5 text-[#D4A843]" />
             </div>
-            <h3 className="text-white font-semibold mb-2">3. Cash out</h3>
-            <p className="text-gray-400 text-sm">
-              Redeem your earnings via PayPal, Venmo, or gift cards from your favorite brands once you hit $5.
+            <h3 className="text-[#1B2A4A] font-semibold mb-2">3. Cash out</h3>
+            <p className="text-[#2C2C2C]/60 text-sm">
+              Once you hit $10, redeem via PayPal, Venmo, or gift cards from your favorite brands. No subscriptions required to start earning.
             </p>
           </div>
         </div>
 
         {/* Waitlist form */}
         <div className="max-w-md mx-auto text-center">
-          <h3 className="font-serif text-2xl text-white mb-2">Get early access</h3>
-          <p className="text-gray-400 text-sm mb-8">
-            Want to be among the first to know when Read to Earn goes live? Drop your email and we'll let you know when you're in.
+          <h3 className="font-serif text-2xl text-[#1B2A4A] mb-2">Get early access</h3>
+          <p className="text-[#2C2C2C]/60 text-sm mb-8">
+            We're launching soon. Join the waitlist and we'll let you know the moment you can start earning.
           </p>
 
           {submitted ? (
-            <div className="bg-green-900/20 border border-green-900/50 rounded-lg p-6">
-              <p className="text-green-400 font-medium">You're on the list!</p>
-              <p className="text-gray-400 text-sm mt-1">We'll email you when Read to Earn goes live.</p>
+            <div className="bg-[#D4A843]/10 border border-[#D4A843]/40 rounded-lg p-6">
+              <p className="text-[#1B2A4A] font-medium">You're on the list!</p>
+              <p className="text-[#2C2C2C]/60 text-sm mt-1">We'll email you when Read to Earn goes live.</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -105,15 +105,15 @@ export const Waitlist = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
                 required
-                className="w-full px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-500"
+                className="w-full px-4 py-3 bg-white border border-[#e8e0d5] rounded-lg text-[#2C2C2C] placeholder-[#2C2C2C]/30 focus:outline-none focus:border-[#1B2A4A] transition"
               />
               {error && (
-                <p className="text-red-400 text-sm">{error}</p>
+                <p className="text-red-500 text-sm">{error}</p>
               )}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-white text-black font-medium py-3 rounded-lg hover:bg-gray-200 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-[#1B2A4A] hover:bg-[#142038] text-[#F5F0E8] font-medium py-3 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Joining...' : (
                   <>
@@ -126,8 +126,8 @@ export const Waitlist = () => {
         </div>
       </main>
 
-      <footer className="border-t border-gray-800 py-6 text-center">
-        <p className="text-gray-600 text-sm">© 2026 Read to Earn. All rights reserved.</p>
+      <footer className="border-t border-[#1B2A4A]/10 py-6 text-center">
+        <p className="text-[#2C2C2C]/40 text-sm">© 2026 Read to Earn. All rights reserved.</p>
       </footer>
     </div>
   );
