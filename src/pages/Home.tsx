@@ -49,33 +49,33 @@ export const Home = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+      <div className="min-h-screen bg-[#F5F0E8] flex items-center justify-center">
+        <div className="text-[#800020] font-medium">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f]">
-      <header className="border-b border-gray-800">
+    <div className="min-h-screen bg-[#F5F0E8]">
+      <header className="bg-[#800020] border-b border-[#6a001a]">
         <div className="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
-          <h1 className="font-serif text-3xl text-white">Read to Earn</h1>
+          <h1 className="font-serif text-3xl text-[#F5F0E8]">Read to Earn</h1>
           <div className="flex gap-4">
             <button
               onClick={() => navigateTo('/profile')}
-              className="text-gray-300 hover:text-white transition"
+              className="text-[#F5F0E8]/80 hover:text-[#F5F0E8] transition"
             >
               Profile
             </button>
             <button
               onClick={() => navigateTo('/cashout')}
-              className="bg-green-600 hover:bg-green-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
+              className="bg-[#C9A84C] hover:bg-[#b8963e] text-[#800020] text-sm font-semibold px-4 py-2 rounded-lg transition"
             >
               Cash Out
             </button>
             <button
               onClick={handleLogout}
-              className="text-gray-400 hover:text-gray-300 transition"
+              className="text-[#F5F0E8]/60 hover:text-[#F5F0E8]/80 transition"
             >
               Logout
             </button>
@@ -84,8 +84,8 @@ export const Home = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-12">
-        <h2 className="text-2xl font-semibold text-white mb-2">Book Library</h2>
-        <p className="text-gray-400 mb-8">
+        <h2 className="text-2xl font-semibold text-[#800020] mb-2">Book Library</h2>
+        <p className="text-[#2C2C2C]/60 mb-8">
           Read classic literature and take quizzes to earn rewards
         </p>
 
@@ -97,9 +97,9 @@ export const Home = () => {
               <div
                 key={book.id}
                 onClick={() => navigateTo(`/book/${book.id}`)}
-                className="bg-[#1a1a1a] rounded-lg overflow-hidden border border-gray-800 hover:border-gray-700 transition group cursor-pointer"
+                className="bg-white rounded-lg overflow-hidden border border-[#e8e0d5] hover:border-[#C9A84C] transition group cursor-pointer shadow-sm hover:shadow-md"
               >
-                <div className="aspect-[2/3] relative overflow-hidden bg-gray-900">
+                <div className="aspect-[2/3] relative overflow-hidden bg-[#ede8e0]">
                   {book.cover_url && (
                     <img
                       src={book.cover_url}
@@ -108,25 +108,25 @@ export const Home = () => {
                     />
                   )}
                   <div className="absolute top-3 right-3">
-                    <div className="bg-green-600 text-white text-xs font-semibold px-3 py-1.5 rounded-full">
+                    <div className="bg-[#C9A84C] text-[#800020] text-xs font-semibold px-3 py-1.5 rounded-full">
                       Earn ${book.bounty_amount.toFixed(2)}
                     </div>
                   </div>
                 </div>
 
                 <div className="p-4">
-                  <h3 className="font-serif text-lg text-white mb-1 line-clamp-2">
+                  <h3 className="font-serif text-lg text-[#2C2C2C] mb-1 line-clamp-2">
                     {book.title}
                   </h3>
-                  <p className="text-gray-400 text-sm mb-4">{book.author}</p>
+                  <p className="text-[#2C2C2C]/50 text-sm mb-4">{book.author}</p>
 
                   {isCompleted ? (
-                    <div className="flex items-center justify-center gap-2 py-2.5 bg-green-900/20 border border-green-900/50 rounded-lg text-green-400 text-sm font-medium">
+                    <div className="flex items-center justify-center gap-2 py-2.5 bg-[#C9A84C]/10 border border-[#C9A84C]/40 rounded-lg text-[#C9A84C] text-sm font-medium">
                       <Check className="w-4 h-4" />
                       Completed
                     </div>
                   ) : (
-                    <div className="w-full bg-white text-black font-medium py-2.5 rounded-lg text-center text-sm">
+                    <div className="w-full bg-[#800020] text-[#F5F0E8] font-medium py-2.5 rounded-lg text-center text-sm hover:bg-[#6a001a] transition">
                       View Book
                     </div>
                   )}
