@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
+import { useTheme } from '../contexts/ThemeContext';
 import { ArrowLeft, PartyPopper, Timer } from 'lucide-react';
 
 interface Question {
@@ -45,6 +46,7 @@ const formatTime = (seconds: number) => {
 export const Quiz = ({ bookId }: QuizProps) => {
   const { user } = useAuth();
   const { navigateTo } = useNavigate();
+  const { isDark } = useTheme();
   const [book, setBook] = useState<Book | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [shuffledOptions, setShuffledOptions] = useState<Record<string, string[]>>({});
@@ -56,25 +58,20 @@ export const Quiz = ({ bookId }: QuizProps) => {
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState(QUIZ_DURATION);
   const [timedOut, setTimedOut] = useState(false);
-  const [timerStarted, setTimerStarted] = useState(false);
-  const [streakBonus, setStreakBonus] = useState<{ amount: number; milestone: number } | null>(null);
+  const [streakBonus, setStreakBonus] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     loadQuiz();
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [bookId, user]);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [bookId]);
 
   useEffect(() => {
-    if (!loading && !submitted && !timerStarted && questions.length > 0) {
-      setTimerStarted(true);
+    if (!loading && !submitted) {
       timerRef.current = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
             clearInterval(timerRef.current!);
-            setTimedOut(true);
             handleSubmit(true);
             return 0;
           }
@@ -82,13 +79,14 @@ export const Quiz = ({ bookId }: QuizProps) => {
         });
       }, 1000);
     }
-  }, [loading, submitted, timerStarted, questions]);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [loading, submitted]);
 
   const loadQuiz = async () => {
     if (!user) return;
 
     const [bookResult, questionsResult, completedResult] = await Promise.all([
-      supabase.from('books').select('*').eq('id', bookId).maybeSingle(),
+      supabase.from('books').select('*').eq('id', bookId).single(),
       supabase.from('questions').select('*').eq('book_id', bookId),
       supabase
         .from('completed_books')
@@ -103,320 +101,214 @@ export const Quiz = ({ bookId }: QuizProps) => {
     if (questionsResult.data) {
       const qs = questionsResult.data as Question[];
       setQuestions(qs);
-      const optionsMap: Record<string, string[]> = {};
+      const opts: Record<string, string[]> = {};
       qs.forEach((q) => {
-        const opts = [q.correct_answer, q.wrong_answer_1, q.wrong_answer_2, q.wrong_answer_3];
-        optionsMap[q.id] = seededShuffle(opts, q.id);
+        opts[q.id] = seededShuffle(
+          [q.correct_answer, q.wrong_answer_1, q.wrong_answer_2, q.wrong_answer_3],
+          q.id
+        );
       });
-      setShuffledOptions(optionsMap);
+      setShuffledOptions(opts);
     }
 
     if (completedResult.data) setAlreadyCompleted(true);
     setLoading(false);
   };
 
-  const updateStreak = async (userId: string, bookBounty: number, wasAlreadyCompleted: boolean) => {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('available_balance, streak_count, last_quiz_date, streak_bonus_7_claimed, streak_bonus_30_claimed')
-      .eq('id', userId)
-      .single();
-
-    if (!profile) return;
-
-    const today = new Date().toISOString().split('T')[0];
-    const lastDate = profile.last_quiz_date;
-
-    let newStreak = profile.streak_count || 0;
-    if (!lastDate) {
-      newStreak = 1;
-    } else {
-      const last = new Date(lastDate);
-      const todayDate = new Date(today);
-      const diffDays = Math.floor((todayDate.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
-      if (diffDays === 0) {
-        // Already quizzed today, no change
-      } else if (diffDays === 1) {
-        newStreak += 1;
-      } else {
-        newStreak = 1;
-      }
-    }
-
-    let newBalance = Number(profile.available_balance);
-    if (!wasAlreadyCompleted) {
-      newBalance += Number(bookBounty);
-    }
-
-    let bonusEarned = 0;
-    let bonusMilestone = 0;
-    const updates: Record<string, unknown> = {
-      streak_count: newStreak,
-      last_quiz_date: today,
-      available_balance: newBalance,
-    };
-
-    if (newStreak >= 7 && profile.streak_bonus_7_claimed < Math.floor(newStreak / 7)) {
-      bonusEarned += 0.05;
-      bonusMilestone = 7;
-      updates.streak_bonus_7_claimed = Math.floor(newStreak / 7);
-    }
-
-    if (newStreak >= 30 && profile.streak_bonus_30_claimed < Math.floor(newStreak / 30)) {
-      bonusEarned += 0.25;
-      bonusMilestone = 30;
-      updates.streak_bonus_30_claimed = Math.floor(newStreak / 30);
-    }
-
-    if (bonusEarned > 0) {
-      updates.available_balance = Number(updates.available_balance) + bonusEarned;
-      setStreakBonus({ amount: bonusEarned, milestone: bonusMilestone });
-    }
-
-    await supabase.from('profiles').update(updates).eq('id', userId);
-  };
-
-  const creditReferrer = async (userId: string) => {
-    // Only fires on first ever completed book
-    const { count } = await supabase
-      .from('completed_books')
-      .select('id', { count: 'exact' })
-      .eq('user_id', userId);
-
-    if (count !== 1) return;
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('referred_by, referral_bonus_claimed')
-      .eq('id', userId)
-      .single();
-
-    if (!profile?.referred_by || profile.referral_bonus_claimed) return;
-
-    const { data: referrer } = await supabase
-      .from('profiles')
-      .select('id, available_balance')
-      .eq('referral_code', profile.referred_by)
-      .single();
-
-    if (!referrer) return;
-
-    await Promise.all([
-      supabase
-        .from('profiles')
-        .update({ available_balance: Number(referrer.available_balance) + 0.5 })
-        .eq('id', referrer.id),
-      supabase
-        .from('profiles')
-        .update({ referral_bonus_claimed: true })
-        .eq('id', userId),
-    ]);
-  };
-
   const handleSubmit = async (fromTimer = false) => {
-    if (!user || !book) return;
     if (timerRef.current) clearInterval(timerRef.current);
+    if (fromTimer) setTimedOut(true);
 
-    setAnswers((currentAnswers) => {
-      const answersToScore = fromTimer ? currentAnswers : answers;
-
-      let correctCount = 0;
-      questions.forEach((q) => {
-        if (answersToScore[q.id] === q.correct_answer) correctCount++;
-      });
-
-      const userPassed = correctCount >= 8;
-      setScore(correctCount);
-      setPassed(userPassed);
-      setSubmitted(true);
-
-      supabase.from('quiz_attempts').insert({
-        user_id: user.id,
-        book_id: book.id,
-        score: correctCount,
-        passed: userPassed,
-      });
-
-      if (userPassed) {
-        if (!alreadyCompleted) {
-          supabase
-            .from('completed_books')
-            .insert({ user_id: user.id, book_id: book.id })
-            .then(() => {
-              // Credit referrer after insert so count is accurate
-              creditReferrer(user.id);
-            });
-        }
-        // Always update streak on a pass
-        updateStreak(user.id, book.bounty_amount, alreadyCompleted);
-      }
-
-      return currentAnswers;
+    let correct = 0;
+    questions.forEach((q) => {
+      if (answers[q.id] === q.correct_answer) correct++;
     });
+
+    setScore(correct);
+    const pass = correct >= 8;
+    setPassed(pass);
+    setSubmitted(true);
+
+    if (!user || !book) return;
+
+    await supabase.from('quiz_attempts').insert({
+      user_id: user.id,
+      book_id: bookId,
+      score: correct,
+      passed: pass,
+    });
+
+    if (pass && !alreadyCompleted) {
+      await supabase.from('completed_books').insert({
+        user_id: user.id,
+        book_id: bookId,
+      });
+
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('available_balance, streak_count, last_quiz_date, referred_by')
+        .eq('id', user.id)
+        .single();
+
+      if (profileData) {
+        const today = new Date().toISOString().split('T')[0];
+        const lastDate = profileData.last_quiz_date;
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        const newStreak = lastDate === yesterday ? (profileData.streak_count ?? 0) + 1 : 1;
+
+        let bonus = 0;
+        if (newStreak === 7 || newStreak === 30) {
+          bonus = 0.10;
+          setStreakBonus(newStreak);
+        }
+
+        await supabase
+          .from('profiles')
+          .update({
+            available_balance: profileData.available_balance + book.bounty_amount + bonus,
+            streak_count: newStreak,
+            last_quiz_date: today,
+          })
+          .eq('id', user.id);
+
+        if (profileData.referred_by) {
+          const { data: referrerData } = await supabase
+            .from('profiles')
+            .select('available_balance')
+            .eq('id', profileData.referred_by)
+            .single();
+
+          if (referrerData) {
+            await supabase
+              .from('profiles')
+              .update({ available_balance: referrerData.available_balance + 0.50 })
+              .eq('id', profileData.referred_by);
+          }
+        }
+      }
+    }
   };
 
-  const isWarning = timeLeft <= 60;
-  const isCritical = timeLeft <= 30;
+  // Theme tokens
+  const bg = isDark ? 'bg-[#1B2A4A]' : 'bg-[#F5F0E8]';
+  const cardBg = isDark ? 'bg-[#162238]' : 'bg-white';
+  const cardBorder = isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10';
+  const headingColor = isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]';
+  const subColor = isDark ? 'text-[#F5F0E8]/50' : 'text-[#1B2A4A]/50';
+  const dividerColor = isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10';
+  const optionBg = isDark ? 'bg-[#1B2A4A]' : 'bg-[#F5F0E8]';
+  const optionBorder = isDark ? 'border-[#F5F0E8]/15 hover:border-[#D4A843]/50' : 'border-[#1B2A4A]/15 hover:border-[#D4A843]/50';
+  const optionText = isDark ? 'text-[#F5F0E8]/80' : 'text-[#1B2A4A]/80';
+
+  const timerColor = () => {
+    if (timeLeft <= 30) return isDark
+      ? 'bg-red-900/20 border-red-500/40 text-red-400'
+      : 'bg-red-50 border-red-300 text-red-600';
+    if (timeLeft <= 60) return isDark
+      ? 'bg-[#D4A843]/10 border-[#D4A843]/30 text-[#D4A843]'
+      : 'bg-amber-50 border-amber-300 text-amber-600';
+    return isDark
+      ? 'bg-[#162238] border-[#F5F0E8]/10 text-[#F5F0E8]/60'
+      : 'bg-white border-[#1B2A4A]/10 text-[#1B2A4A]/60';
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
-        <div className="text-white">Loading quiz...</div>
-      </div>
-    );
-  }
-
-  if (!book) {
-    return (
-      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
-        <div className="text-white">Book not found</div>
+      <div className={`min-h-screen ${bg} flex items-center justify-center transition-colors duration-300`}>
+        <div className="w-8 h-8 border-2 border-[#D4A843] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f]">
-      <header className="border-b border-gray-800">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <button
-            onClick={() => navigateTo('/')}
-            className="flex items-center gap-2 text-gray-400 hover:text-white transition mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Library
-          </button>
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="font-serif text-3xl text-white mb-1">{book.title}</h1>
-              <p className="text-gray-400">{book.author}</p>
+    <div className={`min-h-screen ${bg} transition-colors duration-300`}>
+      {/* Header */}
+      <div className={`border-b ${dividerColor} px-4 py-4 sticky top-0 z-10 ${isDark ? 'bg-[#1B2A4A]' : 'bg-[#F5F0E8]'}`}>
+        <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => navigateTo('/books')}
+              className={`${subColor} hover:text-[#D4A843] transition flex-shrink-0`}
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="min-w-0">
+              <h1 className={`font-serif text-lg ${headingColor} truncate`}>{book?.title}</h1>
+              <p className={`text-xs ${subColor} truncate`}>{book?.author}</p>
             </div>
-            {!submitted && (
-              <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition ${
-                isCritical
-                  ? 'bg-red-900/30 border-red-700/50 text-red-400'
-                  : isWarning
-                  ? 'bg-yellow-900/30 border-yellow-700/50 text-yellow-400'
-                  : 'bg-[#1a1a1a] border-gray-700 text-gray-300'
-              }`}>
-                <Timer className="w-4 h-4" />
-                <span className="font-mono font-medium text-lg">{formatTime(timeLeft)}</span>
-              </div>
-            )}
           </div>
+
+          {!submitted && (
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-mono flex-shrink-0 transition-colors ${timerColor()}`}>
+              <Timer className="w-3.5 h-3.5" />
+              {formatTime(timeLeft)}
+            </div>
+          )}
         </div>
-      </header>
+      </div>
 
-      <main className="max-w-4xl mx-auto px-4 py-12">
-        {!submitted ? (
-          <>
-            <div className="mb-8">
-              <h2 className="text-2xl font-semibold text-white mb-2">Quiz: {book.title}</h2>
-              <p className="text-gray-400 mb-3">
-                Answer at least 8 out of 10 questions correctly to earn ${book.bounty_amount.toFixed(2)}
-              </p>
-              <p className="text-gray-600 text-xs flex items-center gap-1">
-                <Timer className="w-3 h-3" />
-                8-minute time limit to keep things fair for everyone.
-              </p>
-            </div>
+      <div className="max-w-2xl mx-auto px-4 py-8">
 
-            <div className="space-y-8">
-              {questions.map((question, index) => {
-                const options = shuffledOptions[question.id] || [];
-                return (
-                  <div key={question.id} className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800">
-                    <h3 className="text-white font-medium mb-4">
-                      {index + 1}. {question.question_text}
-                    </h3>
-                    <div className="space-y-3">
-                      {options.map((option, optIndex) => {
-                        const displayLabel = ['A', 'B', 'C', 'D'][optIndex];
-                        return (
-                          <label
-                            key={optIndex}
-                            className="flex items-start gap-3 p-4 bg-[#0f0f0f] rounded-lg border border-gray-700 hover:border-gray-600 cursor-pointer transition"
-                          >
-                            <input
-                              type="radio"
-                              name={`question-${question.id}`}
-                              value={option}
-                              checked={answers[question.id] === option}
-                              onChange={() => setAnswers({ ...answers, [question.id]: option })}
-                              className="mt-1 w-4 h-4 accent-white"
-                            />
-                            <span className="text-gray-300 flex-1">
-                              <span className="font-medium text-white">{displayLabel}.</span> {option}
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-8 flex justify-center">
-              <button
-                onClick={() => handleSubmit(false)}
-                disabled={Object.keys(answers).length !== questions.length}
-                className="bg-white text-black font-medium px-8 py-3 rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Submit Quiz
-              </button>
-            </div>
-          </>
-        ) : (
-          <div className="bg-[#1a1a1a] rounded-lg p-8 border border-gray-800 text-center max-w-2xl mx-auto">
-            {timedOut && (
-              <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-3 mb-6">
-                <p className="text-yellow-400 text-sm">Time's up — your answers were automatically submitted.</p>
-              </div>
-            )}
+        {/* Results Screen */}
+        {submitted ? (
+          <div className={`${cardBg} rounded-lg p-8 border ${cardBorder}`}>
             {passed ? (
               <>
-                <div className="flex justify-center mb-4">
-                  <PartyPopper className="w-16 h-16 text-green-500" />
+                <div className="flex items-center gap-3 mb-2">
+                  <PartyPopper className="w-6 h-6 text-[#D4A843]" />
+                  <h2 className={`text-3xl font-serif ${headingColor}`}>You passed!</h2>
                 </div>
-                <h2 className="text-3xl font-serif text-white mb-2">You Passed!</h2>
-                <p className="text-gray-300 mb-6">
-                  You scored {score} out of {questions.length}
+                <p className={`${subColor} mb-6`}>
+                  {score} out of {questions.length} correct
                 </p>
+
                 {!alreadyCompleted && (
-                  <div className="bg-green-900/20 border border-green-900/50 rounded-lg p-4 mb-4">
-                    <p className="text-green-400 font-medium">
-                      ${book.bounty_amount.toFixed(2)} has been added to your balance!
+                  <div className="bg-[#D4A843]/10 border border-[#D4A843]/30 rounded-lg p-4 mb-3">
+                    <p className="text-[#D4A843] font-medium text-sm">
+                      +${book?.bounty_amount.toFixed(2)} added to your balance
                     </p>
                   </div>
                 )}
+
                 {streakBonus && (
-                  <div className="bg-orange-900/20 border border-orange-700/50 rounded-lg p-4 mb-4">
-                    <p className="text-orange-400 font-medium">
-                      🔥 {streakBonus.milestone}-day streak bonus! +${streakBonus.amount.toFixed(2)} added to your balance!
+                  <div className="bg-[#D4A843]/10 border border-[#D4A843]/30 rounded-lg p-4 mb-3">
+                    <p className="text-[#D4A843] font-medium text-sm">
+                      {streakBonus}-day streak bonus! +$0.10 added to your balance
                     </p>
                   </div>
                 )}
+
                 {alreadyCompleted && (
-                  <div className="bg-gray-800 rounded-lg p-4 mb-6">
-                    <p className="text-gray-400 text-sm">
-                      You've already completed this quiz and earned the bounty.
+                  <div className={`${isDark ? 'bg-[#1B2A4A]' : 'bg-[#F5F0E8]'} rounded-lg p-4 mb-3`}>
+                    <p className={`text-sm ${subColor}`}>
+                      You already completed this book. No additional payout.
                     </p>
                   </div>
                 )}
               </>
             ) : (
               <>
-                <h2 className="text-3xl font-serif text-white mb-2">Not quite there</h2>
-                <p className="text-gray-300 mb-6">
-                  You scored {score} out of {questions.length}. You need at least 8 correct answers to pass.
+                <h2 className={`text-3xl font-serif ${headingColor} mb-2`}>
+                  {timedOut ? 'Time is up' : 'Not quite'}
+                </h2>
+                <p className={`${subColor} mb-6`}>
+                  {score} out of {questions.length} correct. You need 8 to pass.
                 </p>
+
+                {timedOut && (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-3">
+                    <p className="text-red-400 text-sm">
+                      The quiz was submitted automatically when time ran out.
+                    </p>
+                  </div>
+                )}
               </>
             )}
 
-            <div className="flex gap-4 justify-center">
+            <div className="flex gap-3 mt-6">
               <button
-                onClick={() => navigateTo('/')}
-                className="bg-white text-black font-medium px-6 py-3 rounded-lg hover:bg-gray-200 transition"
+                onClick={() => navigateTo('/books')}
+                className="bg-[#D4A843] text-[#1B2A4A] font-medium px-6 py-2.5 rounded-lg hover:bg-[#c49a38] transition"
               >
                 Back to Library
               </button>
@@ -426,20 +318,74 @@ export const Quiz = ({ bookId }: QuizProps) => {
                     setSubmitted(false);
                     setAnswers({});
                     setScore(0);
+                    setPassed(false);
                     setTimedOut(false);
                     setTimeLeft(QUIZ_DURATION);
-                    setTimerStarted(false);
-                    setStreakBonus(null);
                   }}
-                  className="bg-gray-700 text-white font-medium px-6 py-3 rounded-lg hover:bg-gray-600 transition"
+                  className={`${isDark ? 'bg-[#F5F0E8]/10 text-[#F5F0E8] hover:bg-[#F5F0E8]/15' : 'bg-[#1B2A4A]/10 text-[#1B2A4A] hover:bg-[#1B2A4A]/15'} font-medium px-6 py-2.5 rounded-lg transition`}
                 >
                   Try Again
                 </button>
               )}
             </div>
           </div>
+        ) : (
+          /* Questions */
+          <div className="space-y-6">
+            {questions.map((question, index) => (
+              <div key={question.id} className={`${cardBg} rounded-lg p-6 border ${cardBorder}`}>
+                <p className={`font-medium ${headingColor} mb-4`}>
+                  <span className="text-[#D4A843] mr-2">{index + 1}.</span>
+                  {question.question_text}
+                </p>
+
+                <div className="space-y-3">
+                  {(shuffledOptions[question.id] ?? []).map((option, optIndex) => {
+                    const labels = ['A', 'B', 'C', 'D'];
+                    const isSelected = answers[question.id] === option;
+                    return (
+                      <label
+                        key={optIndex}
+                        className={`flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${
+                          isSelected
+                            ? 'border-[#D4A843] bg-[#D4A843]/10'
+                            : `${optionBg} ${optionBorder}`
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name={question.id}
+                          value={option}
+                          checked={isSelected}
+                          onChange={() => setAnswers((prev) => ({ ...prev, [question.id]: option }))}
+                          className="mt-0.5 accent-[#D4A843] flex-shrink-0"
+                        />
+                        <span className={`text-sm ${isSelected ? (isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]') : optionText}`}>
+                          <span className="font-medium mr-2">{labels[optIndex]}.</span>
+                          {option}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            <div className="flex items-center justify-between pt-2 pb-8">
+              <p className={`text-sm ${subColor}`}>
+                {Object.keys(answers).length} of {questions.length} answered
+              </p>
+              <button
+                onClick={() => handleSubmit(false)}
+                disabled={Object.keys(answers).length < questions.length}
+                className="bg-[#D4A843] text-[#1B2A4A] font-medium px-8 py-3 rounded-lg hover:bg-[#c49a38] transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Submit Quiz
+              </button>
+            </div>
+          </div>
         )}
-      </main>
+      </div>
     </div>
   );
 };
