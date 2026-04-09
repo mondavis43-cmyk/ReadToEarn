@@ -13,7 +13,7 @@ const faqs = [
   },
   {
     question: 'What is the difference between sponsored books and platform books?',
-    answer: 'Sponsored books are submitted by independent authors who pay a listing fee to be featured on the platform. Their quizzes are reviewed by our team and their payouts are calculated by page count at $0.0085 per page, up to $5 per quiz, regardless of your subscription tier. Platform books are popular traditionally published titles that we add to attract readers. They pay a flat rate per quiz that varies by tier. Platform books pay less per quiz because they are funded through ads and affiliate revenue rather than author listing fees. Think of them as a way to get started earning while you explore the library.',
+    answer: 'Sponsored books are submitted by authors who pay a listing fee to be featured on the platform. Their quizzes are reviewed by our team and their payouts are calculated by page count at $0.0085 per page, up to $5 per quiz, regardless of your subscription tier. Platform books are popular traditionally published titles that we add to attract readers. They pay a flat rate per quiz that varies by tier. Platform books pay less per quiz because they are funded through ads and affiliate revenue rather than author listing fees. Think of them as a way to get started earning while you explore the library.',
   },
   {
     question: 'What are the subscription tiers?',
