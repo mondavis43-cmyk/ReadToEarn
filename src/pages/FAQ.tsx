@@ -61,7 +61,7 @@ const faqs = [
   },
   {
     question: 'Do I get a birthday bonus?',
-    answer: 'Yes! Add your birthday in your Profile settings and you will receive a $0.25 bonus every year on your birthday no matter what tier you're on.',
+    answer: 'Yes! Add your birthday in your Profile settings and you will receive a $0.25 bonus every year on your birthday no matter what tier you are on.',
   },
 
 const FAQItem = ({ question, answer }: { question: string; answer: string }) => {
