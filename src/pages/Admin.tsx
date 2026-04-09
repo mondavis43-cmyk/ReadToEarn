@@ -92,199 +92,105 @@ export const Admin = () => {
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [newBook, setNewBook] = useState<NewBook>(emptyBook);
-  const [questions, setQuestions] = useState<NewQuestion[]>(
-    Array(10).fill(null).map(() => ({ ...emptyQuestion }))
-  );
+  const [questions, setQuestions] = useState<NewQuestion[]>(Array(10).fill(null).map(() => ({ ...emptyQuestion })));
+  const [showAddForm, setShowAddForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [editingQuestions, setEditingQuestions] = useState<Question[]>([]);
-  const [editSaving, setEditSaving] = useState(false);
-  const [editError, setEditError] = useState('');
-  const [editSuccess, setEditSuccess] = useState(false);
-  const [markingAsSent, setMarkingAsSent] = useState<string | null>(null);
-  const [markError, setMarkError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user?.email === ADMIN_EMAIL) {
-      loadData();
+    if (user?.email !== ADMIN_EMAIL) {
+      navigateTo('/');
+      return;
     }
+    loadData();
   }, [user]);
 
   const loadData = async () => {
     const [booksResult, cashoutsResult, waitlistResult] = await Promise.all([
       supabase.from('books').select('*').order('title'),
-      supabase
-        .from('cashout_requests')
-        .select('*, profiles(email)')
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('waitlist')
-        .select('*')
-        .order('created_at', { ascending: false }),
+      supabase.from('cashout_requests').select('*, profiles(email)').order('created_at', { ascending: false }),
+      supabase.from('waitlist').select('*').order('created_at', { ascending: false }),
     ]);
+
     if (booksResult.data) setBooks(booksResult.data);
-    if (cashoutsResult.data) setCashouts(cashoutsResult.data as CashoutRequest[]);
-    if (waitlistResult.data) setWaitlist(waitlistResult.data as WaitlistEntry[]);
+    if (cashoutsResult.data) setCashouts(cashoutsResult.data);
+    if (waitlistResult.data) setWaitlist(waitlistResult.data);
     setLoading(false);
   };
 
-  const handleMarkAsSent = async (cashoutId: string) => {
-    setMarkingAsSent(cashoutId);
-    setMarkError(null);
-    const { error } = await supabase
-      .from('cashout_requests')
-      .update({ status: 'completed' })
-      .eq('id', cashoutId);
-    if (error) setMarkError(`Failed to update status: ${error.message}`);
-    else loadData();
-    setMarkingAsSent(null);
-  };
-
-  const handleDeleteWaitlistEntry = async (id: string) => {
-    await supabase.from('waitlist').delete().eq('id', id);
-    loadData();
+  const handleSaveBook = async () => {
+    setError('');
+    const incomplete = questions.some(
+      (q) => !q.question_text || !q.correct_answer || !q.wrong_answer_1 || !q.wrong_answer_2 || !q.wrong_answer_3
+    );
+    if (incomplete) {
+      setError('Please complete all 10 questions.');
+      return;
+    }
+    setSaving(true);
+    const bounty = Math.min(parseFloat(newBook.page_count) * RATE_PER_PAGE, 5);
+    const { data: bookData, error: bookError } = await supabase
+      .from('books')
+      .insert({ ...newBook, page_count: parseInt(newBook.page_count), bounty_amount: bounty })
+      .select()
+      .single();
+    if (bookError || !bookData) {
+      setError('Failed to save book.');
+      setSaving(false);
+      return;
+    }
+    const questionsToInsert = questions.map((q) => ({ ...q, book_id: bookData.id }));
+    const { error: qError } = await supabase.from('questions').insert(questionsToInsert);
+    if (qError) {
+      setError('Book saved but questions failed.');
+    } else {
+      setSuccess('Book and questions saved!');
+      setNewBook(emptyBook);
+      setQuestions(Array(10).fill(null).map(() => ({ ...emptyQuestion })));
+      setShowAddForm(false);
+      loadData();
+      setTimeout(() => setSuccess(''), 2000);
+    }
+    setSaving(false);
   };
 
   const handleEditBook = async (book: Book) => {
-    setEditingBook({ ...book });
-    setEditError('');
-    setEditSuccess(false);
-    const { data } = await supabase
-      .from('questions')
-      .select('*')
-      .eq('book_id', book.id)
-      .order('id');
-    if (data) setEditingQuestions(data as Question[]);
+    const { data } = await supabase.from('questions').select('*').eq('book_id', book.id);
+    setEditingBook(book);
+    setEditingQuestions(data || []);
   };
 
-  const handleSaveEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveEdit = async () => {
     if (!editingBook) return;
-    setEditError('');
-    setEditSaving(true);
-
-    for (let i = 0; i < editingQuestions.length; i++) {
-      const q = editingQuestions[i];
-      if (!q.question_text || !q.correct_answer || !q.wrong_answer_1 || !q.wrong_answer_2 || !q.wrong_answer_3) {
-        setEditError(`Question ${i + 1} is incomplete.`);
-        setEditSaving(false);
-        return;
-      }
-    }
-
-    const bounty = Math.round(editingBook.page_count * RATE_PER_PAGE * 100) / 100;
-
-    const { error: bookError } = await supabase
-      .from('books')
-      .update({
-        title: editingBook.title,
-        author: editingBook.author,
-        cover_url: editingBook.cover_url || null,
-        page_count: editingBook.page_count,
-        bounty_amount: bounty,
-        description: editingBook.description || null,
-        geniuslink_url: editingBook.geniuslink_url || null,
-      })
-      .eq('id', editingBook.id);
-
-    if (bookError) {
-      setEditError('Failed to update book. Try again.');
-      setEditSaving(false);
-      return;
-    }
-
-    for (const q of editingQuestions) {
-      const { error: qError } = await supabase
-        .from('questions')
-        .update({
-          question_text: q.question_text,
-          correct_answer: q.correct_answer,
-          wrong_answer_1: q.wrong_answer_1,
-          wrong_answer_2: q.wrong_answer_2,
-          wrong_answer_3: q.wrong_answer_3,
-        })
-        .eq('id', q.id);
-
-      if (qError) {
-        setEditError('Book updated but some questions failed. Check Supabase.');
-        setEditSaving(false);
-        return;
-      }
-    }
-
-    setEditSaving(false);
-    setEditSuccess(true);
-    setTimeout(() => {
-      setEditSuccess(false);
-      setEditingBook(null);
-      setEditingQuestions([]);
-    }, 2000);
-    loadData();
-  };
-
-  const handleSaveBook = async (e: React.FormEvent) => {
-    e.preventDefault();
     setError('');
     setSaving(true);
-
-    for (let i = 0; i < questions.length; i++) {
-      const q = questions[i];
-      if (!q.question_text || !q.correct_answer || !q.wrong_answer_1 || !q.wrong_answer_2 || !q.wrong_answer_3) {
-        setError(`Question ${i + 1} is incomplete.`);
-        setSaving(false);
-        return;
-      }
-    }
-
-    const pageCount = parseInt(newBook.page_count);
-    const bounty = Math.round(pageCount * RATE_PER_PAGE * 100) / 100;
-
-    const { data: bookData, error: bookError } = await supabase
+    const bounty = Math.min(editingBook.page_count * RATE_PER_PAGE, 5);
+    const { error: bookError } = await supabase
       .from('books')
-      .insert({
-        title: newBook.title,
-        author: newBook.author,
-        cover_url: newBook.cover_url || null,
-        page_count: pageCount,
-        bounty_amount: bounty,
-        description: newBook.description || null,
-        geniuslink_url: newBook.geniuslink_url || null,
-      })
-      .select()
-      .single();
-
-    if (bookError || !bookData) {
-      setError('Failed to save book. Try again.');
+      .update({ ...editingBook, bounty_amount: bounty })
+      .eq('id', editingBook.id);
+    if (bookError) {
+      setError('Failed to update book.');
       setSaving(false);
       return;
     }
-
-    const questionsToInsert = questions.map((q) => ({
-      book_id: bookData.id,
-      question_text: q.question_text,
-      correct_answer: q.correct_answer,
-      wrong_answer_1: q.wrong_answer_1,
-      wrong_answer_2: q.wrong_answer_2,
-      wrong_answer_3: q.wrong_answer_3,
-    }));
-
-    const { error: questionsError } = await supabase
-      .from('questions')
-      .insert(questionsToInsert);
-
-    if (questionsError) {
-      setError('Book saved but questions failed. Check Supabase.');
-      setSaving(false);
-      return;
+    for (const q of editingQuestions) {
+      await supabase.from('questions').update(q).eq('id', q.id);
     }
-
-    setNewBook(emptyBook);
-    setQuestions(Array(10).fill(null).map(() => ({ ...emptyQuestion })));
-    setSaveSuccess(true);
+    setSuccess('Book updated!');
+    setEditingBook(null);
+    loadData();
+    setTimeout(() => setSuccess(''), 2000);
     setSaving(false);
-    setTimeout(() => setSaveSuccess(false), 3000);
+  };
+
+  const handleDeleteBook = async (bookId: string) => {
+    if (!confirm('Delete this book and all its questions?')) return;
+    await supabase.from('questions').delete().eq('book_id', bookId);
+    await supabase.from('books').delete().eq('id', bookId);
     loadData();
   };
 
@@ -293,557 +199,315 @@ export const Admin = () => {
     loadData();
   };
 
-  const handleDeleteBook = async (id: string) => {
-    if (!confirm('Delete this book and all its questions?')) return;
-    await supabase.from('books').delete().eq('id', id);
+  const handleDeleteWaitlistEntry = async (id: string) => {
+    await supabase.from('waitlist').delete().eq('id', id);
     loadData();
   };
 
-  if (user?.email !== ADMIN_EMAIL) {
-    return (
-      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
-        <p className="text-red-400">Access denied.</p>
-      </div>
-    );
-  }
+  const inputClass =
+    'w-full px-3 py-2 bg-white border border-[#e8e0d5] rounded-lg text-[#2C2C2C] placeholder-[#2C2C2C]/30 focus:outline-none focus:border-[#1B2A4A] transition text-sm';
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+      <div className="min-h-screen bg-[#F5F0E8] flex items-center justify-center">
+        <div className="text-[#1B2A4A] font-medium">Loading...</div>
       </div>
     );
   }
 
+  // ── Edit Mode ──────────────────────────────────────────────────────────────
   if (editingBook) {
-    const previewBounty = Math.round(editingBook.page_count * RATE_PER_PAGE * 100) / 100;
     return (
-      <div className="min-h-screen bg-[#0f0f0f]">
-        <header className="border-b border-gray-800">
+      <div className="min-h-screen bg-[#F5F0E8]">
+        <header className="bg-[#1B2A4A] border-b border-[#142038]">
           <div className="max-w-5xl mx-auto px-4 py-6 flex items-center gap-4">
-            <button
-              onClick={() => { setEditingBook(null); setEditingQuestions([]); }}
-              className="text-gray-400 hover:text-white transition"
-            >
+            <button onClick={() => setEditingBook(null)} className="text-[#F5F0E8]/70 hover:text-[#F5F0E8] transition">
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="font-serif text-3xl text-white">Edit Book</h1>
+            <h1 className="font-serif text-2xl text-[#F5F0E8]">Edit Book</h1>
           </div>
         </header>
-        <main className="max-w-5xl mx-auto px-4 py-12">
-          {editError && (
-            <div className="mb-4 p-3 bg-red-900/20 border border-red-900/50 rounded text-red-400 text-sm">
-              {editError}
+
+        <main className="max-w-5xl mx-auto px-4 py-10 space-y-6">
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {success && <p className="text-[#1B2A4A] text-sm font-medium">{success}</p>}
+
+          {/* Book Details */}
+          <div className="bg-white rounded-lg border border-[#e8e0d5] p-6 space-y-4">
+            <h2 className="font-semibold text-[#1B2A4A]">Book Details</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <input className={inputClass} placeholder="Title" value={editingBook.title}
+                onChange={(e) => setEditingBook({ ...editingBook, title: e.target.value })} />
+              <input className={inputClass} placeholder="Author" value={editingBook.author}
+                onChange={(e) => setEditingBook({ ...editingBook, author: e.target.value })} />
+              <input className={inputClass} placeholder="Cover URL" value={editingBook.cover_url || ''}
+                onChange={(e) => setEditingBook({ ...editingBook, cover_url: e.target.value })} />
+              <div>
+                <input className={inputClass} placeholder="Page Count" type="number" value={editingBook.page_count}
+                  onChange={(e) => setEditingBook({ ...editingBook, page_count: parseInt(e.target.value) || 0 })} />
+                <p className="text-[#2C2C2C]/50 text-xs mt-1">
+                  Bounty: ${Math.min(editingBook.page_count * RATE_PER_PAGE, 5).toFixed(2)}
+                </p>
+              </div>
+              <input className={inputClass} placeholder="Geniuslink URL" value={editingBook.geniuslink_url || ''}
+                onChange={(e) => setEditingBook({ ...editingBook, geniuslink_url: e.target.value })} />
+              <textarea className={inputClass} placeholder="Description" rows={3} value={editingBook.description || ''}
+                onChange={(e) => setEditingBook({ ...editingBook, description: e.target.value })} />
             </div>
-          )}
-          {editSuccess && (
-            <div className="mb-4 p-3 bg-green-900/20 border border-green-900/50 rounded text-green-400 text-sm">
-              Saved successfully!
-            </div>
-          )}
-          <form onSubmit={handleSaveEdit}>
-            <div className="bg-[#1a1a1a] rounded-lg p-8 border border-gray-800 mb-8">
-              <h2 className="text-xl font-semibold text-white mb-6">Book Details</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Title</label>
-                  <input
-                    type="text"
-                    value={editingBook.title}
-                    onChange={(e) => setEditingBook({ ...editingBook, title: e.target.value })}
-                    className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Author</label>
-                  <input
-                    type="text"
-                    value={editingBook.author}
-                    onChange={(e) => setEditingBook({ ...editingBook, author: e.target.value })}
-                    className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Cover URL</label>
-                  <input
-                    type="text"
-                    value={editingBook.cover_url || ''}
-                    onChange={(e) => setEditingBook({ ...editingBook, cover_url: e.target.value })}
-                    className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Page Count</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={editingBook.page_count}
-                    onChange={(e) => setEditingBook({ ...editingBook, page_count: parseInt(e.target.value) || 0 })}
-                    className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500"
-                    required
-                  />
-                  {editingBook.page_count > 0 && (
-                    <p className="text-green-400 text-xs mt-1">
-                      Bounty: ${previewBounty.toFixed(2)} ({editingBook.page_count} pages × $0.0085)
-                    </p>
-                  )}
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
-                  <textarea
-                    value={editingBook.description || ''}
-                    onChange={(e) => setEditingBook({ ...editingBook, description: e.target.value })}
-                    rows={4}
-                    className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 resize-none"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Geniuslink URL</label>
-                  <input
-                    type="text"
-                    value={editingBook.geniuslink_url || ''}
-                    onChange={(e) => setEditingBook({ ...editingBook, geniuslink_url: e.target.value })}
-                    placeholder="https://geni.us/..."
-                    className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500"
-                  />
+          </div>
+
+          {/* Questions */}
+          <div className="bg-white rounded-lg border border-[#e8e0d5] p-6 space-y-6">
+            <h2 className="font-semibold text-[#1B2A4A]">Questions</h2>
+            {editingQuestions.map((q, i) => (
+              <div key={q.id} className="border border-[#e8e0d5] rounded-lg p-4 space-y-3">
+                <p className="text-[#1B2A4A] text-sm font-medium">Question {i + 1}</p>
+                <input className={inputClass} placeholder="Question" value={q.question_text}
+                  onChange={(e) => {
+                    const updated = [...editingQuestions];
+                    updated[i] = { ...updated[i], question_text: e.target.value };
+                    setEditingQuestions(updated);
+                  }} />
+                <input className="w-full px-3 py-2 bg-[#D4A843]/10 border border-[#D4A843]/40 rounded-lg text-[#2C2C2C] placeholder-[#2C2C2C]/30 focus:outline-none focus:border-[#D4A843] transition text-sm"
+                  placeholder="Correct Answer" value={q.correct_answer}
+                  onChange={(e) => {
+                    const updated = [...editingQuestions];
+                    updated[i] = { ...updated[i], correct_answer: e.target.value };
+                    setEditingQuestions(updated);
+                  }} />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {(['wrong_answer_1', 'wrong_answer_2', 'wrong_answer_3'] as const).map((field, wi) => (
+                    <input key={field} className={inputClass} placeholder={`Wrong Answer ${wi + 1}`} value={q[field]}
+                      onChange={(e) => {
+                        const updated = [...editingQuestions];
+                        updated[i] = { ...updated[i], [field]: e.target.value };
+                        setEditingQuestions(updated);
+                      }} />
+                  ))}
                 </div>
               </div>
-            </div>
-            <div className="bg-[#1a1a1a] rounded-lg p-8 border border-gray-800 mb-8">
-              <h2 className="text-xl font-semibold text-white mb-6">Questions</h2>
-              <div className="space-y-6">
-                {editingQuestions.map((q, index) => (
-                  <div key={q.id} className="bg-[#0f0f0f] rounded-lg p-6 border border-gray-700">
-                    <p className="text-gray-400 text-sm font-medium mb-4">Question {index + 1}</p>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">Question</label>
-                        <input
-                          type="text"
-                          value={q.question_text}
-                          onChange={(e) => {
-                            const updated = [...editingQuestions];
-                            updated[index] = { ...updated[index], question_text: e.target.value };
-                            setEditingQuestions(updated);
-                          }}
-                          className="w-full px-3 py-2 bg-[#1a1a1a] border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-gray-500"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-green-500 mb-1">Correct Answer</label>
-                        <input
-                          type="text"
-                          value={q.correct_answer}
-                          onChange={(e) => {
-                            const updated = [...editingQuestions];
-                            updated[index] = { ...updated[index], correct_answer: e.target.value };
-                            setEditingQuestions(updated);
-                          }}
-                          className="w-full px-3 py-2 bg-[#1a1a1a] border border-green-900/50 rounded text-white text-sm focus:outline-none focus:border-green-700"
-                          required
-                        />
-                      </div>
-                      <div className="grid grid-cols-3 gap-3">
-                        {[1, 2, 3].map((n) => (
-                          <div key={n}>
-                            <label className="block text-xs text-gray-500 mb-1">Wrong Answer {n}</label>
-                            <input
-                              type="text"
-                              value={q[`wrong_answer_${n}` as keyof Question] as string}
-                              onChange={(e) => {
-                                const updated = [...editingQuestions];
-                                updated[index] = { ...updated[index], [`wrong_answer_${n}`]: e.target.value };
-                                setEditingQuestions(updated);
-                              }}
-                              className="w-full px-3 py-2 bg-[#1a1a1a] border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-gray-500"
-                              required
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <button
-              type="submit"
-              disabled={editSaving}
-              className="w-full bg-white text-black font-medium py-3 rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {editSaving ? 'Saving...' : 'Save Changes'}
-            </button>
-          </form>
+            ))}
+          </div>
+
+          <button onClick={handleSaveEdit} disabled={saving}
+            className="w-full bg-[#1B2A4A] hover:bg-[#142038] text-[#F5F0E8] font-medium py-3 rounded-lg transition disabled:opacity-50">
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
         </main>
       </div>
     );
   }
 
+  // ── Main Admin Panel ───────────────────────────────────────────────────────
+  const pendingCashouts = cashouts.filter((c) => c.status === 'pending').length;
+
   return (
-    <div className="min-h-screen bg-[#0f0f0f]">
-      <header className="border-b border-gray-800">
+    <div className="min-h-screen bg-[#F5F0E8]">
+      <header className="bg-[#1B2A4A] border-b border-[#142038]">
         <div className="max-w-5xl mx-auto px-4 py-6 flex items-center gap-4">
-          <button
-            onClick={() => navigateTo('/')}
-            className="text-gray-400 hover:text-white transition"
-          >
+          <button onClick={() => navigateTo('/')} className="text-[#F5F0E8]/70 hover:text-[#F5F0E8] transition">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="font-serif text-3xl text-white">Admin Panel</h1>
+          <h1 className="font-serif text-2xl text-[#F5F0E8]">Admin Panel</h1>
         </div>
       </header>
-      <main className="max-w-5xl mx-auto px-4 py-12">
-        <div className="flex gap-4 mb-8">
-          <button
-            onClick={() => setActiveTab('books')}
-            className={`px-6 py-2 rounded-lg font-medium transition ${
-              activeTab === 'books'
-                ? 'bg-white text-black'
-                : 'bg-[#1a1a1a] text-gray-300 border border-gray-700 hover:border-gray-500'
-            }`}
-          >
-            Books & Questions
-          </button>
-          <button
-            onClick={() => setActiveTab('cashouts')}
-            className={`px-6 py-2 rounded-lg font-medium transition ${
-              activeTab === 'cashouts'
-                ? 'bg-white text-black'
-                : 'bg-[#1a1a1a] text-gray-300 border border-gray-700 hover:border-gray-500'
-            }`}
-          >
-            Cashout Requests ({cashouts.filter(c => c.status === 'pending').length} pending)
-          </button>
-          <button
-            onClick={() => setActiveTab('waitlist')}
-            className={`px-6 py-2 rounded-lg font-medium transition ${
-              activeTab === 'waitlist'
-                ? 'bg-white text-black'
-                : 'bg-[#1a1a1a] text-gray-300 border border-gray-700 hover:border-gray-500'
-            }`}
-          >
-            Waitlist ({waitlist.length})
-          </button>
+
+      <main className="max-w-5xl mx-auto px-4 py-10">
+        {success && <p className="text-[#1B2A4A] text-sm font-medium mb-4">{success}</p>}
+        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+
+        {/* Tabs */}
+        <div className="flex gap-3 mb-8 flex-wrap">
+          {[
+            { key: 'books', label: `Books & Questions (${books.length})` },
+            { key: 'cashouts', label: `Cashout Requests (${pendingCashouts} pending)` },
+            { key: 'waitlist', label: `Waitlist (${waitlist.length})` },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key as typeof activeTab)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                activeTab === key
+                  ? 'bg-[#1B2A4A] text-[#F5F0E8]'
+                  : 'bg-white text-[#2C2C2C] border border-[#e8e0d5] hover:border-[#1B2A4A]'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
+        {/* ── Books Tab ── */}
         {activeTab === 'books' && (
-          <div>
-            <div className="mb-10">
-              <h2 className="text-xl font-semibold text-white mb-4">
-                Current Books ({books.length})
-              </h2>
-              <div className="space-y-3">
-                {books.map((book) => (
-                  <div
-                    key={book.id}
-                    className="bg-[#1a1a1a] rounded-lg p-4 border border-gray-800 flex justify-between items-center"
-                  >
-                    <div className="flex items-center gap-4">
-                      {book.cover_url && (
-                        <img
-                          src={book.cover_url}
-                          alt={book.title}
-                          className="w-10 h-14 object-cover rounded"
-                        />
-                      )}
-                      <div>
-                        <p className="text-white font-medium">{book.title}</p>
-                        <p className="text-gray-400 text-sm">{book.author}</p>
-                        <p className="text-gray-500 text-xs">{book.page_count} pages</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-green-400 font-medium">
-                        ${book.bounty_amount.toFixed(2)}
-                      </span>
-                      <button
-                        onClick={() => handleEditBook(book)}
-                        className="text-blue-400 hover:text-blue-300 transition"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteBook(book.id)}
-                        className="text-red-400 hover:text-red-300 transition"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+          <div className="space-y-4">
+            {books.map((book) => (
+              <div key={book.id} className="bg-white rounded-lg border border-[#e8e0d5] p-4 flex items-center gap-4">
+                {book.cover_url && (
+                  <img src={book.cover_url} alt={book.title} className="w-12 h-16 object-cover rounded" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-[#1B2A4A] truncate">{book.title}</p>
+                  <p className="text-[#2C2C2C]/50 text-sm">{book.author}</p>
+                  <p className="text-[#2C2C2C]/40 text-xs">{book.page_count} pages · Bounty: ${book.bounty_amount.toFixed(2)}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => handleEditBook(book)}
+                    className="p-2 text-[#1B2A4A]/60 hover:text-[#1B2A4A] hover:bg-[#F5F0E8] rounded-lg transition">
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => handleDeleteBook(book.id)}
+                    className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </div>
+            ))}
 
-            <div className="bg-[#1a1a1a] rounded-lg p-8 border border-gray-800">
-              <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
-                <Plus className="w-5 h-5" />
-                Add New Book
-              </h2>
-              {error && (
-                <div className="mb-4 p-3 bg-red-900/20 border border-red-900/50 rounded text-red-400 text-sm">
-                  {error}
+            {/* Add New Book */}
+            {!showAddForm ? (
+              <button onClick={() => setShowAddForm(true)}
+                className="w-full border-2 border-dashed border-[#e8e0d5] hover:border-[#1B2A4A] rounded-lg py-4 text-[#2C2C2C]/50 hover:text-[#1B2A4A] transition flex items-center justify-center gap-2 text-sm">
+                <Plus className="w-4 h-4" /> Add New Book
+              </button>
+            ) : (
+              <div className="bg-white rounded-lg border border-[#e8e0d5] p-6 space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="font-semibold text-[#1B2A4A]">New Book</h2>
+                  <button onClick={() => setShowAddForm(false)} className="text-[#2C2C2C]/40 hover:text-[#2C2C2C] transition">
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
-              )}
-              {saveSuccess && (
-                <div className="mb-4 p-3 bg-green-900/20 border border-green-900/50 rounded text-green-400 text-sm">
-                  Book and questions saved successfully!
-                </div>
-              )}
-              <form onSubmit={handleSaveBook}>
-                <div className="grid grid-cols-2 gap-4 mb-6">
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <input className={inputClass} placeholder="Title" value={newBook.title}
+                    onChange={(e) => setNewBook({ ...newBook, title: e.target.value })} />
+                  <input className={inputClass} placeholder="Author" value={newBook.author}
+                    onChange={(e) => setNewBook({ ...newBook, author: e.target.value })} />
+                  <input className={inputClass} placeholder="Cover URL" value={newBook.cover_url}
+                    onChange={(e) => setNewBook({ ...newBook, cover_url: e.target.value })} />
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Title</label>
-                    <input
-                      type="text"
-                      value={newBook.title}
-                      onChange={(e) => setNewBook({ ...newBook, title: e.target.value })}
-                      className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Author</label>
-                    <input
-                      type="text"
-                      value={newBook.author}
-                      onChange={(e) => setNewBook({ ...newBook, author: e.target.value })}
-                      className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Cover URL</label>
-                    <input
-                      type="text"
-                      value={newBook.cover_url}
-                      onChange={(e) => setNewBook({ ...newBook, cover_url: e.target.value })}
-                      placeholder="https://covers.openlibrary.org/..."
-                      className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Page Count</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={newBook.page_count}
-                      onChange={(e) => setNewBook({ ...newBook, page_count: e.target.value })}
-                      className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500"
-                      required
-                    />
-                    {newBook.page_count && parseInt(newBook.page_count) > 0 && (
-                      <p className="text-green-400 text-xs mt-1">
-                        Bounty: ${(parseInt(newBook.page_count) * RATE_PER_PAGE).toFixed(2)} ({newBook.page_count} pages × $0.0085)
+                    <input className={inputClass} placeholder="Page Count" type="number" value={newBook.page_count}
+                      onChange={(e) => setNewBook({ ...newBook, page_count: e.target.value })} />
+                    {newBook.page_count && (
+                      <p className="text-[#2C2C2C]/50 text-xs mt-1">
+                        Bounty: ${Math.min(parseFloat(newBook.page_count) * RATE_PER_PAGE, 5).toFixed(2)}
                       </p>
                     )}
                   </div>
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
-                    <textarea
-                      value={newBook.description}
-                      onChange={(e) => setNewBook({ ...newBook, description: e.target.value })}
-                      rows={4}
-                      placeholder="Brief description of the book..."
-                      className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 resize-none"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Geniuslink URL</label>
-                    <input
-                      type="text"
-                      value={newBook.geniuslink_url}
-                      onChange={(e) => setNewBook({ ...newBook, geniuslink_url: e.target.value })}
-                      placeholder="https://geni.us/..."
-                      className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500"
-                    />
-                  </div>
+                  <input className={inputClass} placeholder="Geniuslink URL" value={newBook.geniuslink_url}
+                    onChange={(e) => setNewBook({ ...newBook, geniuslink_url: e.target.value })} />
+                  <textarea className={inputClass} placeholder="Description" rows={3} value={newBook.description}
+                    onChange={(e) => setNewBook({ ...newBook, description: e.target.value })} />
                 </div>
 
-                <h3 className="text-lg font-medium text-white mb-4">Questions (10 required)</h3>
-                <div className="space-y-6">
-                  {questions.map((q, index) => (
-                    <div key={index} className="bg-[#0f0f0f] rounded-lg p-6 border border-gray-700">
-                      <p className="text-gray-400 text-sm font-medium mb-4">Question {index + 1}</p>
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">Question</label>
-                          <input
-                            type="text"
-                            value={q.question_text}
+                <div className="space-y-4">
+                  <h3 className="font-medium text-[#1B2A4A] text-sm">Questions (10 required)</h3>
+                  {questions.map((q, i) => (
+                    <div key={i} className="border border-[#e8e0d5] rounded-lg p-4 space-y-3">
+                      <p className="text-[#1B2A4A] text-sm font-medium">Question {i + 1}</p>
+                      <input className={inputClass} placeholder="Question" value={q.question_text}
+                        onChange={(e) => {
+                          const updated = [...questions];
+                          updated[i] = { ...updated[i], question_text: e.target.value };
+                          setQuestions(updated);
+                        }} />
+                      <input className="w-full px-3 py-2 bg-[#D4A843]/10 border border-[#D4A843]/40 rounded-lg text-[#2C2C2C] placeholder-[#2C2C2C]/30 focus:outline-none focus:border-[#D4A843] transition text-sm"
+                        placeholder="Correct Answer" value={q.correct_answer}
+                        onChange={(e) => {
+                          const updated = [...questions];
+                          updated[i] = { ...updated[i], correct_answer: e.target.value };
+                          setQuestions(updated);
+                        }} />
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {(['wrong_answer_1', 'wrong_answer_2', 'wrong_answer_3'] as const).map((field, wi) => (
+                          <input key={field} className={inputClass} placeholder={`Wrong Answer ${wi + 1}`} value={q[field]}
                             onChange={(e) => {
                               const updated = [...questions];
-                              updated[index] = { ...updated[index], question_text: e.target.value };
+                              updated[i] = { ...updated[i], [field]: e.target.value };
                               setQuestions(updated);
-                            }}
-                            className="w-full px-3 py-2 bg-[#1a1a1a] border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-gray-500"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-green-500 mb-1">Correct Answer</label>
-                          <input
-                            type="text"
-                            value={q.correct_answer}
-                            onChange={(e) => {
-                              const updated = [...questions];
-                              updated[index] = { ...updated[index], correct_answer: e.target.value };
-                              setQuestions(updated);
-                            }}
-                            className="w-full px-3 py-2 bg-[#1a1a1a] border border-green-900/50 rounded text-white text-sm focus:outline-none focus:border-green-700"
-                            required
-                          />
-                        </div>
-                        <div className="grid grid-cols-3 gap-3">
-                          {[1, 2, 3].map((n) => (
-                            <div key={n}>
-                              <label className="block text-xs text-gray-500 mb-1">Wrong Answer {n}</label>
-                              <input
-                                type="text"
-                                value={q[`wrong_answer_${n}` as keyof NewQuestion]}
-                                onChange={(e) => {
-                                  const updated = [...questions];
-                                  updated[index] = { ...updated[index], [`wrong_answer_${n}`]: e.target.value };
-                                  setQuestions(updated);
-                                }}
-                                className="w-full px-3 py-2 bg-[#1a1a1a] border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-gray-500"
-                                required
-                              />
-                            </div>
-                          ))}
-                        </div>
+                            }} />
+                        ))}
                       </div>
                     </div>
                   ))}
                 </div>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="mt-8 w-full bg-white text-black font-medium py-3 rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+
+                {error && <p className="text-red-500 text-sm">{error}</p>}
+                <button onClick={handleSaveBook} disabled={saving}
+                  className="w-full bg-[#1B2A4A] hover:bg-[#142038] text-[#F5F0E8] font-medium py-3 rounded-lg transition disabled:opacity-50">
                   {saving ? 'Saving...' : 'Save Book & Questions'}
                 </button>
-              </form>
-            </div>
+              </div>
+            )}
           </div>
         )}
 
+        {/* ── Cashouts Tab ── */}
         {activeTab === 'cashouts' && (
-          <div>
-            <h2 className="text-xl font-semibold text-white mb-4">Cashout Requests</h2>
-            {markError && (
-              <div className="mb-4 p-3 bg-red-900/20 border border-red-900/50 rounded text-red-400 text-sm">
-                {markError}
-              </div>
+          <div className="space-y-3">
+            {cashouts.length === 0 && (
+              <p className="text-[#2C2C2C]/50 text-sm">No cashout requests yet.</p>
             )}
-            {cashouts.length === 0 ? (
-              <div className="bg-[#1a1a1a] rounded-lg p-12 border border-gray-800 text-center">
-                <p className="text-gray-400">No cashout requests yet.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {cashouts.map((req) => (
-                  <div key={req.id} className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <p className="text-white font-medium">{req.profiles?.email}</p>
-                        <p className="text-gray-400 text-sm mt-0.5">
-                          {new Date(req.created_at).toLocaleDateString()} at{' '}
-                          {new Date(req.created_at).toLocaleTimeString()}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-white text-xl font-semibold">${req.amount.toFixed(2)}</p>
-                        <p className={`text-xs mt-1 ${
-                          req.status === 'completed' ? 'text-green-400' :
-                          req.status === 'failed' ? 'text-red-400' : 'text-yellow-400'
-                        }`}>
-                          {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="bg-[#0f0f0f] rounded p-3 mb-4 text-sm">
-                      <p className="text-gray-400">
-                        <span className="text-gray-300 font-medium">Payout type:</span>{' '}
-                        {req.payout_type === 'gift_card'
-                          ? `Gift Card - ${req.gift_card_brand}`
-                          : req.payout_type === 'paypal'
-                          ? `PayPal - ${req.payout_details}`
-                          : `Venmo - ${req.payout_details}`}
-                      </p>
-                    </div>
-                    {req.status === 'pending' && (
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => req.payout_type === 'gift_card'
-                            ? handleMarkAsSent(req.id)
-                            : handleUpdateCashoutStatus(req.id, 'completed')
-                          }
-                          disabled={markingAsSent === req.id}
-                          className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Check className="w-4 h-4" />
-                          {markingAsSent === req.id
-                            ? 'Updating...'
-                            : req.payout_type === 'gift_card'
-                            ? 'Mark as Sent'
-                            : 'Mark Fulfilled'}
-                        </button>
-                        <button
-                          onClick={() => handleUpdateCashoutStatus(req.id, 'failed')}
-                          className="flex items-center gap-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-sm font-medium px-4 py-2 rounded-lg border border-red-900/50 transition"
-                        >
-                          <X className="w-4 h-4" />
-                          Mark Failed
-                        </button>
-                      </div>
+            {cashouts.map((c) => (
+              <div key={c.id} className="bg-white rounded-lg border border-[#e8e0d5] p-4">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div>
+                    <p className="font-medium text-[#1B2A4A] text-sm">{c.profiles?.email}</p>
+                    <p className="text-[#2C2C2C]/50 text-xs mt-0.5">
+                      {new Date(c.created_at).toLocaleString()} · {c.payout_type}
+                    </p>
+                    <p className="text-[#2C2C2C]/60 text-xs mt-1">{c.payout_details}</p>
+                    {c.gift_card_brand && (
+                      <p className="text-[#2C2C2C]/50 text-xs">Brand: {c.gift_card_brand}</p>
                     )}
                   </div>
-                ))}
+                  <div className="flex items-center gap-3">
+                    <span className="text-[#1B2A4A] font-semibold">${c.amount.toFixed(2)}</span>
+                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                      c.status === 'completed' ? 'bg-green-100 text-green-700' :
+                      c.status === 'failed' ? 'bg-red-100 text-red-600' :
+                      'bg-[#D4A843]/15 text-[#1B2A4A]'
+                    }`}>
+                      {c.status}
+                    </span>
+                  </div>
+                </div>
+                {c.status === 'pending' && (
+                  <div className="flex gap-2 mt-3">
+                    <button onClick={() => handleUpdateCashoutStatus(c.id, 'completed')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 text-xs font-medium rounded-lg transition">
+                      <Check className="w-3.5 h-3.5" /> Mark Sent
+                    </button>
+                    <button onClick={() => handleUpdateCashoutStatus(c.id, 'failed')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-600 text-xs font-medium rounded-lg transition">
+                      <X className="w-3.5 h-3.5" /> Mark Failed
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
+            ))}
           </div>
         )}
 
+        {/* ── Waitlist Tab ── */}
         {activeTab === 'waitlist' && (
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-white">
-                Waitlist ({waitlist.length} {waitlist.length === 1 ? 'person' : 'people'})
-              </h2>
-            </div>
-            {waitlist.length === 0 ? (
-              <div className="bg-[#1a1a1a] rounded-lg p-12 border border-gray-800 text-center">
-                <p className="text-gray-400">No waitlist signups yet.</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {waitlist.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="bg-[#1a1a1a] rounded-lg px-5 py-4 border border-gray-800 flex justify-between items-center"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Mail className="w-4 h-4 text-gray-500" />
-                      <span className="text-white">{entry.email}</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-gray-500 text-sm">
-                        {new Date(entry.created_at).toLocaleDateString()}
-                      </span>
-                      <button
-                        onClick={() => handleDeleteWaitlistEntry(entry.id)}
-                        className="text-red-400 hover:text-red-300 transition"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+          <div className="space-y-3">
+            {waitlist.length === 0 && (
+              <p className="text-[#2C2C2C]/50 text-sm">No waitlist entries yet.</p>
             )}
+            {waitlist.map((entry) => (
+              <div key={entry.id} className="bg-white rounded-lg border border-[#e8e0d5] p-4 flex items-center gap-3">
+                <Mail className="w-4 h-4 text-[#1B2A4A]/40 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[#1B2A4A] text-sm font-medium truncate">{entry.email}</p>
+                  <p className="text-[#2C2C2C]/40 text-xs">{new Date(entry.created_at).toLocaleDateString()}</p>
+                </div>
+                <button onClick={() => handleDeleteWaitlistEntry(entry.id)}
+                  className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </main>
