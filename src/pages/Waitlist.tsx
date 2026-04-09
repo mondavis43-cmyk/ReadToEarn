@@ -62,7 +62,7 @@ export const Waitlist = () => {
             </div>
             <h3 className="text-[#1B2A4A] font-semibold mb-2">1. Pick a book</h3>
             <p className="text-[#2C2C2C]/60 text-sm">
-              Browse our library of classic literature and sponsored titles. Every book shows its payout upfront — no surprises.
+              Browse our library of classic literature, popular new releases and indie titles. Every book shows its payout upfront — no surprises.
             </p>
           </div>
           <div className="bg-white rounded-lg p-6 border border-[#e8e0d5]">
