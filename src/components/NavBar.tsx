@@ -1,10 +1,11 @@
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
-import { BookOpen, User, Gift, BookMarked, PenLine, HelpCircle, Menu, X } from 'lucide-react';
+import { BookOpen, User, Gift, BookMarked, PenLine, HelpCircle, Tag, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
 const navLinks = [
   { label: 'Library', icon: BookOpen, page: '/' },
+  { label: 'Pricing', icon: Tag, page: 'pricing' },
   { label: 'Profile', icon: User, page: 'profile' },
   { label: 'Refer', icon: Gift, page: 'refer' },
   { label: 'Request a Book', icon: BookMarked, page: 'request-book' },
@@ -70,7 +71,6 @@ export const NavBar = () => {
           </div>
         )}
       </nav>
-      {/* Spacer so content doesn't hide under fixed bar */}
       <div className="h-14" />
     </>
   );
