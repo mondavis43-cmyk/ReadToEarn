@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
-import { Check } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
+import { Check, Sun, Moon } from 'lucide-react';
 
 interface Book {
   id: number;
@@ -15,6 +16,7 @@ interface Book {
 export const Home = () => {
   const { user } = useAuth();
   const { navigateTo } = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const [books, setBooks] = useState<Book[]>([]);
   const [completedBookIds, setCompletedBookIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -31,14 +33,10 @@ export const Home = () => {
       supabase.from('completed_books').select('book_id').eq('user_id', user.id),
     ]);
 
-    if (booksResult.data) {
-      setBooks(booksResult.data);
-    }
-
+    if (booksResult.data) setBooks(booksResult.data);
     if (completedResult.data) {
       setCompletedBookIds(new Set(completedResult.data.map((cb) => cb.book_id)));
     }
-
     setLoading(false);
   };
 
@@ -49,18 +47,25 @@ export const Home = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F5F0E8] flex items-center justify-center">
-        <div className="text-[#1B2A4A] font-medium">Loading...</div>
+      <div className="min-h-screen bg-[#F5F0E8] dark:bg-[#0f0f0f] flex items-center justify-center">
+        <div className="text-[#1B2A4A] dark:text-[#F5F0E8] font-medium">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F0E8]">
-      <header className="bg-[#1B2A4A] border-b border-[#142038]">
+    <div className="min-h-screen bg-[#F5F0E8] dark:bg-[#0f0f0f]">
+      <header className="bg-[#1B2A4A] dark:bg-[#111111] border-b border-[#142038] dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
           <h1 className="font-serif text-3xl text-[#F5F0E8]">Read to Earn</h1>
-          <div className="flex gap-4">
+          <div className="flex gap-4 items-center">
+            <button
+              onClick={toggleTheme}
+              className="text-[#F5F0E8]/60 hover:text-[#F5F0E8] transition"
+              aria-label="Toggle dark mode"
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
             <button
               onClick={() => navigateTo('/profile')}
               className="text-[#F5F0E8]/80 hover:text-[#F5F0E8] transition"
@@ -84,8 +89,10 @@ export const Home = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-12">
-        <h2 className="text-2xl font-semibold text-[#1B2A4A] mb-2">Book Library</h2>
-        <p className="text-[#2C2C2C]/60 mb-8">
+        <h2 className="text-2xl font-semibold text-[#1B2A4A] dark:text-[#F5F0E8] mb-2">
+          Book Library
+        </h2>
+        <p className="text-[#2C2C2C]/60 dark:text-gray-400 mb-8">
           Read classic literature and take quizzes to earn rewards
         </p>
 
@@ -97,9 +104,9 @@ export const Home = () => {
               <div
                 key={book.id}
                 onClick={() => navigateTo(`/book/${book.id}`)}
-                className="bg-white rounded-lg overflow-hidden border border-[#e8e0d5] hover:border-[#D4A843] transition group cursor-pointer shadow-sm hover:shadow-md"
+                className="bg-white dark:bg-[#1a1a1a] rounded-lg overflow-hidden border border-[#e8e0d5] dark:border-gray-800 hover:border-[#D4A843] dark:hover:border-[#D4A843] transition group cursor-pointer shadow-sm hover:shadow-md"
               >
-                <div className="aspect-[2/3] relative overflow-hidden bg-[#ede8e0]">
+                <div className="aspect-[2/3] relative overflow-hidden bg-[#ede8e0] dark:bg-[#2a2a2a]">
                   {book.cover_url && (
                     <img
                       src={book.cover_url}
@@ -115,10 +122,10 @@ export const Home = () => {
                 </div>
 
                 <div className="p-4">
-                  <h3 className="font-serif text-lg text-[#2C2C2C] mb-1 line-clamp-2">
+                  <h3 className="font-serif text-lg text-[#2C2C2C] dark:text-[#F5F0E8] mb-1 line-clamp-2">
                     {book.title}
                   </h3>
-                  <p className="text-[#2C2C2C]/50 text-sm mb-4">{book.author}</p>
+                  <p className="text-[#2C2C2C]/50 dark:text-gray-500 text-sm mb-4">{book.author}</p>
 
                   {isCompleted ? (
                     <div className="flex items-center justify-center gap-2 py-2.5 bg-[#D4A843]/10 border border-[#D4A843]/40 rounded-lg text-[#D4A843] text-sm font-medium">
@@ -126,7 +133,7 @@ export const Home = () => {
                       Completed
                     </div>
                   ) : (
-                    <div className="w-full bg-[#1B2A4A] text-[#F5F0E8] font-medium py-2.5 rounded-lg text-center text-sm hover:bg-[#142038] transition">
+                    <div className="w-full bg-[#1B2A4A] dark:bg-[#D4A843] dark:text-[#1B2A4A] text-[#F5F0E8] font-medium py-2.5 rounded-lg text-center text-sm hover:bg-[#142038] dark:hover:bg-[#bf9538] transition">
                       View Book
                     </div>
                   )}
