@@ -1,6 +1,6 @@
 import { BookOpen, Users, Star, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useNavigate } from '../hooks/useNavigate';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 export const Authors = () => {
   const { navigateTo } = useNavigate();
