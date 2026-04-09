@@ -15,6 +15,7 @@ import { Refer } from '../pages/Refer';
 import { Authors } from '../pages/Authors';
 import { AuthorSubmit } from '../pages/AuthorSubmit';
 import { FAQ } from '../pages/FAQ';
+import { Pricing } from '../pages/Pricing';
 import { NavBar } from '../components/NavBar';
 
 const WAITLIST_MODE = true;
@@ -46,21 +47,18 @@ export const Router = () => {
     );
   }
 
-  // Always accessible, no NavBar
   if (route === '/admin') return <Admin />;
   if (route === '/reset-password') return <ResetPassword />;
 
-  // Waitlist mode - no NavBar
   if (WAITLIST_MODE && !user) return <Waitlist />;
 
-  // Auth pages - no NavBar
   if (!user && route === '/signup') return <Signup />;
   if (!user) return <Login />;
 
-  // Authenticated routes - all get NavBar
   return (
     <>
       <NavBar />
+      {route === '/pricing' && <Pricing />}
       {route === '/profile' && <Profile />}
       {route === '/cashout' && <Cashout />}
       {route === '/refer' && <Refer />}
@@ -70,7 +68,7 @@ export const Router = () => {
       {route === '/faq' && <FAQ />}
       {route.startsWith('/quiz/') && <Quiz bookId={route.split('/')[2]} />}
       {route.startsWith('/book/') && <BookPage />}
-      {![ '/profile', '/cashout', '/refer', '/request-book', '/authors', '/faq', '/author-submit' ].includes(route) &&
+      {![ '/pricing', '/profile', '/cashout', '/refer', '/request-book', '/authors', '/faq', '/author-submit' ].includes(route) &&
   !route.startsWith('/quiz/') &&
   !route.startsWith('/book/') && <Home />}
     </>
