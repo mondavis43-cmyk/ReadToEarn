@@ -50,14 +50,14 @@ export const Home = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F5F0E8] flex items-center justify-center">
-        <div className="text-[#800020] font-medium">Loading...</div>
+        <div className="text-[#1B2A4A] font-medium">Loading...</div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-[#F5F0E8]">
-      <header className="bg-[#800020] border-b border-[#6a001a]">
+      <header className="bg-[#1B2A4A] border-b border-[#142038]">
         <div className="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
           <h1 className="font-serif text-3xl text-[#F5F0E8]">Read to Earn</h1>
           <div className="flex gap-4">
@@ -69,7 +69,7 @@ export const Home = () => {
             </button>
             <button
               onClick={() => navigateTo('/cashout')}
-              className="bg-[#C9A84C] hover:bg-[#b8963e] text-[#800020] text-sm font-semibold px-4 py-2 rounded-lg transition"
+              className="bg-[#D4A843] hover:bg-[#bf9538] text-[#1B2A4A] text-sm font-semibold px-4 py-2 rounded-lg transition"
             >
               Cash Out
             </button>
@@ -84,7 +84,7 @@ export const Home = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-12">
-        <h2 className="text-2xl font-semibold text-[#800020] mb-2">Book Library</h2>
+        <h2 className="text-2xl font-semibold text-[#1B2A4A] mb-2">Book Library</h2>
         <p className="text-[#2C2C2C]/60 mb-8">
           Read classic literature and take quizzes to earn rewards
         </p>
@@ -97,7 +97,7 @@ export const Home = () => {
               <div
                 key={book.id}
                 onClick={() => navigateTo(`/book/${book.id}`)}
-                className="bg-white rounded-lg overflow-hidden border border-[#e8e0d5] hover:border-[#C9A84C] transition group cursor-pointer shadow-sm hover:shadow-md"
+                className="bg-white rounded-lg overflow-hidden border border-[#e8e0d5] hover:border-[#D4A843] transition group cursor-pointer shadow-sm hover:shadow-md"
               >
                 <div className="aspect-[2/3] relative overflow-hidden bg-[#ede8e0]">
                   {book.cover_url && (
@@ -108,7 +108,7 @@ export const Home = () => {
                     />
                   )}
                   <div className="absolute top-3 right-3">
-                    <div className="bg-[#C9A84C] text-[#800020] text-xs font-semibold px-3 py-1.5 rounded-full">
+                    <div className="bg-[#D4A843] text-[#1B2A4A] text-xs font-semibold px-3 py-1.5 rounded-full">
                       Earn ${book.bounty_amount.toFixed(2)}
                     </div>
                   </div>
@@ -121,12 +121,12 @@ export const Home = () => {
                   <p className="text-[#2C2C2C]/50 text-sm mb-4">{book.author}</p>
 
                   {isCompleted ? (
-                    <div className="flex items-center justify-center gap-2 py-2.5 bg-[#C9A84C]/10 border border-[#C9A84C]/40 rounded-lg text-[#C9A84C] text-sm font-medium">
+                    <div className="flex items-center justify-center gap-2 py-2.5 bg-[#D4A843]/10 border border-[#D4A843]/40 rounded-lg text-[#D4A843] text-sm font-medium">
                       <Check className="w-4 h-4" />
                       Completed
                     </div>
                   ) : (
-                    <div className="w-full bg-[#800020] text-[#F5F0E8] font-medium py-2.5 rounded-lg text-center text-sm hover:bg-[#6a001a] transition">
+                    <div className="w-full bg-[#1B2A4A] text-[#F5F0E8] font-medium py-2.5 rounded-lg text-center text-sm hover:bg-[#142038] transition">
                       View Book
                     </div>
                   )}
