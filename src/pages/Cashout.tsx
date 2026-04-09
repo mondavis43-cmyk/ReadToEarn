@@ -62,7 +62,7 @@ export const Cashout = () => {
     setError('');
 
     if (balance < 5) {
-      setError('You need at least $5.00 to cash out.');
+      setError('You need at least $10.00 to cash out.');
       return;
     }
 
@@ -152,7 +152,7 @@ export const Cashout = () => {
           <p className="text-4xl font-semibold text-white">${balance.toFixed(2)}</p>
           {balance < 5 && (
             <p className="text-yellow-500 text-sm mt-2">
-              Minimum cashout is $5.00 — keep reading to earn more!
+              Minimum cashout is $10.00 — keep reading to earn more!
             </p>
           )}
         </div>
