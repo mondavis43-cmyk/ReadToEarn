@@ -17,7 +17,7 @@ const faqs = [
   },
   {
     question: 'Can I take the same quiz more than once?',
-    answer: 'You can retake a quiz if you fail, but retake limits vary by tier. Each book can only be completed once -- once you pass and earn the bounty, that book is marked complete and will not pay out again.',
+    answer: 'You can retake a quiz if you fail, but retake limits vary by tier. Each book can only be completed once. Once you pass and earn the bounty, that book is marked complete and will not pay out again.',
   },
   {
     question: 'How long do I have to complete the quiz?',
@@ -40,6 +40,10 @@ const faqs = [
     answer: 'Referral bonuses are available on paid plans. When someone signs up through your unique referral link and passes their first quiz, you earn a bonus based on your tier: $1 on Casual Reader, $2 on Avid Reader, and $3 on Voracious Reader. There is no limit to how many friends you can refer.',
   },
   {
+    question: 'Do I get a birthday bonus?',
+    answer: 'Yes! Add your birthday in your Profile settings and you will receive a $0.25 bonus every year on your birthday.',
+  },
+  {
     question: 'What kinds of books are available?',
     answer: 'The library includes classic literature, popular fiction, non-fiction, and indie author titles. We add new books regularly. If you do not see a book you have read, use the Request a Book page to suggest it.',
   },
@@ -59,10 +63,7 @@ const faqs = [
     question: 'Is this available outside the US?',
     answer: 'Currently payouts are processed via PayPal, Venmo, and Giftogram gift cards. Availability may vary by region. Sign up and reach out if you have questions about your specific location.',
   },
-  {
-    question: 'Do I get a birthday bonus?',
-    answer: 'Yes! Add your birthday in your Profile settings and you will receive a $0.25 bonus every year on your birthday no matter what tier you are on.',
-  },
+];
 
 const FAQItem = ({ question, answer }: { question: string; answer: string }) => {
   const [open, setOpen] = useState(false);
@@ -99,7 +100,6 @@ export const FAQ = () => {
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1B2A4A]' : 'bg-[#F5F0E8]'}`}>
       <div className="max-w-2xl mx-auto px-4 py-12">
 
-        {/* Header */}
         <div className="mb-10">
           <h1 className={`font-serif text-3xl mb-2 ${isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]'}`}>
             FAQ
@@ -109,7 +109,6 @@ export const FAQ = () => {
           </p>
         </div>
 
-        {/* FAQ List */}
         <div>
           {faqs.map((faq) => (
             <FAQItem key={faq.question} question={faq.question} answer={faq.answer} />
