@@ -190,7 +190,7 @@ const earningsBreakdown = [
   { tier: 'Voracious', rate: '$0.95', cap: '$120' },
 ];
 
-export default function Pricing() {
+export function Pricing() {
   const { isDark } = useTheme();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
