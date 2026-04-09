@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import { Link } from 'react-router-dom';
+import { useNavigate } from '../hooks/useNavigate';
 
 interface TierFeature {
   label: string;
@@ -192,6 +192,7 @@ const earningsBreakdown = [
 
 export function Pricing() {
   const { isDark } = useTheme();
+  const { navigateTo } = useNavigate();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const bg = isDark ? 'bg-[#0f1a2e]' : 'bg-[#F5F0E8]';
@@ -276,8 +277,8 @@ export function Pricing() {
                 ))}
               </ul>
 
-              <Link
-                to="/signup"
+              <button
+                onClick={() => navigateTo('/signup')}
                 className={`block text-center text-sm font-bold py-2.5 px-4 rounded-xl transition-all duration-200 ${
                   tier.ctaType === 'primary'
                     ? 'bg-[#D4A843] text-[#1B2A4A] hover:bg-[#c49a38]'
@@ -287,7 +288,7 @@ export function Pricing() {
                 }`}
               >
                 {tier.cta}
-              </Link>
+              </button>
             </div>
           ))}
         </div>
@@ -360,12 +361,12 @@ export function Pricing() {
           Not sure which plan is right for you? Start free - no credit card
           required.
         </p>
-        <Link
-          to="/signup"
+        <button
+          onClick={() => navigateTo('/signup')}
           className="inline-block bg-[#D4A843] text-[#1B2A4A] font-bold px-8 py-3 rounded-xl hover:bg-[#c49a38] transition-colors duration-200"
         >
           Create Free Account
-        </Link>
+        </button>
       </section>
     </div>
   );
