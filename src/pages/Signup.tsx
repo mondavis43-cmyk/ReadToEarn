@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from '../hooks/useNavigate';
+import { useTheme } from '../contexts/ThemeContext';
 
 const generateReferralCode = () =>
   Math.random().toString(36).substring(2, 10).toUpperCase();
 
 export const Signup = () => {
+  const { isDark } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,7 +22,10 @@ export const Signup = () => {
     setLoading(true);
     setError('');
 
-    const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+    });
 
     if (signUpError) {
       setError(signUpError.message);
@@ -31,11 +36,9 @@ export const Signup = () => {
     const userId = data.user?.id;
 
     if (userId) {
-      // Read referral code from URL if present
       const params = new URLSearchParams(window.location.search);
       const ref = params.get('ref');
 
-      // Assign a unique referral code to the new user + save referred_by if applicable
       const profileUpdates: Record<string, string> = {
         referral_code: generateReferralCode(),
       };
@@ -63,35 +66,82 @@ export const Signup = () => {
     setResendLoading(false);
   };
 
+  // ─── Shared tokens ─────────────────────────────────────────────────────────
+  const bg            = isDark ? '#0f172a' : '#F5F0E8';
+  const cardBg        = isDark ? '#1e293b' : '#ffffff';
+  const cardBorder    = isDark ? '#334155' : '#e2d9c8';
+  const inputBg       = isDark ? '#0f172a' : '#F5F0E8';
+  const inputBorder   = isDark ? '#475569' : '#d1c9b8';
+  const dividerColor  = isDark ? '#334155' : '#e2d9c8';
+  const textPrimary   = isDark ? '#F5F0E8' : '#1B2A4A';
+  const textSecondary = isDark ? '#94a3b8' : '#6b7280';
+  const textMuted     = isDark ? '#64748b' : '#9ca3af';
+
+  // ─── Success / check email state ───────────────────────────────────────────
   if (success) {
     return (
-      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center px-4">
+      <div
+        className="min-h-screen flex items-center justify-center px-4"
+        style={{ backgroundColor: bg }}
+      >
         <div className="w-full max-w-md text-center">
-          <h1 className="font-serif text-4xl text-white mb-4">Check your email</h1>
-          <div className="bg-[#1a1a1a] rounded-lg p-8 border border-gray-800">
-            <p className="text-gray-300 mb-2">We sent a confirmation link to</p>
-            <p className="text-white font-medium mb-6">{email}</p>
-            <p className="text-gray-400 text-sm mb-6">
-              Click the link in the email to confirm your account, then come back and sign in.
+          <h1
+            className="font-serif text-4xl mb-4"
+            style={{ color: textPrimary }}
+          >
+            Check your email
+          </h1>
+
+          <div
+            className="rounded-lg p-8 border"
+            style={{ backgroundColor: cardBg, borderColor: cardBorder }}
+          >
+            <p className="mb-2" style={{ color: textSecondary }}>
+              We sent a confirmation link to
             </p>
+            <p
+              className="font-medium mb-6"
+              style={{ color: textPrimary }}
+            >
+              {email}
+            </p>
+            <p className="text-sm mb-6" style={{ color: textSecondary }}>
+              Click the link in the email to confirm your account, then come
+              back and sign in.
+            </p>
+
             <button
               onClick={() => navigateTo('/login')}
-              className="w-full bg-white text-black font-medium py-3 rounded-lg hover:bg-gray-200 transition"
+              className="w-full font-medium py-3 rounded-lg transition"
+              style={{
+                backgroundColor: '#1B2A4A',
+                color: '#F5F0E8',
+              }}
             >
               Go to Sign In
             </button>
 
-            <div className="mt-6 pt-6 border-t border-gray-700">
-              <p className="text-gray-500 text-sm mb-3">Didn't get the email?</p>
+            <div
+              className="mt-6 pt-6 border-t"
+              style={{ borderColor: dividerColor }}
+            >
+              <p className="text-sm mb-3" style={{ color: textMuted }}>
+                Did not get the email?
+              </p>
               {resendSent ? (
-                <p className="text-green-400 text-sm">Resent! Check your inbox (and spam folder).</p>
+                <p className="text-sm" style={{ color: '#D4A843' }}>
+                  Resent! Check your inbox (and spam folder).
+                </p>
               ) : (
                 <button
                   onClick={handleResend}
                   disabled={resendLoading}
-                  className="text-white hover:underline text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="text-sm transition underline-offset-2 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ color: '#D4A843' }}
                 >
-                  {resendLoading ? 'Sending...' : 'Resend confirmation email'}
+                  {resendLoading
+                    ? 'Sending...'
+                    : 'Resend confirmation email'}
                 </button>
               )}
             </div>
@@ -101,21 +151,56 @@ export const Signup = () => {
     );
   }
 
+  // ─── Main signup form ──────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center px-4">
+    <div
+      className="min-h-screen flex items-center justify-center px-4"
+      style={{ backgroundColor: bg }}
+    >
       <div className="w-full max-w-md">
-        <h1 className="font-serif text-4xl text-white mb-2 text-center">Read to Earn</h1>
-        <p className="text-gray-400 text-center mb-8">Create your account</p>
 
-        <form onSubmit={handleSignup} className="bg-[#1a1a1a] rounded-lg p-8 border border-gray-800">
+        {/* Header */}
+        <h1
+          className="font-serif text-4xl mb-2 text-center"
+          style={{ color: textPrimary }}
+        >
+          Read to Earn
+        </h1>
+        <p
+          className="text-center mb-8"
+          style={{ color: textSecondary }}
+        >
+          Create your account
+        </p>
+
+        {/* Card */}
+        <form
+          onSubmit={handleSignup}
+          className="rounded-lg p-8 border"
+          style={{ backgroundColor: cardBg, borderColor: cardBorder }}
+        >
+
+          {/* Error banner */}
           {error && (
-            <div className="mb-4 p-3 bg-red-900/20 border border-red-900/50 rounded text-red-400 text-sm">
+            <div
+              className="mb-4 p-3 rounded text-sm border"
+              style={{
+                backgroundColor: 'rgba(239,68,68,0.08)',
+                borderColor: 'rgba(239,68,68,0.3)',
+                color: '#f87171',
+              }}
+            >
               {error}
             </div>
           )}
 
+          {/* Email */}
           <div className="mb-4">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium mb-2"
+              style={{ color: textSecondary }}
+            >
               Email
             </label>
             <input
@@ -123,13 +208,25 @@ export const Signup = () => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 transition"
+              className="w-full px-4 py-3 rounded-lg focus:outline-none transition"
+              style={{
+                backgroundColor: inputBg,
+                border: `1px solid ${inputBorder}`,
+                color: textPrimary,
+              }}
+              onFocus={(e) => (e.target.style.borderColor = '#D4A843')}
+              onBlur={(e)  => (e.target.style.borderColor = inputBorder)}
               required
             />
           </div>
 
+          {/* Password */}
           <div className="mb-6">
-            <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium mb-2"
+              style={{ color: textSecondary }}
+            >
               Password
             </label>
             <input
@@ -137,30 +234,48 @@ export const Signup = () => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 transition"
+              className="w-full px-4 py-3 rounded-lg focus:outline-none transition"
+              style={{
+                backgroundColor: inputBg,
+                border: `1px solid ${inputBorder}`,
+                color: textPrimary,
+              }}
+              onFocus={(e) => (e.target.style.borderColor = '#D4A843')}
+              onBlur={(e)  => (e.target.style.borderColor = inputBorder)}
               required
               minLength={6}
             />
           </div>
 
+          {/* Submit */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-white text-black font-medium py-3 rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full font-medium py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              backgroundColor: '#1B2A4A',
+              color: '#F5F0E8',
+            }}
           >
             {loading ? 'Creating account...' : 'Sign Up'}
           </button>
 
-          <p className="mt-6 text-center text-gray-400 text-sm">
+          {/* Sign in link */}
+          <p
+            className="mt-6 text-center text-sm"
+            style={{ color: textSecondary }}
+          >
             Already have an account?{' '}
             <button
               type="button"
               onClick={() => navigateTo('/login')}
-              className="text-white hover:underline"
+              className="transition underline-offset-2 hover:underline"
+              style={{ color: '#D4A843' }}
             >
               Sign in
             </button>
           </p>
+
         </form>
       </div>
     </div>
