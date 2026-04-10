@@ -6,11 +6,12 @@ import { useTheme } from '../contexts/ThemeContext';
 import { Check, Sun, Moon } from 'lucide-react';
 
 interface Book {
-  id: number;
+  id: string;
   title: string;
   author: string;
   cover_url: string | null;
   bounty_amount: number;
+  book_type: 'platform' | 'sponsored';
 }
 
 export const Home = () => {
@@ -18,7 +19,7 @@ export const Home = () => {
   const { navigateTo } = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const [books, setBooks] = useState<Book[]>([]);
-  const [completedBookIds, setCompletedBookIds] = useState<Set<number>>(new Set());
+  const [completedBookIds, setCompletedBookIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,8 +30,13 @@ export const Home = () => {
     if (!user) return;
 
     const [booksResult, completedResult] = await Promise.all([
-      supabase.from('books').select('*'),
-      supabase.from('completed_books').select('book_id').eq('user_id', user.id),
+      supabase
+        .from('books')
+        .select('id, title, author, cover_url, bounty_amount, book_type'),
+      supabase
+        .from('completed_books')
+        .select('book_id')
+        .eq('user_id', user.id),
     ]);
 
     if (booksResult.data) setBooks(booksResult.data);
@@ -114,10 +120,25 @@ export const Home = () => {
                       className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                     />
                   )}
+
+                  {/* Earn badge - top right */}
                   <div className="absolute top-3 right-3">
                     <div className="bg-[#D4A843] text-[#1B2A4A] text-xs font-semibold px-3 py-1.5 rounded-full">
                       Earn ${book.bounty_amount.toFixed(2)}
                     </div>
+                  </div>
+
+                  {/* Book type badge - top left */}
+                  <div className="absolute top-3 left-3">
+                    {book.book_type === 'sponsored' ? (
+                      <span className="bg-[#1B2A4A] text-[#D4A843] text-[0.6rem] font-bold tracking-wider px-2 py-1 rounded uppercase">
+                        Sponsored
+                      </span>
+                    ) : (
+                      <span className="bg-[#F5F0E8] text-[#1B2A4A] text-[0.6rem] font-bold tracking-wider px-2 py-1 rounded uppercase">
+                        Platform
+                      </span>
+                    )}
                   </div>
                 </div>
 
