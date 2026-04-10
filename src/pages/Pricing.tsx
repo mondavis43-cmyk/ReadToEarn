@@ -63,7 +63,6 @@ const tiers: Tier[] = [
     badge: null,
     features: [
       { label: 'Platform book earnings', value: '$0.65/quiz' },
-      { label: 'Sponsored book earnings', value: 'Higher rate (author-funded)' },
       { label: 'Monthly earning cap', value: '$20' },
       { label: 'Minimum cash-out', value: '$10' },
       { label: 'Quiz retakes', value: '1 per month' },
@@ -89,7 +88,6 @@ const tiers: Tier[] = [
     badge: 'Most Popular',
     features: [
       { label: 'Platform book earnings', value: '$0.80/quiz' },
-      { label: 'Sponsored book earnings', value: 'Higher rate (author-funded)' },
       { label: 'Monthly earning cap', value: '$55' },
       { label: 'Minimum cash-out', value: '$10' },
       { label: 'Quiz retakes', value: '2 per month' },
@@ -115,7 +113,6 @@ const tiers: Tier[] = [
     badge: 'Best Value',
     features: [
       { label: 'Platform book earnings', value: '$0.95/quiz' },
-      { label: 'Sponsored book earnings', value: 'Higher rate (author-funded)' },
       { label: 'Monthly earning cap', value: '$120' },
       { label: 'Minimum cash-out', value: '$10' },
       { label: 'Quiz retakes', value: '3 per month' },
@@ -167,7 +164,7 @@ const annualNote =
 const faqItems: FaqItem[] = [
   {
     q: 'What is the difference between platform books and sponsored books?',
-    a: 'Platform books are titles the platform selects and funds itself through ads and affiliate links - think popular trad pub titles and backlist books. Sponsored books are listed and funded directly by indie authors, mid-list, small press, and trad pub authors who pay to have their book featured. Sponsored books pay out at a higher per-quiz rate because the author funds the reward.',
+    a: 'Platform books are titles the platform selects and funds itself through ads and affiliate links - think popular trad pub titles. Sponsored books are listed and funded directly by indie authors, mid-list, small press, and trad pub authors who pay to have their book featured. Sponsored books pay out at a higher per-quiz rate because the author funds the reward.',
   },
   {
     q: 'Do referral and survey earnings count toward my monthly cap?',
@@ -243,7 +240,7 @@ export function Pricing() {
               Funded by the platform
             </p>
             <p className={`text-xs ${textMuted} leading-relaxed`}>
-              Popular trad pub titles and backlist books selected and funded by
+              Popular trad pub titles selected and funded by
               Read to Earn through ads and affiliate revenue. Available on all
               tiers. Your tier rate applies.
             </p>
