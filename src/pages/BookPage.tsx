@@ -6,7 +6,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { ArrowLeft, Check, ExternalLink } from 'lucide-react';
 
 interface Book {
-  id: number;
+  id: string;
   title: string;
   author: string;
   cover_url: string | null;
@@ -14,6 +14,23 @@ interface Book {
   page_count: number;
   description: string | null;
   geniuslink_url: string | null;
+}
+
+interface Trope {
+  id: string;
+  name: string;
+}
+
+interface BookTrope {
+  id: string;
+  trope_id: string;
+  tropes: { name: string };
+}
+
+interface TropeSuggestion {
+  id: string;
+  suggested_name: string;
+  status: string;
 }
 
 export const BookPage = () => {
@@ -24,17 +41,29 @@ export const BookPage = () => {
   const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const [bookTropes, setBookTropes] = useState<BookTrope[]>([]);
+  const [allTropes, setAllTropes] = useState<Trope[]>([]);
+  const [selectedTropeId, setSelectedTropeId] = useState('');
+  const [customTrope, setCustomTrope] = useState('');
+  const [userSuggestions, setUserSuggestions] = useState<TropeSuggestion[]>([]);
+  const [tropeMessage, setTropeMessage] = useState('');
+
   const bookId = window.location.pathname.split('/').pop();
+  const isAdmin = user?.email === 'mondavis43@gmail.com';
 
   useEffect(() => {
     loadBook();
   }, [user]);
 
+  useEffect(() => {
+    if (book) loadTropes();
+  }, [book, user]);
+
   const loadBook = async () => {
     if (!user || !bookId) return;
 
     const [bookResult, completedResult] = await Promise.all([
-      supabase.from('books').select('*').eq('id', bookId).single(),
+      supabase.from('books').select('*').eq('id', bookId).maybeSingle(),
       supabase
         .from('completed_books')
         .select('id')
@@ -46,6 +75,72 @@ export const BookPage = () => {
     if (bookResult.data) setBook(bookResult.data);
     setIsCompleted(!!completedResult.data);
     setLoading(false);
+  };
+
+  const loadTropes = async () => {
+    if (!book) return;
+
+    const [bookTropesResult, allTropesResult, suggestionsResult] = await Promise.all([
+      supabase
+        .from('book_tropes')
+        .select('id, trope_id, tropes(name)')
+        .eq('book_id', book.id),
+      supabase.from('tropes').select('*').order('name'),
+      user
+        ? supabase
+            .from('trope_suggestions')
+            .select('id, suggested_name, status')
+            .eq('book_id', book.id)
+            .eq('user_id', user.id)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    if (bookTropesResult.data) setBookTropes(bookTropesResult.data as BookTrope[]);
+    if (allTropesResult.data) setAllTropes(allTropesResult.data);
+    if (suggestionsResult.data) setUserSuggestions(suggestionsResult.data);
+  };
+
+  const handleAddTrope = async () => {
+    if (!book || !selectedTropeId) return;
+    setTropeMessage('');
+
+    const { error } = await supabase.from('book_tropes').insert({
+      book_id: book.id,
+      trope_id: selectedTropeId,
+      added_by: user?.id,
+      added_by_role: 'admin',
+    });
+
+    if (error) {
+      setTropeMessage(error.message);
+    } else {
+      setSelectedTropeId('');
+      loadTropes();
+    }
+  };
+
+  const handleRemoveTrope = async (bookTropeId: string) => {
+    await supabase.from('book_tropes').delete().eq('id', bookTropeId);
+    loadTropes();
+  };
+
+  const handleSuggestTrope = async () => {
+    if (!book || !customTrope.trim() || !user) return;
+    setTropeMessage('');
+
+    const { error } = await supabase.from('trope_suggestions').insert({
+      book_id: book.id,
+      user_id: user.id,
+      suggested_name: customTrope.trim(),
+    });
+
+    if (error) {
+      setTropeMessage(error.message);
+    } else {
+      setCustomTrope('');
+      setTropeMessage('Suggestion submitted for review!');
+      loadTropes();
+    }
   };
 
   if (loading) {
@@ -137,6 +232,130 @@ export const BookPage = () => {
                 </p>
               </div>
             )}
+
+            {/* Tropes Section */}
+            <div className={`mb-8 pt-6 border-t ${isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10'}`}>
+              <h3 className={`font-medium mb-3 ${isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]'}`}>
+                Tropes
+              </h3>
+
+              {/* Approved trope tag cloud */}
+              {bookTropes.length > 0 ? (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {bookTropes.map((bt) => (
+                    <div
+                      key={bt.id}
+                      className={`flex items-center gap-1 text-sm px-3 py-1.5 rounded-full border transition ${
+                        isDark
+                          ? 'bg-[#F5F0E8]/10 border-[#F5F0E8]/20 text-[#F5F0E8]'
+                          : 'bg-[#1B2A4A]/10 border-[#1B2A4A]/20 text-[#1B2A4A]'
+                      }`}
+                    >
+                      <span>{bt.tropes.name}</span>
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleRemoveTrope(bt.id)}
+                          className={`ml-1 text-xs transition hover:text-red-400 ${
+                            isDark ? 'text-[#F5F0E8]/30' : 'text-[#1B2A4A]/30'
+                          }`}
+                        >
+                          x
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className={`text-sm mb-4 ${isDark ? 'text-[#F5F0E8]/40' : 'text-[#1B2A4A]/40'}`}>
+                  No tropes added yet.
+                </p>
+              )}
+
+              {/* Admin: add from master list */}
+              {isAdmin && (
+                <div className="flex gap-2 mb-4">
+                  <select
+                    value={selectedTropeId}
+                    onChange={(e) => setSelectedTropeId(e.target.value)}
+                    className={`flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#D4A843] transition ${
+                      isDark
+                        ? 'bg-[#F5F0E8]/5 border-[#F5F0E8]/15 text-[#F5F0E8]'
+                        : 'bg-white border-[#1B2A4A]/15 text-[#1B2A4A]'
+                    }`}
+                  >
+                    <option value="">Select a trope to add...</option>
+                    {allTropes
+                      .filter((t) => !bookTropes.some((bt) => bt.trope_id === t.id))
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                  </select>
+                  <button
+                    onClick={handleAddTrope}
+                    disabled={!selectedTropeId}
+                    className="bg-[#1B2A4A] text-[#F5F0E8] text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#142038] transition disabled:opacity-40"
+                  >
+                    Add
+                  </button>
+                </div>
+              )}
+
+              {/* All users: suggest a custom trope */}
+              {user && (
+                <div>
+                  <p className={`text-xs mb-2 ${isDark ? 'text-[#F5F0E8]/40' : 'text-[#1B2A4A]/40'}`}>
+                    {isAdmin ? 'Or add a new trope to the master list:' : 'Don\'t see the right trope? Suggest one for review:'}
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={customTrope}
+                      onChange={(e) => setCustomTrope(e.target.value)}
+                      placeholder="e.g. Morally Grey Protagonist"
+                      className={`flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#D4A843] transition ${
+                        isDark
+                          ? 'bg-[#F5F0E8]/5 border-[#F5F0E8]/15 text-[#F5F0E8] placeholder-[#F5F0E8]/30'
+                          : 'bg-white border-[#1B2A4A]/15 text-[#1B2A4A] placeholder-[#1B2A4A]/30'
+                      }`}
+                    />
+                    <button
+                      onClick={handleSuggestTrope}
+                      disabled={!customTrope.trim()}
+                      className="bg-[#D4A843] text-[#1B2A4A] text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#bf9538] transition disabled:opacity-40"
+                    >
+                      {isAdmin ? 'Add New' : 'Suggest'}
+                    </button>
+                  </div>
+
+                  {/* User pending suggestions */}
+                  {!isAdmin && userSuggestions.filter((s) => s.status === 'pending').length > 0 && (
+                    <div className="mt-3">
+                      <p className={`text-xs mb-1 ${isDark ? 'text-[#F5F0E8]/40' : 'text-[#1B2A4A]/40'}`}>
+                        Your pending suggestions:
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {userSuggestions
+                          .filter((s) => s.status === 'pending')
+                          .map((s) => (
+                            <span
+                              key={s.id}
+                              className="text-xs bg-[#D4A843]/10 border border-[#D4A843]/30 text-[#D4A843] px-3 py-1 rounded-full"
+                            >
+                              {s.suggested_name} (pending)
+                            </span>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {tropeMessage && (
+                    <p className="text-sm text-[#D4A843] mt-2">{tropeMessage}</p>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-3">
