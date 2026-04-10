@@ -6,7 +6,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { ArrowLeft, Check, ExternalLink } from 'lucide-react';
 
 interface Book {
-  id: number;
+  id: string;
   title: string;
   author: string;
   cover_url: string | null;
@@ -14,6 +14,7 @@ interface Book {
   page_count: number;
   description: string | null;
   geniuslink_url: string | null;
+  book_type: 'platform' | 'sponsored';
 }
 
 export const BookPage = () => {
@@ -34,7 +35,11 @@ export const BookPage = () => {
     if (!user || !bookId) return;
 
     const [bookResult, completedResult] = await Promise.all([
-      supabase.from('books').select('*').eq('id', bookId).single(),
+      supabase
+        .from('books')
+        .select('id, title, author, cover_url, bounty_amount, page_count, description, geniuslink_url, book_type')
+        .eq('id', bookId)
+        .single(),
       supabase
         .from('completed_books')
         .select('id')
@@ -87,7 +92,7 @@ export const BookPage = () => {
 
           {/* Cover */}
           <div className="flex-shrink-0">
-            <div className={`w-48 rounded-lg overflow-hidden border ${isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10'}`}>
+            <div className={`w-48 rounded-lg overflow-hidden border relative ${isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10'}`}>
               {book.cover_url ? (
                 <img
                   src={book.cover_url}
@@ -97,11 +102,38 @@ export const BookPage = () => {
               ) : (
                 <div className={`w-full aspect-[2/3] ${isDark ? 'bg-[#F5F0E8]/5' : 'bg-[#1B2A4A]/5'}`} />
               )}
+
+              {/* Book type badge - top left over cover */}
+              <div className="absolute top-2 left-2">
+                {book.book_type === 'sponsored' ? (
+                  <span className="bg-[#1B2A4A] text-[#D4A843] text-[0.6rem] font-bold tracking-wider px-2 py-1 rounded uppercase">
+                    Sponsored
+                  </span>
+                ) : (
+                  <span className="bg-[#F5F0E8] text-[#1B2A4A] text-[0.6rem] font-bold tracking-wider px-2 py-1 rounded uppercase">
+                    Platform
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Details */}
           <div className="flex-1">
+
+            {/* Book type badge - inline above title (secondary placement) */}
+            <div className="mb-3">
+              {book.book_type === 'sponsored' ? (
+                <span className="bg-[#1B2A4A] text-[#D4A843] text-[0.65rem] font-bold tracking-wider px-2.5 py-1 rounded uppercase">
+                  Sponsored
+                </span>
+              ) : (
+                <span className="bg-[#F5F0E8] text-[#1B2A4A] text-[0.65rem] font-bold tracking-wider px-2.5 py-1 rounded uppercase border border-[#1B2A4A]/15">
+                  Platform
+                </span>
+              )}
+            </div>
+
             <h2 className={`font-serif text-4xl mb-2 ${isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]'}`}>
               {book.title}
             </h2>
