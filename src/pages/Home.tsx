@@ -1,16 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
-import { Check, Sun, Moon } from 'lucide-react';
+import { Check, Sun, Moon, ChevronDown } from 'lucide-react';
 
 interface Book {
-  id: number;
+  id: string;
   title: string;
   author: string;
   cover_url: string | null;
   bounty_amount: number;
+  book_tropes: { trope_id: string }[];
+}
+
+interface Trope {
+  id: string;
+  name: string;
 }
 
 export const Home = () => {
@@ -18,30 +24,68 @@ export const Home = () => {
   const { navigateTo } = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const [books, setBooks] = useState<Book[]>([]);
-  const [completedBookIds, setCompletedBookIds] = useState<Set<number>>(new Set());
+  const [completedBookIds, setCompletedBookIds] = useState<Set<string>>(new Set());
+  const [allTropes, setAllTropes] = useState<Trope[]>([]);
+  const [selectedTropes, setSelectedTropes] = useState<Set<string>>(new Set());
+  const [showTropeFilter, setShowTropeFilter] = useState(false);
   const [loading, setLoading] = useState(true);
+  const filterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadData();
   }, [user]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setShowTropeFilter(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const loadData = async () => {
     if (!user) return;
 
-    const [booksResult, completedResult] = await Promise.all([
-      supabase.from('books').select('*'),
+    const [booksResult, completedResult, tropesResult] = await Promise.all([
+      supabase.from('books').select('*, book_tropes(trope_id)'),
       supabase
         .from('completed_books')
         .select('book_id')
         .eq('user_id', user.id),
+      supabase.from('tropes').select('*').order('name'),
     ]);
 
-    if (booksResult.data) setBooks(booksResult.data);
+    if (booksResult.data) setBooks(booksResult.data as Book[]);
     if (completedResult.data) {
       setCompletedBookIds(new Set(completedResult.data.map((cb) => cb.book_id)));
     }
+    if (tropesResult.data) setAllTropes(tropesResult.data);
     setLoading(false);
   };
+
+  const toggleTrope = (tropeId: string) => {
+    setSelectedTropes((prev) => {
+      const next = new Set(prev);
+      if (next.has(tropeId)) {
+        next.delete(tropeId);
+      } else {
+        next.add(tropeId);
+      }
+      return next;
+    });
+  };
+
+  const filteredBooks =
+    selectedTropes.size === 0
+      ? books
+      : books.filter((book) =>
+          [...selectedTropes].every((tid) =>
+            book.book_tropes?.some((bt) => bt.trope_id === tid)
+          )
+        );
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -92,15 +136,90 @@ export const Home = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-12">
-        <h2 className="text-2xl font-semibold text-[#1B2A4A] dark:text-[#F5F0E8] mb-2">
-          Book Library
-        </h2>
-        <p className="text-[#2C2C2C]/60 dark:text-gray-400 mb-8">
-          Read classic literature and take quizzes to earn rewards
-        </p>
+        {/* Title row with filter */}
+        <div className="flex items-start justify-between mb-2">
+          <div>
+            <h2 className="text-2xl font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">
+              Book Library
+            </h2>
+            <p className="text-[#2C2C2C]/60 dark:text-gray-400 mt-1">
+              Read classic literature and take quizzes to earn rewards
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-          {books.map((book) => {
+          {/* Trope filter dropdown */}
+          <div className="relative" ref={filterRef}>
+            <button
+              onClick={() => setShowTropeFilter((v) => !v)}
+              className="flex items-center gap-2 border border-[#e8e0d5] dark:border-gray-700 bg-white dark:bg-[#1a1a1a] text-[#2C2C2C] dark:text-[#F5F0E8] text-sm px-4 py-2 rounded-lg hover:border-[#D4A843] transition"
+            >
+              <span>Filter by Trope</span>
+              {selectedTropes.size > 0 && (
+                <span className="bg-[#D4A843] text-[#1B2A4A] text-xs font-bold px-1.5 py-0.5 rounded-full leading-none">
+                  {selectedTropes.size}
+                </span>
+              )}
+              <ChevronDown
+                className={`w-4 h-4 text-[#2C2C2C]/40 dark:text-gray-500 transition-transform ${
+                  showTropeFilter ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+
+            {showTropeFilter && (
+              <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-[#1a1a1a] border border-[#e8e0d5] dark:border-gray-700 rounded-xl shadow-lg z-10 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">
+                    Tropes
+                  </span>
+                  {selectedTropes.size > 0 && (
+                    <button
+                      onClick={() => setSelectedTropes(new Set())}
+                      className="text-xs text-[#D4A843] hover:underline"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+
+                {allTropes.length === 0 ? (
+                  <p className="text-xs text-[#2C2C2C]/50 dark:text-gray-500">
+                    No tropes added yet.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2 max-h-64 overflow-y-auto">
+                    {allTropes.map((trope) => {
+                      const active = selectedTropes.has(trope.id);
+                      return (
+                        <button
+                          key={trope.id}
+                          onClick={() => toggleTrope(trope.id)}
+                          className={`text-xs px-3 py-1.5 rounded-full border transition ${
+                            active
+                              ? 'bg-[#1B2A4A] text-[#F5F0E8] border-[#1B2A4A] dark:bg-[#D4A843] dark:text-[#1B2A4A] dark:border-[#D4A843]'
+                              : 'bg-white dark:bg-[#1a1a1a] text-[#2C2C2C] dark:text-[#F5F0E8] border-[#e8e0d5] dark:border-gray-700 hover:border-[#D4A843]'
+                          }`}
+                        >
+                          {trope.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Empty state when filter returns nothing */}
+        {filteredBooks.length === 0 && selectedTropes.size > 0 && (
+          <div className="text-center py-16 text-[#2C2C2C]/50 dark:text-gray-500">
+            No books match the selected tropes.
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mt-8">
+          {filteredBooks.map((book) => {
             const isCompleted = completedBookIds.has(book.id);
 
             return (
@@ -128,7 +247,9 @@ export const Home = () => {
                   <h3 className="font-serif text-lg text-[#2C2C2C] dark:text-[#F5F0E8] mb-1 line-clamp-2">
                     {book.title}
                   </h3>
-                  <p className="text-[#2C2C2C]/50 dark:text-gray-500 text-sm mb-4">{book.author}</p>
+                  <p className="text-[#2C2C2C]/50 dark:text-gray-500 text-sm mb-4">
+                    {book.author}
+                  </p>
 
                   {isCompleted ? (
                     <div className="flex items-center justify-center gap-2 py-2.5 bg-[#D4A843]/10 border border-[#D4A843]/40 rounded-lg text-[#D4A843] text-sm font-medium">
