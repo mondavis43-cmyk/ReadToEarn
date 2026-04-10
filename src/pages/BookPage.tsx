@@ -39,13 +39,13 @@ export const BookPage = () => {
         .from('books')
         .select('id, title, author, cover_url, bounty_amount, page_count, description, geniuslink_url, book_type')
         .eq('id', bookId)
-        .single(),
+        .maybeSingle(),
       supabase
         .from('completed_books')
         .select('id')
         .eq('user_id', user.id)
         .eq('book_id', bookId)
-        .single(),
+        .maybeSingle(),
     ]);
 
     if (bookResult.data) setBook(bookResult.data);
