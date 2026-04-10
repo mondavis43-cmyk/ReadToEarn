@@ -42,7 +42,7 @@ const tiers: Tier[] = [
       { label: 'Minimum cash-out', value: '$10' },
       { label: 'Quiz retakes', value: 'None' },
       { label: 'Competition access', value: 'None' },
-      { label: 'Sponsored books', value: 'No' },
+      { label: 'Sponsored books', value: 'No access' },
       { label: 'Surveys', value: 'No' },
       { label: 'Referral bonus', value: 'None' },
       { label: 'Streak bonuses', value: 'No' },
@@ -62,7 +62,8 @@ const tiers: Tier[] = [
     highlight: false,
     badge: null,
     features: [
-      { label: 'Earnings per quiz', value: '$0.65' },
+      { label: 'Platform book earnings', value: '$0.65/quiz' },
+      { label: 'Sponsored book earnings', value: 'Higher rate (author-funded)' },
       { label: 'Monthly earning cap', value: '$20' },
       { label: 'Minimum cash-out', value: '$10' },
       { label: 'Quiz retakes', value: '1 per month' },
@@ -87,7 +88,8 @@ const tiers: Tier[] = [
     highlight: true,
     badge: 'Most Popular',
     features: [
-      { label: 'Earnings per quiz', value: '$0.80' },
+      { label: 'Platform book earnings', value: '$0.80/quiz' },
+      { label: 'Sponsored book earnings', value: 'Higher rate (author-funded)' },
       { label: 'Monthly earning cap', value: '$55' },
       { label: 'Minimum cash-out', value: '$10' },
       { label: 'Quiz retakes', value: '2 per month' },
@@ -112,7 +114,8 @@ const tiers: Tier[] = [
     highlight: false,
     badge: 'Best Value',
     features: [
-      { label: 'Earnings per quiz', value: '$0.95' },
+      { label: 'Platform book earnings', value: '$0.95/quiz' },
+      { label: 'Sponsored book earnings', value: 'Higher rate (author-funded)' },
       { label: 'Monthly earning cap', value: '$120' },
       { label: 'Minimum cash-out', value: '$10' },
       { label: 'Quiz retakes', value: '3 per month' },
@@ -136,9 +139,10 @@ const tiers: Tier[] = [
     monthlyEarningCap: '$120',
     tagline: 'Pay once, earn forever',
     highlight: false,
-    badge: 'Limited - 300 Spots',
+    badge: 'Best Deal',
     features: [
-      { label: 'Earnings per quiz', value: '$0.95' },
+      { label: 'Platform book earnings', value: '$0.95/quiz' },
+      { label: 'Sponsored book earnings', value: 'Higher rate (author-funded)' },
       { label: 'Monthly earning cap', value: '$120' },
       { label: 'Minimum cash-out', value: '$10' },
       { label: 'Quiz retakes', value: '3 per month' },
@@ -162,6 +166,10 @@ const annualNote =
 
 const faqItems: FaqItem[] = [
   {
+    q: 'What is the difference between platform books and sponsored books?',
+    a: 'Platform books are titles the platform selects and funds itself through ads and affiliate links - think popular trad pub titles and backlist books. Sponsored books are listed and funded directly by indie authors, mid-list, small press, and trad pub authors who pay to have their book featured. Sponsored books pay out at a higher per-quiz rate because the author funds the reward.',
+  },
+  {
     q: 'Do referral and survey earnings count toward my monthly cap?',
     a: 'Yes. All earnings including referrals and surveys count toward your monthly cap.',
   },
@@ -179,15 +187,15 @@ const faqItems: FaqItem[] = [
   },
   {
     q: 'How do quizzes work?',
-    a: 'Each quiz has 10 questions with an 8-minute timer. You earn your tier rate for each quiz you pass.',
+    a: 'Each quiz has 10 questions with an 8-minute timer. Platform books pay your tier rate per passed quiz. Sponsored books - listed by indie, mid-list, small press, and trad pub authors who fund their own placement - pay out at a higher rate.',
   },
 ];
 
 const earningsBreakdown = [
   { tier: 'Free', rate: '$0.50', cap: '$5' },
-  { tier: 'Casual', rate: '$0.65', cap: '$20' },
-  { tier: 'Avid', rate: '$0.80', cap: '$55' },
-  { tier: 'Voracious', rate: '$0.95', cap: '$120' },
+  { tier: 'Casual', rate: '$0.65+', cap: '$20' },
+  { tier: 'Avid', rate: '$0.80+', cap: '$55' },
+  { tier: 'Voracious', rate: '$0.95+', cap: '$120' },
 ];
 
 export function Pricing() {
@@ -220,6 +228,44 @@ export function Pricing() {
           higher tiers earn more per quiz with bigger monthly caps.
         </p>
         <p className={`text-sm ${textMuted}`}>{annualNote}</p>
+      </section>
+
+      {/* Book Type Explainer Banner */}
+      <section className="px-4 pb-10 max-w-4xl mx-auto">
+        <div
+          className={`rounded-2xl border ${cardBorder} ${cardBg} p-6 flex flex-col sm:flex-row gap-6`}
+        >
+          <div className="flex-1">
+            <p className="text-[#D4A843] text-xs font-bold uppercase tracking-widest mb-1">
+              Platform Books
+            </p>
+            <p className={`text-sm font-semibold ${textPrimary} mb-1`}>
+              Funded by the platform
+            </p>
+            <p className={`text-xs ${textMuted} leading-relaxed`}>
+              Popular trad pub titles and backlist books selected and funded by
+              Read to Earn through ads and affiliate revenue. Available on all
+              tiers. Your tier rate applies.
+            </p>
+          </div>
+          <div
+            className={`w-px hidden sm:block ${isDark ? 'bg-[#2a3f6f]' : 'bg-[#e2ddd6]'}`}
+          />
+          <div className="flex-1">
+            <p className="text-[#D4A843] text-xs font-bold uppercase tracking-widest mb-1">
+              Sponsored Books
+            </p>
+            <p className={`text-sm font-semibold ${textPrimary} mb-1`}>
+              Funded by the author
+            </p>
+            <p className={`text-xs ${textMuted} leading-relaxed`}>
+              Indie, mid-list, small press, and trad pub authors pay to list
+              their books and fund reader rewards directly. These pay out at a
+              higher per-quiz rate than platform books. Available on paid tiers
+              only.
+            </p>
+          </div>
+        </div>
       </section>
 
       {/* Tier Cards */}
@@ -270,7 +316,9 @@ export function Pricing() {
                 {tier.features.map((f) => (
                   <li key={f.label} className="flex justify-between gap-2">
                     <span className={`text-xs ${textMuted}`}>{f.label}</span>
-                    <span className={`text-xs font-semibold ${textPrimary} text-right`}>
+                    <span
+                      className={`text-xs font-semibold ${textPrimary} text-right`}
+                    >
                       {f.value}
                     </span>
                   </li>
@@ -301,8 +349,11 @@ export function Pricing() {
             How earnings work
           </h3>
           <p className={`text-sm ${textMuted} leading-relaxed mb-4`}>
-            You earn money for every book quiz you pass. Your tier determines
-            your per-quiz rate and your monthly earning ceiling. Referral
+            You earn money for every book quiz you pass. Platform books are
+            funded by the platform through ads and affiliate links - your tier
+            determines your per-quiz rate for those. Sponsored books are funded
+            directly by indie authors, mid-list, small press, and trad pub
+            authors who pay to be listed, and pay out at a higher rate. Referral
             bonuses, survey completions, and streak bonuses all count toward
             your monthly cap. Once you hit your cap, earnings resume the
             following month.
@@ -311,17 +362,23 @@ export function Pricing() {
             {earningsBreakdown.map((row) => (
               <div
                 key={row.tier}
-                className={`rounded-xl p-4 ${isDark ? 'bg-[#0f1a2e]' : 'bg-[#F5F0E8]'}`}
+                className={`rounded-xl p-4 ${
+                  isDark ? 'bg-[#0f1a2e]' : 'bg-[#F5F0E8]'
+                }`}
               >
                 <p className={`text-xs ${textMuted} mb-1`}>{row.tier}</p>
                 <p className="text-lg font-bold text-[#D4A843]">{row.rate}</p>
-                <p className={`text-xs ${textMuted}`}>per quiz</p>
+                <p className={`text-xs ${textMuted}`}>platform/quiz</p>
                 <p className={`text-xs font-semibold ${textPrimary} mt-1`}>
                   {row.cap} cap
                 </p>
               </div>
             ))}
           </div>
+          <p className={`text-xs ${textMuted} mt-4 italic`}>
+            + sign indicates sponsored book quizzes pay a higher rate funded by
+            the author. Free tier has no sponsored book access.
+          </p>
         </div>
       </section>
 
@@ -346,7 +403,9 @@ export function Pricing() {
                 </span>
               </button>
               {openFaq === i && (
-                <div className={`px-5 pb-4 text-sm ${textMuted} leading-relaxed`}>
+                <div
+                  className={`px-5 pb-4 text-sm ${textMuted} leading-relaxed`}
+                >
                   {item.a}
                 </div>
               )}
