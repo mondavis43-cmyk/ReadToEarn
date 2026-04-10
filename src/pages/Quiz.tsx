@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
 import { ArrowLeft, PartyPopper, Timer } from 'lucide-react';
+import { calculatePayout, SubscriptionTier } from '../utils/calculatePayout';
 
 interface Question {
   id: string;
@@ -20,6 +21,8 @@ interface Book {
   title: string;
   author: string;
   bounty_amount: number;
+  page_count: number;
+  book_type: 'platform' | 'sponsored';
 }
 
 interface QuizProps {
@@ -59,6 +62,7 @@ export const Quiz = ({ bookId }: QuizProps) => {
   const [timeLeft, setTimeLeft] = useState(QUIZ_DURATION);
   const [timedOut, setTimedOut] = useState(false);
   const [streakBonus, setStreakBonus] = useState<number | null>(null);
+  const [earnedAmount, setEarnedAmount] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -86,7 +90,11 @@ export const Quiz = ({ bookId }: QuizProps) => {
     if (!user) return;
 
     const [bookResult, questionsResult, completedResult] = await Promise.all([
-      supabase.from('books').select('*').eq('id', bookId).single(),
+      supabase
+        .from('books')
+        .select('id, title, author, bounty_amount, page_count, book_type')
+        .eq('id', bookId)
+        .single(),
       supabase.from('questions').select('*').eq('book_id', bookId),
       supabase
         .from('completed_books')
@@ -146,7 +154,7 @@ export const Quiz = ({ bookId }: QuizProps) => {
 
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('available_balance, streak_count, last_quiz_date, referred_by')
+        .select('available_balance, streak_count, last_quiz_date, referred_by, subscription_tier')
         .eq('id', user.id)
         .single();
 
@@ -162,10 +170,17 @@ export const Quiz = ({ bookId }: QuizProps) => {
           setStreakBonus(newStreak);
         }
 
+        const payout = calculatePayout(
+          book.book_type,
+          book.page_count,
+          (profileData.subscription_tier ?? 'free') as SubscriptionTier
+        );
+        setEarnedAmount(payout);
+
         await supabase
           .from('profiles')
           .update({
-            available_balance: profileData.available_balance + book.bounty_amount + bonus,
+            available_balance: profileData.available_balance + payout + bonus,
             streak_count: newStreak,
             last_quiz_date: today,
           })
@@ -265,7 +280,7 @@ export const Quiz = ({ bookId }: QuizProps) => {
                 {!alreadyCompleted && (
                   <div className="bg-[#D4A843]/10 border border-[#D4A843]/30 rounded-lg p-4 mb-3">
                     <p className="text-[#D4A843] font-medium text-sm">
-                      +${book?.bounty_amount.toFixed(2)} added to your balance
+                      +${earnedAmount.toFixed(2)} added to your balance
                     </p>
                   </div>
                 )}
