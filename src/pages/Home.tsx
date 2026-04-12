@@ -239,7 +239,9 @@ export const Home = () => {
                   )}
                   <div className="absolute top-3 right-3">
                     <div className="bg-[#D4A843] text-[#1B2A4A] text-xs font-semibold px-3 py-1.5 rounded-full">
-                      Earn ${book.bounty_amount.toFixed(2)}
+                      {book.book_type === 'sponsored'
+                        ? `Earn $${book.bounty_amount.toFixed(2)}`
+                        : 'Earn $0.50–$0.95'}
                     </div>
                   </div>
                 </div>
