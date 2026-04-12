@@ -591,7 +591,10 @@ export const Admin = () => {
                   <p className="text-[#2C2C2C]/50 dark:text-gray-400 text-sm">{book.author}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <p className="text-[#2C2C2C]/40 dark:text-gray-500 text-xs">
-                      {book.page_count} pages · Bounty: ${book.bounty_amount.toFixed(2)}
+                      {book.page_count} pages ·{' '}
+                      {book.book_type === 'sponsored'
+                        ? `Bounty: $${book.bounty_amount.toFixed(2)}`
+                        : 'Payout: free $0.50 / casual $0.65 / avid $0.80 / voracious $0.95'}
                     </p>
                     <span
                       className={`text-xs font-medium px-2 py-0.5 rounded-full ${
