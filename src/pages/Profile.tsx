@@ -235,75 +235,106 @@ export const Profile = () => {
         </div>
 
         {/* Subscription Tier */}
-        <div className={`${cardBg} rounded-lg p-8 border ${cardBorder}`}>
-          <div className="flex items-center gap-2 mb-1">
-            <BookOpen className="w-4 h-4" style={{ color: tierConfig.color }} />
-            <h2 className={`text-xl font-semibold ${headingColor}`}>Membership</h2>
-          </div>
-          <p className={`${subColor} text-sm mb-6`}>
-            Your plan determines how much you earn per book quiz.
-          </p>
+<div className={`${cardBg} rounded-lg p-8 border ${cardBorder}`}>
+  <div className="flex items-center gap-2 mb-1">
+    <BookOpen className="w-4 h-4" style={{ color: tierConfig.color }} />
+    <h2 className={`text-xl font-semibold ${headingColor}`}>Membership</h2>
+  </div>
+  <p className={`${subColor} text-sm mb-6`}>
+    Your plan determines how much you earn on platform books.
+  </p>
 
-          <div className={`rounded-lg p-4 border ${tierConfig.bg} ${tierConfig.border} mb-5`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide" style={{ color: tierConfig.color }}>
-                  Current Plan
-                </p>
-                <p className="text-2xl font-serif mt-0.5" style={{ color: tierConfig.color }}>
-                  {tierConfig.label}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-medium uppercase tracking-wide" style={{ color: tierConfig.color }}>
-                  Payout per book
-                </p>
-                <p className="text-2xl font-serif mt-0.5" style={{ color: tierConfig.color }}>
-                  {tierConfig.payout}
-                </p>
-              </div>
-            </div>
-          </div>
+  <div className={`rounded-lg p-4 border ${tierConfig.bg} ${tierConfig.border} mb-5`}>
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-xs font-medium uppercase tracking-wide" style={{ color: tierConfig.color }}>
+          Current Plan
+        </p>
+        <p className="text-2xl font-serif mt-0.5" style={{ color: tierConfig.color }}>
+          {tierConfig.label}
+        </p>
+      </div>
+      <div className="text-right">
+        <p className="text-xs font-medium uppercase tracking-wide" style={{ color: tierConfig.color }}>
+          Platform books
+        </p>
+        <p className="text-2xl font-serif mt-0.5" style={{ color: tierConfig.color }}>
+          {tierConfig.payout}
+        </p>
+      </div>
+    </div>
+  </div>
 
-          <div className={`border-t ${dividerColor} pt-5 grid grid-cols-4 gap-2`}>
-            {(Object.entries(TIER_CONFIG) as [string, typeof TIER_CONFIG.free][]).map(([key, config]) => (
-              <div
-                key={key}
-                className={`rounded-lg p-3 border text-center ${
-                  tier === key
-                    ? `${config.bg} ${config.border}`
-                    : isDark
-                    ? 'bg-white/5 border-white/10'
-                    : 'bg-black/5 border-black/10'
-                }`}
-              >
-                <p
-                  className="text-xs font-semibold"
-                  style={{ color: tier === key ? config.color : undefined }}
-                >
-                  {config.label}
-                </p>
-                <p
-                  className={`text-sm font-serif mt-0.5 ${tier === key ? '' : subColor}`}
-                  style={{ color: tier === key ? config.color : undefined }}
-                >
-                  {config.payout}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <p className={`text-xs ${subColor} mt-4`}>
-            Upgrade your plan to earn more per book.{' '}
-            <button
-              onClick={() => navigateTo('/pricing')}
-              className="text-[#D4A843] hover:underline"
-            >
-              View plans →
-            </button>
+  {/* Book type breakdown */}
+  <div className={`rounded-lg p-4 border ${isDark ? 'bg-white/5 border-white/10' : 'bg-black/5 border-black/10'} mb-5`}>
+    <p className={`text-xs font-medium uppercase tracking-wide ${subColor} mb-3`}>How payouts work</p>
+    <div className="space-y-2.5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className={`text-sm font-medium ${headingColor}`}>Platform books</p>
+          <p className={`text-xs ${subColor} mt-0.5`}>Books in our library — payout depends on your plan</p>
+        </div>
+        <p className="text-sm font-medium text-right shrink-0" style={{ color: tierConfig.color }}>
+          {tierConfig.payout}
+        </p>
+      </div>
+      <div className={`border-t ${dividerColor}`} />
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className={`text-sm font-medium ${headingColor}`}>Sponsored books</p>
+          <p className={`text-xs ${subColor} mt-0.5`}>
+            {tier === 'free'
+              ? 'Upgrade to access sponsored books'
+              : 'Payout based on page count × $0.0085, up to $5.00'}
           </p>
         </div>
+        <p className={`text-sm font-medium text-right shrink-0 ${tier === 'free' ? subColor : headingColor}`}>
+          {tier === 'free' ? '—' : 'up to $5.00'}
+        </p>
+      </div>
+    </div>
+  </div>
 
+  {/* Tier comparison grid */}
+  <div className={`border-t ${dividerColor} pt-5 grid grid-cols-4 gap-2`}>
+    {(Object.entries(TIER_CONFIG) as [string, typeof TIER_CONFIG.free][]).map(([key, config]) => (
+      <div
+        key={key}
+        className={`rounded-lg p-3 border text-center ${
+          tier === key
+            ? `${config.bg} ${config.border}`
+            : isDark
+            ? 'bg-white/5 border-white/10'
+            : 'bg-black/5 border-black/10'
+        }`}
+      >
+        <p
+          className="text-xs font-semibold"
+          style={{ color: tier === key ? config.color : undefined }}
+        >
+          {config.label}
+        </p>
+        <p
+          className={`text-sm font-serif mt-0.5 ${tier === key ? '' : subColor}`}
+          style={{ color: tier === key ? config.color : undefined }}
+        >
+          {config.payout}
+        </p>
+      </div>
+    ))}
+  </div>
+  <p className={`text-xs ${subColor} mt-2 mb-4`}>Platform book payout by plan</p>
+
+  <p className={`text-xs ${subColor}`}>
+    Upgrade your plan to earn more.{' '}
+    <button
+      onClick={() => navigateTo('/pricing')}
+      className="text-[#D4A843] hover:underline"
+    >
+      View plans →
+    </button>
+  </p>
+</div>
         {/* Reading Streak */}
         <div className={`${cardBg} rounded-lg p-8 border ${cardBorder}`}>
           <h2 className={`text-xl font-semibold ${headingColor} mb-1`}>Reading Streak</h2>
