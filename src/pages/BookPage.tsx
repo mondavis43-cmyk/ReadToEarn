@@ -12,6 +12,7 @@ interface Book {
   cover_url: string | null;
   bounty_amount: number;
   page_count: number;
+  book_type: 'platform' | 'sponsored';
   description: string | null;
   geniuslink_url: string | null;
 }
@@ -213,13 +214,26 @@ export const BookPage = () => {
                 ? 'bg-[#D4A843]/10 border-[#D4A843]/30'
                 : 'bg-[#D4A843]/15 border-[#D4A843]/40'
             }`}>
-              <span className="text-[#D4A843] text-lg font-semibold">
-                Earn ${book.bounty_amount.toFixed(2)}
-              </span>
-              <span className={`text-sm ${isDark ? 'text-[#F5F0E8]/40' : 'text-[#1B2A4A]/40'}`}>
-                ({book.page_count} pages x $0.0085)
-              </span>
-            </div>
+              {book.book_type === 'sponsored' ? (
+                <>
+                  <span className="text-[#D4A843] text-lg font-semibold">
+                    Earn ${book.bounty_amount.toFixed(2)}
+                    </span>
+                  <span className={`text-sm ${isDark ? 'text-[#F5F0E8]/40' : 'text-[#1B2A4A]/40'}`}>
+                    ({book.page_count} pages x $0.0085)
+                    </span>
+                  </>
+      ) : (
+        <>
+          <span className="text-[#D4A843] text-lg font-semibold">
+        Earn $0.50–$0.95
+            </span>
+          <span className={`text-sm ${isDark ? 'text-[#F5F0E8]/40' : 'text-[#1B2A4A]/40'}`}>
+            based on your plan
+            </span>
+          </>
+      )}
+   </div>
 
             {/* Description */}
             {book.description && (
