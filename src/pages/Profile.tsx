@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
-import { ArrowLeft, DollarSign, Gift } from 'lucide-react';
+import { ArrowLeft, DollarSign, Gift, BookOpen } from 'lucide-react';
 
 interface Profile {
   email: string;
@@ -12,6 +12,7 @@ interface Profile {
   birthday_bonus_last_claimed: number | null;
   streak_count: number | null;
   last_quiz_date: string | null;
+  subscription_tier: 'free' | 'casual' | 'avid' | 'voracious' | null;
 }
 
 interface CompletedBook {
@@ -24,6 +25,13 @@ interface CompletedBook {
 }
 
 const BIRTHDAY_BONUS = 0.25;
+
+const TIER_CONFIG = {
+  free:      { label: 'Free',      payout: '$0.50', color: '#9CA3AF', bg: 'bg-gray-500/10',   border: 'border-gray-500/30'   },
+  casual:    { label: 'Casual',    payout: '$0.65', color: '#60A5FA', bg: 'bg-blue-400/10',   border: 'border-blue-400/30'   },
+  avid:      { label: 'Avid',      payout: '$0.80', color: '#A78BFA', bg: 'bg-violet-400/10', border: 'border-violet-400/30' },
+  voracious: { label: 'Voracious', payout: '$0.95', color: '#D4A843', bg: 'bg-[#D4A843]/10',  border: 'border-[#D4A843]/30'  },
+};
 
 export const Profile = () => {
   const { user } = useAuth();
@@ -140,6 +148,9 @@ export const Profile = () => {
   const inputText = isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]';
   const dividerColor = isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10';
 
+  const tier = profile?.subscription_tier ?? 'free';
+  const tierConfig = TIER_CONFIG[tier] ?? TIER_CONFIG.free;
+
   if (loading) {
     return (
       <div className={`min-h-screen ${bg} flex items-center justify-center transition-colors duration-300`}>
@@ -207,7 +218,7 @@ export const Profile = () => {
             </p>
             <button
               onClick={handleCashOut}
-              disabled={!profile || profile.available_balance < 5}
+              disabled={!profile || profile.available_balance < 10}
               className="flex items-center gap-2 bg-[#D4A843] text-[#1B2A4A] font-medium px-5 py-2.5 rounded-lg hover:bg-[#c49a38] transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <DollarSign className="w-4 h-4" />
@@ -221,6 +232,76 @@ export const Profile = () => {
               </p>
             )}
           </div>
+        </div>
+
+        {/* Subscription Tier */}
+        <div className={`${cardBg} rounded-lg p-8 border ${cardBorder}`}>
+          <div className="flex items-center gap-2 mb-1">
+            <BookOpen className="w-4 h-4" style={{ color: tierConfig.color }} />
+            <h2 className={`text-xl font-semibold ${headingColor}`}>Membership</h2>
+          </div>
+          <p className={`${subColor} text-sm mb-6`}>
+            Your plan determines how much you earn per book quiz.
+          </p>
+
+          <div className={`rounded-lg p-4 border ${tierConfig.bg} ${tierConfig.border} mb-5`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide" style={{ color: tierConfig.color }}>
+                  Current Plan
+                </p>
+                <p className="text-2xl font-serif mt-0.5" style={{ color: tierConfig.color }}>
+                  {tierConfig.label}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-medium uppercase tracking-wide" style={{ color: tierConfig.color }}>
+                  Payout per book
+                </p>
+                <p className="text-2xl font-serif mt-0.5" style={{ color: tierConfig.color }}>
+                  {tierConfig.payout}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className={`border-t ${dividerColor} pt-5 grid grid-cols-4 gap-2`}>
+            {(Object.entries(TIER_CONFIG) as [string, typeof TIER_CONFIG.free][]).map(([key, config]) => (
+              <div
+                key={key}
+                className={`rounded-lg p-3 border text-center ${
+                  tier === key
+                    ? `${config.bg} ${config.border}`
+                    : isDark
+                    ? 'bg-white/5 border-white/10'
+                    : 'bg-black/5 border-black/10'
+                }`}
+              >
+                <p
+                  className="text-xs font-semibold"
+                  style={{ color: tier === key ? config.color : undefined }}
+                >
+                  {config.label}
+                </p>
+                <p
+                  className={`text-sm font-serif mt-0.5 ${tier === key ? '' : subColor}`}
+                  style={{ color: tier === key ? config.color : undefined }}
+                >
+                  {config.payout}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <p className={`text-xs ${subColor} mt-4`}>
+            Upgrade your plan to earn more per book.{' '}
+            <button
+              onClick={() => navigateTo('/pricing')}
+              className="text-[#D4A843] hover:underline"
+            >
+              View plans →
+            </button>
+          </p>
         </div>
 
         {/* Reading Streak */}
