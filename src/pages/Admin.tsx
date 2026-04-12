@@ -287,7 +287,9 @@ export const Admin = () => {
     if (!editingBook) return;
     setError('');
     setSaving(true);
-    const bounty = Math.min(editingBook.page_count * RATE_PER_PAGE, 5);
+    const bounty = editingBook.book_type === 'sponsored'
+  ? Math.min(editingBook.page_count * RATE_PER_PAGE, 5)
+  : 0;
     const { error: bookError } = await supabase
       .from('books')
       .update({ ...editingBook, bounty_amount: bounty, book_type: editingBook.book_type })
