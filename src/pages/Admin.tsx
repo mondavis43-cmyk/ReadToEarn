@@ -285,6 +285,7 @@ export const Admin = () => {
 
   const handleSaveEdit = async () => {
     if (!editingBook) return;
+    console.log('book_type at save:', editingBook.book_type);
     setError('');
     setSaving(true);
     const bounty = editingBook.book_type === 'sponsored'
