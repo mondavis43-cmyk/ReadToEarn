@@ -672,7 +672,10 @@ export const Admin = () => {
                     />
                     {newBook.page_count && (
                       <p className="text-[#2C2C2C]/50 dark:text-gray-500 text-xs mt-1">
-                        Bounty: $
+                        {newBook.book_type === 'sponsored'
+                          ? `Bounty: $${Math.min(parseFloat(newBook.page_count) * RATE_PER_PAGE,
+                     5).toFixed(2)}`
+                          : 'Payout: free $0.50 / casual $0.65 / avid $0.80 / voracious $0.95'}
                         {Math.min(parseFloat(newBook.page_count) * RATE_PER_PAGE, 5).toFixed(2)}
                       </p>
                     )}
