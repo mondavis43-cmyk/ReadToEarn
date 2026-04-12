@@ -11,6 +11,7 @@ interface Book {
   author: string;
   cover_url: string | null;
   bounty_amount: number;
+  book_type: 'platform' | 'sponsored';
   book_tropes: { trope_id: string }[];
 }
 
