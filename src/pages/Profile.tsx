@@ -272,7 +272,7 @@ export const Profile = () => {
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className={`text-sm font-medium ${headingColor}`}>Platform books</p>
-          <p className={`text-xs ${subColor} mt-0.5`}>Books in our library — payout depends on your plan</p>
+          <p className={`text-xs ${subColor} mt-0.5`}>Books in our library that the platform self-funds. Payout depends on your plan</p>
         </div>
         <p className="text-sm font-medium text-right shrink-0" style={{ color: tierConfig.color }}>
           {tierConfig.payout}
@@ -284,7 +284,7 @@ export const Profile = () => {
           <p className={`text-sm font-medium ${headingColor}`}>Sponsored books</p>
           <p className={`text-xs ${subColor} mt-0.5`}>
             {tier === 'free'
-              ? 'Upgrade to access sponsored books'
+              ? 'Upgrade to access and earn more from books sponsored by authors'
               : 'Payout based on page count × $0.0085, up to $5.00'}
           </p>
         </div>
