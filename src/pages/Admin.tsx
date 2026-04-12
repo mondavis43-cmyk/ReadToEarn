@@ -244,7 +244,9 @@ export const Admin = () => {
       return;
     }
     setSaving(true);
-    const bounty = Math.min(parseFloat(newBook.page_count) * RATE_PER_PAGE, 5);
+    const bounty = newBook.book_type === 'sponsored'
+  ? Math.min(parseFloat(newBook.page_count) * RATE_PER_PAGE, 5)
+  : 0;
     const { data: bookData, error: bookError } = await supabase
       .from('books')
       .insert({
