@@ -17,6 +17,7 @@ interface Book {
   page_count: number;
   description: string | null;
   geniuslink_url: string | null;
+  book_type: 'platform' | 'sponsored';
 }
 
 interface Question {
@@ -72,6 +73,7 @@ interface NewBook {
   page_count: string;
   description: string;
   geniuslink_url: string;
+  book_type: 'platform' | 'sponsored';
 }
 
 interface NewQuestion {
@@ -89,6 +91,7 @@ const emptyBook: NewBook = {
   page_count: '',
   description: '',
   geniuslink_url: '',
+  book_type: 'platform',
 };
 
 const emptyQuestion: NewQuestion = {
@@ -182,7 +185,6 @@ export const Admin = () => {
   };
 
   const handleApproveSuggestion = async (suggestion: TropeSuggestion) => {
-    // Upsert the trope (in case it already exists with same name)
     const { data: existing } = await supabase
       .from('tropes')
       .select('id')
@@ -206,12 +208,10 @@ export const Admin = () => {
       tropeId = newTrope.id;
     }
 
-    // Link trope to the book (ignore conflict if already linked)
     await supabase
       .from('book_tropes')
       .upsert({ book_id: suggestion.book_id, trope_id: tropeId }, { onConflict: 'book_id,trope_id' });
 
-    // Mark suggestion approved
     await supabase
       .from('trope_suggestions')
       .update({ status: 'approved' })
@@ -247,7 +247,12 @@ export const Admin = () => {
     const bounty = Math.min(parseFloat(newBook.page_count) * RATE_PER_PAGE, 5);
     const { data: bookData, error: bookError } = await supabase
       .from('books')
-      .insert({ ...newBook, page_count: parseInt(newBook.page_count), bounty_amount: bounty })
+      .insert({
+        ...newBook,
+        page_count: parseInt(newBook.page_count),
+        bounty_amount: bounty,
+        book_type: newBook.book_type,
+      })
       .select()
       .single();
     if (bookError || !bookData) {
@@ -283,7 +288,7 @@ export const Admin = () => {
     const bounty = Math.min(editingBook.page_count * RATE_PER_PAGE, 5);
     const { error: bookError } = await supabase
       .from('books')
-      .update({ ...editingBook, bounty_amount: bounty })
+      .update({ ...editingBook, bounty_amount: bounty, book_type: editingBook.book_type })
       .eq('id', editingBook.id);
     if (bookError) {
       setError('Failed to update book.');
@@ -324,6 +329,9 @@ export const Admin = () => {
 
   const correctInputClass =
     'w-full px-3 py-2 bg-[#D4A843]/10 dark:bg-[#D4A843]/10 border border-[#D4A843]/40 rounded-lg text-[#2C2C2C] dark:text-[#F5F0E8] placeholder-[#2C2C2C]/30 dark:placeholder-gray-600 focus:outline-none focus:border-[#D4A843] transition text-sm';
+
+  const selectClass =
+    'w-full px-3 py-2 bg-white dark:bg-[#1a1a1a] border border-[#e8e0d5] dark:border-gray-700 rounded-lg text-[#2C2C2C] dark:text-[#F5F0E8] focus:outline-none focus:border-[#1B2A4A] dark:focus:border-[#D4A843] transition text-sm';
 
   if (loading) {
     return (
@@ -416,6 +424,24 @@ export const Admin = () => {
                   setEditingBook({ ...editingBook, description: e.target.value })
                 }
               />
+              <div>
+                <label className="block text-xs font-medium text-[#2C2C2C]/60 dark:text-gray-400 mb-1">
+                  Book Type
+                </label>
+                <select
+                  className={selectClass}
+                  value={editingBook.book_type || 'platform'}
+                  onChange={(e) =>
+                    setEditingBook({
+                      ...editingBook,
+                      book_type: e.target.value as 'platform' | 'sponsored',
+                    })
+                  }
+                >
+                  <option value="platform">Platform</option>
+                  <option value="sponsored">Sponsored</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -559,9 +585,20 @@ export const Admin = () => {
                     {book.title}
                   </p>
                   <p className="text-[#2C2C2C]/50 dark:text-gray-400 text-sm">{book.author}</p>
-                  <p className="text-[#2C2C2C]/40 dark:text-gray-500 text-xs">
-                    {book.page_count} pages · Bounty: ${book.bounty_amount.toFixed(2)}
-                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-[#2C2C2C]/40 dark:text-gray-500 text-xs">
+                      {book.page_count} pages · Bounty: ${book.bounty_amount.toFixed(2)}
+                    </p>
+                    <span
+                      className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        book.book_type === 'sponsored'
+                          ? 'bg-[#D4A843]/15 text-[#1B2A4A] dark:text-[#D4A843]'
+                          : 'bg-[#1B2A4A]/10 text-[#1B2A4A] dark:bg-[#F5F0E8]/10 dark:text-[#F5F0E8]'
+                      }`}
+                    >
+                      {book.book_type === 'sponsored' ? 'Sponsored' : 'Platform'}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -646,6 +683,24 @@ export const Admin = () => {
                     value={newBook.description}
                     onChange={(e) => setNewBook({ ...newBook, description: e.target.value })}
                   />
+                  <div>
+                    <label className="block text-xs font-medium text-[#2C2C2C]/60 dark:text-gray-400 mb-1">
+                      Book Type
+                    </label>
+                    <select
+                      className={selectClass}
+                      value={newBook.book_type}
+                      onChange={(e) =>
+                        setNewBook({
+                          ...newBook,
+                          book_type: e.target.value as 'platform' | 'sponsored',
+                        })
+                      }
+                    >
+                      <option value="platform">Platform</option>
+                      <option value="sponsored">Sponsored</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="space-y-4">
@@ -818,8 +873,6 @@ export const Admin = () => {
         {/* ── Tropes Tab ── */}
         {activeTab === 'tropes' && (
           <div className="space-y-8">
-
-            {/* Pending Suggestions */}
             {tropeSuggestions.length > 0 && (
               <div>
                 <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8] mb-3 flex items-center gap-2">
@@ -863,14 +916,11 @@ export const Admin = () => {
               </div>
             )}
 
-            {/* Trope Library */}
             <div>
               <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8] mb-3 flex items-center gap-2">
                 <Tag className="w-4 h-4" />
                 Trope Library ({tropes.length})
               </h2>
-
-              {/* Add trope input */}
               <div className="flex gap-2 mb-4">
                 <input
                   className={inputClass}
@@ -890,7 +940,6 @@ export const Admin = () => {
                   Add
                 </button>
               </div>
-
               {tropes.length === 0 ? (
                 <p className="text-[#2C2C2C]/50 dark:text-gray-500 text-sm">
                   No tropes yet. Add one above.
