@@ -8,6 +8,51 @@ import { useTheme } from '../contexts/ThemeContext';
 const ADMIN_EMAIL = 'mondavis43@gmail.com';
 const RATE_PER_PAGE = 0.0085;
 
+export const GENRES = [
+  'Action & Adventure',
+  'Biography & Memoir',
+  'Business',
+  "Children's",
+  'Chick Lit',
+  'Comics / Graphic Novels / Manga',
+  'Cozy Mystery',
+  'Dark Romance',
+  'Dystopian',
+  'Erotica',
+  'Fantasy',
+  'Fiction',
+  'Gothic',
+  'Health & Wellness',
+  'Historical Fiction',
+  'History',
+  'Horror',
+  'LGBTQIA+',
+  'Literary Fiction',
+  'Magical Realism',
+  'Mystery',
+  'Noir',
+  'Non-Fiction',
+  'Paranormal',
+  'Poetry',
+  'Religious',
+  'Romance',
+  'Romantasy / Romantic Fantasy',
+  'Satire',
+  'Science Fiction',
+  'Self-Help',
+  'Short Stories',
+  'Space Opera',
+  'Sports',
+  'Spy',
+  'Suspense',
+  'Thriller',
+  'True Crime',
+  'War & Military',
+  'Western',
+  "Women's Fiction",
+  'Young Adult',
+];
+
 interface Book {
   id: string;
   title: string;
@@ -18,6 +63,7 @@ interface Book {
   description: string | null;
   geniuslink_url: string | null;
   book_type: 'platform' | 'sponsored';
+  genres: string[];
 }
 
 interface Question {
@@ -74,6 +120,7 @@ interface NewBook {
   description: string;
   geniuslink_url: string;
   book_type: 'platform' | 'sponsored';
+  genres: string[];
 }
 
 interface NewQuestion {
@@ -92,6 +139,7 @@ const emptyBook: NewBook = {
   description: '',
   geniuslink_url: '',
   book_type: 'platform',
+  genres: [],
 };
 
 const emptyQuestion: NewQuestion = {
@@ -100,6 +148,70 @@ const emptyQuestion: NewQuestion = {
   wrong_answer_1: '',
   wrong_answer_2: '',
   wrong_answer_3: '',
+};
+
+// Reusable genre picker used in both Add and Edit forms
+const GenrePicker = ({
+  selected,
+  onChange,
+  selectClass,
+}: {
+  selected: string[];
+  onChange: (genres: string[]) => void;
+  selectClass: string;
+}) => {
+  const toggle = (genre: string) => {
+    onChange(
+      selected.includes(genre)
+        ? selected.filter((g) => g !== genre)
+        : [...selected, genre]
+    );
+  };
+
+  return (
+    <div className="sm:col-span-2">
+      <label className="block text-xs font-medium text-[#2C2C2C]/60 dark:text-gray-400 mb-2">
+        Genres{' '}
+        <span className="font-normal text-[#2C2C2C]/40 dark:text-gray-600">
+          (select all that apply)
+        </span>
+      </label>
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {selected.map((g) => (
+            <span
+              key={g}
+              className="flex items-center gap-1 bg-[#1B2A4A]/10 dark:bg-[#D4A843]/15 text-[#1B2A4A] dark:text-[#D4A843] text-xs font-medium px-2.5 py-1 rounded-full"
+            >
+              {g}
+              <button
+                type="button"
+                onClick={() => toggle(g)}
+                className="hover:text-red-500 dark:hover:text-red-400 transition ml-0.5"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <select
+        className={selectClass}
+        value=""
+        onChange={(e) => {
+          if (e.target.value) toggle(e.target.value);
+          e.target.value = '';
+        }}
+      >
+        <option value="">+ Add a genre...</option>
+        {GENRES.filter((g) => !selected.includes(g)).map((g) => (
+          <option key={g} value={g}>
+            {g}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
 };
 
 export const Admin = () => {
@@ -244,16 +356,22 @@ export const Admin = () => {
       return;
     }
     setSaving(true);
-    const bounty = newBook.book_type === 'sponsored'
-  ? Math.min(parseFloat(newBook.page_count) * RATE_PER_PAGE, 5)
-  : 0;
+    const bounty =
+      newBook.book_type === 'sponsored'
+        ? Math.min(parseFloat(newBook.page_count) * RATE_PER_PAGE, 5)
+        : 0;
     const { data: bookData, error: bookError } = await supabase
       .from('books')
       .insert({
-        ...newBook,
+        title: newBook.title,
+        author: newBook.author,
+        cover_url: newBook.cover_url,
         page_count: parseInt(newBook.page_count),
-        bounty_amount: bounty,
+        description: newBook.description,
+        geniuslink_url: newBook.geniuslink_url,
         book_type: newBook.book_type,
+        genres: newBook.genres,
+        bounty_amount: bounty,
       })
       .select()
       .single();
@@ -279,21 +397,31 @@ export const Admin = () => {
 
   const handleEditBook = async (book: Book) => {
     const { data } = await supabase.from('questions').select('*').eq('book_id', book.id);
-    setEditingBook(book);
+    setEditingBook({ ...book, genres: book.genres ?? [] });
     setEditingQuestions(data || []);
   };
 
   const handleSaveEdit = async () => {
     if (!editingBook) return;
-    console.log('book_type at save:', editingBook.book_type);
     setError('');
     setSaving(true);
-    const bounty = editingBook.book_type === 'sponsored'
-  ? Math.min(editingBook.page_count * RATE_PER_PAGE, 5)
-  : 0;
+    const bounty =
+      editingBook.book_type === 'sponsored'
+        ? Math.min(editingBook.page_count * RATE_PER_PAGE, 5)
+        : 0;
     const { error: bookError } = await supabase
       .from('books')
-      .update({ ...editingBook, bounty_amount: bounty, book_type: editingBook.book_type })
+      .update({
+        title: editingBook.title,
+        author: editingBook.author,
+        cover_url: editingBook.cover_url,
+        page_count: editingBook.page_count,
+        description: editingBook.description,
+        geniuslink_url: editingBook.geniuslink_url,
+        book_type: editingBook.book_type,
+        genres: editingBook.genres,
+        bounty_amount: bounty,
+      })
       .eq('id', editingBook.id);
     if (bookError) {
       setError('Failed to update book.');
@@ -410,8 +538,7 @@ export const Admin = () => {
                 />
                 <p className="text-[#2C2C2C]/50 dark:text-gray-500 text-xs mt-1">
                   {editingBook.book_type === 'sponsored'
-                    ? `Bounty: $${Math.min(editingBook.page_count * RATE_PER_PAGE, 
-                 5).toFixed(2)}`
+                    ? `Bounty: $${Math.min(editingBook.page_count * RATE_PER_PAGE, 5).toFixed(2)}`
                     : 'Payout: free $0.50 / casual $0.65 / avid $0.80 / voracious $0.95'}
                 </p>
               </div>
@@ -450,6 +577,13 @@ export const Admin = () => {
                   <option value="sponsored">Sponsored</option>
                 </select>
               </div>
+
+              {/* Genre picker -- edit mode */}
+              <GenrePicker
+                selected={editingBook.genres ?? []}
+                onChange={(genres) => setEditingBook({ ...editingBook, genres })}
+                selectClass={selectClass}
+              />
             </div>
           </div>
 
@@ -593,7 +727,7 @@ export const Admin = () => {
                     {book.title}
                   </p>
                   <p className="text-[#2C2C2C]/50 dark:text-gray-400 text-sm">{book.author}</p>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <p className="text-[#2C2C2C]/40 dark:text-gray-500 text-xs">
                       {book.page_count} pages ·{' '}
                       {book.book_type === 'sponsored'
@@ -610,6 +744,18 @@ export const Admin = () => {
                       {book.book_type === 'sponsored' ? 'Sponsored' : 'Platform'}
                     </span>
                   </div>
+                  {book.genres && book.genres.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {book.genres.map((g) => (
+                        <span
+                          key={g}
+                          className="text-xs px-2 py-0.5 rounded-full bg-[#1B2A4A]/5 dark:bg-white/5 text-[#1B2A4A]/60 dark:text-[#F5F0E8]/50"
+                        >
+                          {g}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -677,10 +823,11 @@ export const Admin = () => {
                     {newBook.page_count && (
                       <p className="text-[#2C2C2C]/50 dark:text-gray-500 text-xs mt-1">
                         {newBook.book_type === 'sponsored'
-                          ? `Bounty: $${Math.min(parseFloat(newBook.page_count) * RATE_PER_PAGE,
-                     5).toFixed(2)}`
+                          ? `Bounty: $${Math.min(
+                              parseFloat(newBook.page_count) * RATE_PER_PAGE,
+                              5
+                            ).toFixed(2)}`
                           : 'Payout: free $0.50 / casual $0.65 / avid $0.80 / voracious $0.95'}
-                        {Math.min(parseFloat(newBook.page_count) * RATE_PER_PAGE, 5).toFixed(2)}
                       </p>
                     )}
                   </div>
@@ -715,6 +862,13 @@ export const Admin = () => {
                       <option value="sponsored">Sponsored</option>
                     </select>
                   </div>
+
+                  {/* Genre picker -- add mode */}
+                  <GenrePicker
+                    selected={newBook.genres}
+                    onChange={(genres) => setNewBook({ ...newBook, genres })}
+                    selectClass={selectClass}
+                  />
                 </div>
 
                 <div className="space-y-4">
