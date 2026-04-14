@@ -1138,6 +1138,8 @@ export const Admin = () => {
                   ))}
                 </div>
               )}
+              
+              {activeTab === 'users' && <UserManagement />}
             </div>
           </div>
         )}
