@@ -1,6 +1,6 @@
 // src/components/UserManagement.tsx
 import { useEffect, useState, useRef } from 'react'
-import { supabase } from '../lib/supabaseClient'
+import { supabase } from '../lib/supabase'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
