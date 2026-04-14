@@ -96,7 +96,7 @@ export default function UserManagement() {
       let query = supabase
         .from('profiles')
         .select(
-          'id, email, full_name, subscription_tier, balance, books_completed, is_flagged, is_suspended, created_at',
+          'id, email, subscription_tier, total_balance, available_balance, books_completed, is_flagged, is_suspended, created_at',
           { count: 'exact' }
         )
 
