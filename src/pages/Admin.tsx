@@ -706,6 +706,12 @@ export const Admin = () => {
               {label}
             </button>
           ))}
+          <button
+            onClick={() => setActiveTab('users')}
+            className={activeTab === 'users' ? 'your-active-tab-class' : 'your-inactive-tab-class'}
+            >
+            Users
+          </button>
         </div>
 
         {/* ── Books Tab ── */}
