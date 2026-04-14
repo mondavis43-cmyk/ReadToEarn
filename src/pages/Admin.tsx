@@ -683,36 +683,31 @@ export const Admin = () => {
         )}
         {error && <p className="text-red-500 dark:text-red-400 text-sm mb-4">{error}</p>}
 
-        {/* Tabs */}
-        <div className="flex gap-3 mb-8 flex-wrap">
-          {[
-            { key: 'books', label: `Books & Questions (${books.length})` },
-            { key: 'cashouts', label: `Cashout Requests (${pendingCashouts} pending)` },
-            { key: 'waitlist', label: `Waitlist (${waitlist.length})` },
-            {
-              key: 'tropes',
-              label: `Tropes (${tropeSuggestions.length > 0 ? `${tropeSuggestions.length} pending` : tropes.length})`,
-            },
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key as typeof activeTab)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                activeTab === key
-                  ? 'bg-[#1B2A4A] dark:bg-[#D4A843] dark:text-[#1B2A4A] text-[#F5F0E8]'
-                  : 'bg-white dark:bg-[#1a1a1a] text-[#2C2C2C] dark:text-[#F5F0E8] border border-[#e8e0d5] dark:border-gray-700 hover:border-[#1B2A4A] dark:hover:border-[#D4A843]'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-            <button 
-              onClick={() => setActiveTab('users')}>Users</button>
-            className={activeTab === 'users' ? 'your-active-tab-class' : 'your-inactive-tab-class'}
-            >
-            Users
-          </button>
-        </div>
+       {/* Tabs */}
+<div className="flex gap-3 mb-8 flex-wrap">
+  {[
+    { key: 'books', label: `Books & Questions (${books.length})` },
+    { key: 'cashouts', label: `Cashout Requests (${pendingCashouts} pending)` },
+    { key: 'waitlist', label: `Waitlist (${waitlist.length})` },
+    {
+      key: 'tropes',
+      label: `Tropes (${tropeSuggestions.length > 0 ? `${tropeSuggestions.length} pending` : tropes.length})`,
+    },
+    { key: 'users', label: 'Users' },
+  ].map(({ key, label }) => (
+    <button
+      key={key}
+      onClick={() => setActiveTab(key as typeof activeTab)}
+      className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+        activeTab === key
+          ? 'bg-[#1B2A4A] dark:bg-[#D4A843] dark:text-[#1B2A4A] text-[#F5F0E8]'
+          : 'bg-white dark:bg-[#1a1a1a] text-[#2C2C2C] dark:text-[#F5F0E8] border border-[#e8e0d5] dark:border-gray-700 hover:border-[#1B2A4A] dark:hover:border-[#D4A843]'
+      }`}
+    >
+      {label}
+    </button>
+  ))}
+</div>
 
         {/* ── Books Tab ── */}
         {activeTab === 'books' && (
