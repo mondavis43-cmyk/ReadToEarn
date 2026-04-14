@@ -1133,11 +1133,9 @@ export const Admin = () => {
                   ))}
                 </div>
               )}
-              
-              {activeTab === 'users' && <UserManagement />}
-            </div>
-          </div>
-        )}
+                {/* ── Users Tab ── */}
+        {activeTab === 'users' && <UserManagement />}
+
       </main>
     </div>
   );
