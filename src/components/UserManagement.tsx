@@ -74,15 +74,15 @@ export default function UserManagement() {
   const [statusFilter, setStatusFilter] = useState<UserStatus | ''>('')
   const [page, setPage]                 = useState(0)
 
-  // Sorting — only columns that actually exist in the DB
+  // Sorting
   const [sortCol, setSortCol] = useState<SortableCol>('created_at')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
 
   // Modals / menus
-  const [openMenuId, setOpenMenuId]     = useState<string | null>(null)
-  const [profileUser, setProfileUser]   = useState<AdminUser | null>(null)
+  const [openMenuId, setOpenMenuId]       = useState<string | null>(null)
+  const [profileUser, setProfileUser]     = useState<AdminUser | null>(null)
   const [tierModalUser, setTierModalUser] = useState<AdminUser | null>(null)
-  const [newTier, setNewTier]           = useState<Tier>('free')
+  const [newTier, setNewTier]             = useState<Tier>('free')
 
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -100,17 +100,14 @@ export default function UserManagement() {
           { count: 'exact' }
         )
 
-      // Search — email only (no full_name column)
       if (search.trim()) {
         query = query.ilike('email', `%${search.trim()}%`)
       }
 
-      // Tier filter
       if (tierFilter) {
         query = query.eq('subscription_tier', tierFilter)
       }
 
-      // Status filter
       if (statusFilter === 'suspended') {
         query = query.eq('is_suspended', true)
       } else if (statusFilter === 'flagged') {
@@ -119,34 +116,36 @@ export default function UserManagement() {
         query = query.eq('is_flagged', false).eq('is_suspended', false)
       }
 
-      // Sort — only real DB columns
       query = query.order(sortCol, { ascending: sortDir === 'asc' })
-
-      // Pagination
       query = query.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
 
-      const { data, error: err, count } = await query
+      const result = await query
 
-      if (err) throw err
-
-      const mapped: AdminUser[] = (data ?? []).map((u: any) => ({
-        ...u,
-        subscription_tier: u.subscription_tier ?? 'free',
-        total_balance:     u.total_balance     ?? 0,
-        available_balance: u.available_balance ?? 0,
-        books_completed:   u.books_completed   ?? 0,
-        is_flagged:        u.is_flagged        ?? false,
-        is_suspended:      u.is_suspended      ?? false,
-        status: deriveStatus({
-          is_flagged:   u.is_flagged   ?? false,
-          is_suspended: u.is_suspended ?? false,
-        }),
-      }))
-
-      setUsers(mapped)
-      setTotalCount(count ?? 0)
+      if (result.error) {
+        setError(result.error.message)
+        setUsers([])
+        setTotalCount(0)
+      } else {
+        const mapped: AdminUser[] = (result.data ?? []).map((u: any) => ({
+          ...u,
+          subscription_tier: u.subscription_tier ?? 'free',
+          total_balance:     u.total_balance     ?? 0,
+          available_balance: u.available_balance ?? 0,
+          books_completed:   u.books_completed   ?? 0,
+          is_flagged:        u.is_flagged        ?? false,
+          is_suspended:      u.is_suspended      ?? false,
+          status: deriveStatus({
+            is_flagged:   u.is_flagged   ?? false,
+            is_suspended: u.is_suspended ?? false,
+          }),
+        }))
+        setUsers(mapped)
+        setTotalCount(result.count ?? 0)
+      }
     } catch (e: any) {
-      setError(e.message ?? 'Failed to load users')
+      setError(e?.message ?? 'Failed to load users')
+      setUsers([])
+      setTotalCount(0)
     } finally {
       setLoading(false)
     }
@@ -254,10 +253,15 @@ export default function UserManagement() {
           ✓ {successMsg}
         </div>
       )}
+
+      {/* Error banner -- always visible when error exists */}
       {error && (
-        <div className="bg-red-900 border border-red-700 text-red-200 rounded-lg px-4 py-2 text-sm flex justify-between">
-          <span>⚠ {error}</span>
-          <button onClick={() => setError(null)} className="ml-4 opacity-60 hover:opacity-100">✕</button>
+        <div className="bg-red-900 border border-red-700 text-red-200 rounded-lg px-4 py-3 text-sm flex justify-between items-start">
+          <div>
+            <div className="font-semibold mb-1">⚠ Failed to load users</div>
+            <div className="opacity-80 font-mono text-xs">{error}</div>
+          </div>
+          <button onClick={() => setError(null)} className="ml-4 opacity-60 hover:opacity-100 text-lg leading-none shrink-0">✕</button>
         </div>
       )}
 
@@ -347,11 +351,10 @@ export default function UserManagement() {
               </tr>
             )}
 
-            {!loading && users.length === 0 && (
+            {!loading && !error && users.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
                   No users found
-                  {error && <div className="text-red-400 text-xs mt-1">{error}</div>}
                 </td>
               </tr>
             )}
