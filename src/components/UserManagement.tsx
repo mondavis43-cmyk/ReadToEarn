@@ -500,7 +500,7 @@ export default function UserManagement() {
             </div>
 
             <div className="space-y-3 text-sm">
-              <Row label="Name" value={profileUser.full_name ?? '—'} />
+              <Row label="Balance" value={formatBalance(profileUser.total_balance)} mono />
               <Row label="Email" value={profileUser.email} />
               <Row label="User ID" value={profileUser.id} mono />
               <Row label="Joined" value={formatDate(profileUser.created_at)} />
