@@ -368,7 +368,7 @@ export default function UserManagement() {
                 <td className="px-4 py-3">
                   <div className="font-medium text-white flex items-center gap-1.5">
                     {user.is_flagged && <span title="Flagged">⚠️</span>}
-                    {user.full_name ?? '—'}
+                    {user.email.split('@')[0]}
                   </div>
                   <div className="text-gray-400 text-xs mt-0.5">{user.email}</div>
                 </td>
@@ -387,7 +387,7 @@ export default function UserManagement() {
 
                 {/* Balance */}
                 <td className="px-4 py-3 text-gray-300 font-mono">
-                  {formatBalance(user.balance)}
+                  {formatBalance(user.total_balance)}
                 </td>
 
                 {/* Books */}
