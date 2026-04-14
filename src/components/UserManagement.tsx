@@ -93,8 +93,11 @@ export default function UserManagement() {
     setError(null)
 
     try {
-      let query = supabase
-        .from('profiles')
+      import { createClient } from '@supabase/supabase-js'
+        const adminSupabase = createClient(
+          import.meta.env.VITE_SUPABASE_URL,
+          import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY
+        )
         .select(
           'id, email, subscription_tier, total_balance, available_balance, books_completed, is_flagged, is_suspended, created_at',
           { count: 'exact' }
