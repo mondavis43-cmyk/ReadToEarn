@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
+import UserManagement from './UserManagement'
 import { ArrowLeft, Plus, Trash2, Check, X, Pencil, Mail, Sun, Moon, Tag } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
