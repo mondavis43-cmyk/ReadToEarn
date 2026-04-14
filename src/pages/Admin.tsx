@@ -692,16 +692,15 @@ export const Admin = () => {
       key: 'tropes',
       label: `Tropes (${tropeSuggestions.length > 0 ? `${tropeSuggestions.length} pending` : tropes.length})`,
     },
-    { key: 'users', label: 'Users' },
   ].map(({ key, label }) => (
     <button
       key={key}
       onClick={() => setActiveTab(key as typeof activeTab)}
-      className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+      className={
         activeTab === key
-          ? 'bg-[#1B2A4A] dark:bg-[#D4A843] dark:text-[#1B2A4A] text-[#F5F0E8]'
-          : 'bg-white dark:bg-[#1a1a1a] text-[#2C2C2C] dark:text-[#F5F0E8] border border-[#e8e0d5] dark:border-gray-700 hover:border-[#1B2A4A] dark:hover:border-[#D4A843]'
-      }`}
+          ? 'px-4 py-2 rounded-lg text-sm font-medium transition bg-[#1B2A4A] dark:bg-[#D4A843] dark:text-[#1B2A4A] text-[#F5F0E8]'
+          : 'px-4 py-2 rounded-lg text-sm font-medium transition bg-white dark:bg-[#1a1a1a] text-[#2C2C2C] dark:text-[#F5F0E8] border border-[#e8e0d5] dark:border-gray-700 hover:border-[#1B2A4A] dark:hover:border-[#D4A843]'
+      }
     >
       {label}
     </button>
