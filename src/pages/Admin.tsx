@@ -1130,10 +1130,10 @@ export const Admin = () => {
                         <X className="w-3 h-3" />
                       </button>
                     </div>
-                  ))}
-                </div>
-              )}
-                {/* ── Users Tab ── */}
+                  </div>
+                  )}
+                  
+        {/* ── Users Tab ── */}
         {activeTab === 'users' && <UserManagement />}
 
       </main>
