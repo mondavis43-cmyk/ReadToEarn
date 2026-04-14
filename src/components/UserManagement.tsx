@@ -10,9 +10,9 @@ type UserStatus = 'active' | 'flagged' | 'suspended'
 interface AdminUser {
   id: string
   email: string
-  full_name: string | null
   subscription_tier: Tier
-  balance: number
+  total_balance: number
+  available_balance: number
   books_completed: number
   status: UserStatus
   created_at: string
