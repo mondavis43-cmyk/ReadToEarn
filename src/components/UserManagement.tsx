@@ -20,21 +20,23 @@ interface AdminUser {
   is_suspended: boolean
 }
 
+type SortableCol = 'email' | 'created_at' | 'subscription_tier' | 'total_balance' | 'books_completed'
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TIERS: Tier[] = ['free', 'casual', 'avid', 'voracious']
 const PAGE_SIZE = 25
 
 const TIER_COLORS: Record<Tier, string> = {
-  free: 'bg-gray-700 text-gray-200',
-  casual: 'bg-blue-900 text-blue-200',
-  avid: 'bg-purple-900 text-purple-200',
-  voracious: 'bg-amber-900 text-amber-200',
+  free:       'bg-gray-700 text-gray-200',
+  casual:     'bg-blue-900 text-blue-200',
+  avid:       'bg-purple-900 text-purple-200',
+  voracious:  'bg-amber-900 text-amber-200',
 }
 
 const STATUS_COLORS: Record<UserStatus, string> = {
-  active: 'bg-green-900 text-green-200',
-  flagged: 'bg-yellow-900 text-yellow-200',
+  active:    'bg-green-900 text-green-200',
+  flagged:   'bg-yellow-900 text-yellow-200',
   suspended: 'bg-red-900 text-red-200',
 }
 
@@ -42,47 +44,45 @@ const STATUS_COLORS: Record<UserStatus, string> = {
 
 function deriveStatus(user: { is_flagged: boolean; is_suspended: boolean }): UserStatus {
   if (user.is_suspended) return 'suspended'
-  if (user.is_flagged) return 'flagged'
+  if (user.is_flagged)   return 'flagged'
   return 'active'
 }
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
+    month: 'short', day: 'numeric', year: 'numeric',
   })
 }
 
 function formatBalance(cents: number) {
-  return `$${(cents / 100).toFixed(2)}`
+  return `$${((cents ?? 0) / 100).toFixed(2)}`
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function UserManagement() {
   // Data
-  const [users, setUsers] = useState<AdminUser[]>([])
+  const [users, setUsers]           = useState<AdminUser[]>([])
   const [totalCount, setTotalCount] = useState(0)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading]       = useState(false)
+  const [error, setError]           = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
   // Filters
-  const [search, setSearch] = useState('')
-  const [tierFilter, setTierFilter] = useState<Tier | ''>('')
+  const [search, setSearch]             = useState('')
+  const [tierFilter, setTierFilter]     = useState<Tier | ''>('')
   const [statusFilter, setStatusFilter] = useState<UserStatus | ''>('')
-  const [page, setPage] = useState(0)
+  const [page, setPage]                 = useState(0)
 
-  // Sorting
-  const [sortCol, setSortCol] = useState<keyof AdminUser>('created_at')
+  // Sorting — only columns that actually exist in the DB
+  const [sortCol, setSortCol] = useState<SortableCol>('created_at')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
 
   // Modals / menus
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
-  const [profileUser, setProfileUser] = useState<AdminUser | null>(null)
+  const [openMenuId, setOpenMenuId]     = useState<string | null>(null)
+  const [profileUser, setProfileUser]   = useState<AdminUser | null>(null)
   const [tierModalUser, setTierModalUser] = useState<AdminUser | null>(null)
-  const [newTier, setNewTier] = useState<Tier>('free')
+  const [newTier, setNewTier]           = useState<Tier>('free')
 
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -100,11 +100,9 @@ export default function UserManagement() {
           { count: 'exact' }
         )
 
-      // Search
+      // Search — email only (no full_name column)
       if (search.trim()) {
-        query = query.or(
-          `full_name.ilike.%${search.trim()}%,email.ilike.%${search.trim()}%`
-        )
+        query = query.ilike('email', `%${search.trim()}%`)
       }
 
       // Tier filter
@@ -121,7 +119,7 @@ export default function UserManagement() {
         query = query.eq('is_flagged', false).eq('is_suspended', false)
       }
 
-      // Sort
+      // Sort — only real DB columns
       query = query.order(sortCol, { ascending: sortDir === 'asc' })
 
       // Pagination
@@ -133,7 +131,16 @@ export default function UserManagement() {
 
       const mapped: AdminUser[] = (data ?? []).map((u: any) => ({
         ...u,
-        status: deriveStatus(u),
+        subscription_tier: u.subscription_tier ?? 'free',
+        total_balance:     u.total_balance     ?? 0,
+        available_balance: u.available_balance ?? 0,
+        books_completed:   u.books_completed   ?? 0,
+        is_flagged:        u.is_flagged        ?? false,
+        is_suspended:      u.is_suspended      ?? false,
+        status: deriveStatus({
+          is_flagged:   u.is_flagged   ?? false,
+          is_suspended: u.is_suspended ?? false,
+        }),
       }))
 
       setUsers(mapped)
@@ -176,7 +183,6 @@ export default function UserManagement() {
       .from('profiles')
       .update({ is_flagged: newFlagged })
       .eq('id', user.id)
-
     if (err) { setError(err.message); return }
     flash(newFlagged ? `${user.email} flagged` : `${user.email} unflagged`)
     loadUsers()
@@ -188,7 +194,6 @@ export default function UserManagement() {
       .from('profiles')
       .update({ is_suspended: newSuspended })
       .eq('id', user.id)
-
     if (err) { setError(err.message); return }
     flash(newSuspended ? `${user.email} suspended` : `${user.email} reactivated`)
     loadUsers()
@@ -200,7 +205,6 @@ export default function UserManagement() {
       .from('profiles')
       .update({ subscription_tier: newTier })
       .eq('id', tierModalUser.id)
-
     if (err) { setError(err.message); return }
     flash(`${tierModalUser.email} moved to ${newTier}`)
     setTierModalUser(null)
@@ -217,7 +221,7 @@ export default function UserManagement() {
 
   // ── Sort handler ─────────────────────────────────────────────────────────────
 
-  function handleSort(col: keyof AdminUser) {
+  function handleSort(col: SortableCol) {
     if (sortCol === col) {
       setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
     } else {
@@ -227,20 +231,17 @@ export default function UserManagement() {
     setPage(0)
   }
 
-  function SortIcon({ col }: { col: keyof AdminUser }) {
+  function SortIcon({ col }: { col: SortableCol }) {
     if (sortCol !== col) return <span className="ml-1 opacity-30">↕</span>
     return <span className="ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>
   }
 
   // ── Styles ───────────────────────────────────────────────────────────────────
 
-  const inputClass =
-    'bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500'
-  const selectClass =
-    'bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500'
-  const btnClass =
-    'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors'
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+  const inputClass  = 'bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500'
+  const selectClass = 'bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500'
+  const btnClass    = 'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors'
+  const totalPages  = Math.ceil(totalCount / PAGE_SIZE)
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -264,7 +265,7 @@ export default function UserManagement() {
       <div className="flex flex-wrap gap-3 items-center">
         <input
           type="text"
-          placeholder="Search name or email..."
+          placeholder="Search email..."
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(0) }}
           className={`${inputClass} w-64`}
@@ -304,9 +305,9 @@ export default function UserManagement() {
             <tr>
               <th
                 className="px-4 py-3 cursor-pointer hover:text-white select-none"
-                onClick={() => handleSort('full_name')}
+                onClick={() => handleSort('email')}
               >
-                User <SortIcon col="full_name" />
+                User <SortIcon col="email" />
               </th>
               <th
                 className="px-4 py-3 cursor-pointer hover:text-white select-none"
@@ -322,9 +323,9 @@ export default function UserManagement() {
               </th>
               <th
                 className="px-4 py-3 cursor-pointer hover:text-white select-none"
-                onClick={() => handleSort('balance')}
+                onClick={() => handleSort('total_balance')}
               >
-                Balance <SortIcon col="balance" />
+                Balance <SortIcon col="total_balance" />
               </th>
               <th
                 className="px-4 py-3 cursor-pointer hover:text-white select-none"
@@ -332,12 +333,7 @@ export default function UserManagement() {
               >
                 Books <SortIcon col="books_completed" />
               </th>
-              <th
-                className="px-4 py-3 cursor-pointer hover:text-white select-none"
-                onClick={() => handleSort('status')}
-              >
-                Status <SortIcon col="status" />
-              </th>
+              <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
@@ -355,15 +351,14 @@ export default function UserManagement() {
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
                   No users found
+                  {error && <div className="text-red-400 text-xs mt-1">{error}</div>}
                 </td>
               </tr>
             )}
 
             {!loading && users.map(user => (
-              <tr
-                key={user.id}
-                className="bg-gray-900 hover:bg-gray-800 transition-colors"
-              >
+              <tr key={user.id} className="bg-gray-900 hover:bg-gray-800 transition-colors">
+
                 {/* User */}
                 <td className="px-4 py-3">
                   <div className="font-medium text-white flex items-center gap-1.5">
@@ -500,10 +495,9 @@ export default function UserManagement() {
             </div>
 
             <div className="space-y-3 text-sm">
-              <Row label="Balance" value={formatBalance(profileUser.total_balance)} mono />
-              <Row label="Email" value={profileUser.email} />
-              <Row label="User ID" value={profileUser.id} mono />
-              <Row label="Joined" value={formatDate(profileUser.created_at)} />
+              <Row label="Email"           value={profileUser.email} />
+              <Row label="User ID"         value={profileUser.id} mono />
+              <Row label="Joined"          value={formatDate(profileUser.created_at)} />
               <Row
                 label="Tier"
                 value={
@@ -512,7 +506,8 @@ export default function UserManagement() {
                   </span>
                 }
               />
-              <Row label="Balance" value={formatBalance(profileUser.balance)} mono />
+              <Row label="Total Balance"   value={formatBalance(profileUser.total_balance)} mono />
+              <Row label="Avail. Balance"  value={formatBalance(profileUser.available_balance)} mono />
               <Row label="Books Completed" value={String(profileUser.books_completed)} />
               <Row
                 label="Status"
