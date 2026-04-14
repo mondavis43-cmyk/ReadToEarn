@@ -219,7 +219,7 @@ export const Admin = () => {
   const { user } = useAuth();
   const { navigateTo } = useNavigate();
   const { theme, toggleTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<'books' | 'cashouts' | 'waitlist' | 'tropes'>('books');
+  const [activeTab, setActiveTab] = useState<'books' | 'cashouts' | 'waitlist' | 'tropes' | 'users'>('books');
   const [books, setBooks] = useState<Book[]>([]);
   const [cashouts, setCashouts] = useState<CashoutRequest[]>([]);
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
