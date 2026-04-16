@@ -479,6 +479,64 @@ if (cashouts) setCashoutHistory(cashouts);
         </div>
 
       </div>
+
+      {/* ── Cashout History ── */}
+      {cashoutHistory.length > 0 && (
+        <div className={`rounded-2xl border p-6 ${
+          isDark ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-[#e8e0d5]'
+        }`}>
+          <h2 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${
+            isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]'
+          }`}>
+            <DollarSign className="w-5 h-5 text-[#D4A843]" />
+            Cashout History
+          </h2>
+          <div className="space-y-3">
+            {cashoutHistory.map((c) => (
+              <div
+                key={c.id}
+                className={`flex items-center justify-between p-3 rounded-lg ${
+                  isDark ? 'bg-[#111]' : 'bg-[#faf8f5]'
+                }`}
+              >
+                <div>
+                  <p className={`text-sm font-medium ${
+                    isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]'
+                  }`}>
+                    {c.payout_type === 'gift_card' && c.gift_card_brand
+                      ? `${c.gift_card_brand} Gift Card`
+                      : c.payout_type === 'paypal'
+                      ? 'PayPal'
+                      : c.payout_type}
+                  </p>
+                  <p className={`text-xs mt-0.5 ${
+                    isDark ? 'text-gray-500' : 'text-[#2C2C2C]/50'
+                  }`}>
+                    {new Date(c.created_at).toLocaleDateString('en-US', {
+                      month: 'short', day: 'numeric', year: 'numeric',
+                    })}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-[#D4A843]">
+                    ${Number(c.amount).toFixed(2)}
+                  </p>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    c.status === 'approved'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : c.status === 'pending'
+                      ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                  }`}>
+                    {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
