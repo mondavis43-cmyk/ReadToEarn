@@ -96,7 +96,6 @@ const loadProfile = async () => {
 
   setLoading(false);
 };
-  };
 
   const isBirthdayToday = () => {
     if (!profile?.birthday) return false;
