@@ -24,6 +24,16 @@ interface CompletedBook {
   };
 }
 
+interface CashoutRequest {
+  id: string;
+  amount: number;
+  payout_type: string;
+  payout_details: string | null;
+  gift_card_brand: string | null;
+  status: string;
+  created_at: string;
+}
+
 const BIRTHDAY_BONUS = 0.25;
 
 const TIER_CONFIG = {
