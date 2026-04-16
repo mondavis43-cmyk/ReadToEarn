@@ -34,6 +34,8 @@ interface CashoutRequest {
   created_at: string;
 }
 
+const [cashoutHistory, setCashoutHistory] = useState<CashoutRequest[]>([]);
+
 const BIRTHDAY_BONUS = 0.25;
 
 const TIER_CONFIG = {
