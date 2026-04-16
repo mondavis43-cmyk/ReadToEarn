@@ -58,10 +58,9 @@ export const Profile = () => {
   const [bonusClaimed, setBonusClaimed] = useState(false);
   const [cashoutHistory, setCashoutHistory] = useState<CashoutRequest[]>([]);
 
-useEffect(() => {
-  const [cashoutHistory, setCashoutHistory] = useState<CashoutRequest[]>([]);
-  loadProfile();
-}, [user]);
+  useEffect(() => {
+    loadProfile();
+  }, [user]);
 
 const loadProfile = async () => {
   if (!user) return;
