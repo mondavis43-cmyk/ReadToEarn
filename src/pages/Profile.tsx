@@ -56,6 +56,7 @@ export const Profile = () => {
   const [birthdayError, setBirthdayError] = useState('');
   const [claimingBonus, setClaimingBonus] = useState(false);
   const [bonusClaimed, setBonusClaimed] = useState(false);
+  const [cashoutHistory, setCashoutHistory] = useState<CashoutRequest[]>([]);
 
 useEffect(() => {
   const [cashoutHistory, setCashoutHistory] = useState<CashoutRequest[]>([]);
