@@ -34,8 +34,6 @@ interface CashoutRequest {
   created_at: string;
 }
 
-const [cashoutHistory, setCashoutHistory] = useState<CashoutRequest[]>([]);
-
 const BIRTHDAY_BONUS = 0.25;
 
 const TIER_CONFIG = {
@@ -60,6 +58,7 @@ export const Profile = () => {
   const [bonusClaimed, setBonusClaimed] = useState(false);
 
 useEffect(() => {
+  const [cashoutHistory, setCashoutHistory] = useState<CashoutRequest[]>([]);
   loadProfile();
 }, [user]);
 
