@@ -63,6 +63,14 @@ export const Profile = () => {
     loadProfile();
   }, [user]);
 
+  const { data: cashouts } = await supabase
+  .from('cashout_requests')
+  .select('*')
+  .eq('user_id', user.id)
+  .order('created_at', { ascending: false });
+
+if (cashouts) setCashoutHistory(cashouts);
+
   const loadProfile = async () => {
     if (!user) return;
 
