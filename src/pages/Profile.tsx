@@ -59,41 +59,43 @@ export const Profile = () => {
   const [claimingBonus, setClaimingBonus] = useState(false);
   const [bonusClaimed, setBonusClaimed] = useState(false);
 
-  useEffect(() => {
-    loadProfile();
-  }, [user]);
+useEffect(() => {
+  loadProfile();
+}, [user]);
 
-  const { data: cashouts } = await supabase
-  .from('cashout_requests')
-  .select('*')
-  .eq('user_id', user.id)
-  .order('created_at', { ascending: false });
+const loadProfile = async () => {
+  if (!user) return;
 
-if (cashouts) setCashoutHistory(cashouts);
+  const [profileResult, completedResult, cashoutsResult] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase
+      .from('completed_books')
+      .select('book_id, books(title, author, cover_url)')
+      .eq('user_id', user.id),
+    supabase
+      .from('cashout_requests')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false }),
+  ]);
 
-  const loadProfile = async () => {
-    if (!user) return;
-
-    const [profileResult, completedResult] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', user.id).single(),
-      supabase
-        .from('completed_books')
-        .select('book_id, books(title, author, cover_url)')
-        .eq('user_id', user.id),
-    ]);
-
-    if (profileResult.data) {
-      setProfile(profileResult.data);
-      if (profileResult.data.birthday) {
-        setBirthdayInput(profileResult.data.birthday);
-      }
+  if (profileResult.data) {
+    setProfile(profileResult.data);
+    if (profileResult.data.birthday) {
+      setBirthdayInput(profileResult.data.birthday);
     }
+  }
 
-    if (completedResult.data) {
-      setCompletedBooks(completedResult.data as CompletedBook[]);
-    }
+  if (completedResult.data) {
+    setCompletedBooks(completedResult.data as CompletedBook[]);
+  }
 
-    setLoading(false);
+  if (cashoutsResult.data) {
+    setCashoutHistory(cashoutsResult.data);
+  }
+
+  setLoading(false);
+};
   };
 
   const isBirthdayToday = () => {
