@@ -58,6 +58,14 @@ export const Profile = () => {
   const [bonusClaimed, setBonusClaimed] = useState(false);
   const [cashoutHistory, setCashoutHistory] = useState<CashoutRequest[]>([]);
 
+  const get1099Warning = () => {
+  if (!profile) return null;
+  const earned = profile.available_balance;
+  if (earned >= 550) return 'critical';
+  if (earned >= 500) return 'warning';
+  return null;
+};
+
   useEffect(() => {
     loadProfile();
   }, [user]);
@@ -225,6 +233,26 @@ const loadProfile = async () => {
             </p>
           </div>
         )}
+
+        {/* 1099 Tax Warning */}
+{get1099Warning() === 'critical' && (
+  <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+    <p className="text-red-400 font-medium text-sm">⚠️ Tax Reporting Required</p>
+    <p className={`text-xs ${subColor} mt-1`}>
+      You've earned ${profile?.available_balance.toFixed(2)} this year. Earnings over $600 require a 1099 form. 
+      Please ensure your tax information is on file before requesting another cashout.
+    </p>
+  </div>
+)}
+{get1099Warning() === 'warning' && (
+  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+    <p className="text-yellow-400 font-medium text-sm">📋 Heads Up: Approaching Tax Threshold</p>
+    <p className={`text-xs ${subColor} mt-1`}>
+      You've earned ${profile?.available_balance.toFixed(2)} this year. If you earn $600 or more, 
+      you'll receive a 1099 form and earnings must be reported as income.
+    </p>
+  </div>
+)}
 
         {/* Account Details */}
         <div className={`${cardBg} rounded-lg p-8 border ${cardBorder}`}>
