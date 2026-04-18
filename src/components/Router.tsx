@@ -17,6 +17,8 @@ import { AuthorSubmit } from '../pages/AuthorSubmit';
 import { FAQ } from '../pages/FAQ';
 import { Pricing } from '../pages/Pricing';
 import { NavBar } from '../components/NavBar';
+import { TermsOfService } from '../pages/TermsOfService';
+import { PrivacyPolicy } from '../pages/PrivacyPolicy';
 
 const WAITLIST_MODE = true;
 
@@ -49,6 +51,8 @@ export const Router = () => {
 
   if (route === '/admin') return <Admin />;
   if (route === '/reset-password') return <ResetPassword />;
+  if (route === '/terms') return <TermsOfService />;
+  if (route === '/privacy') return <PrivacyPolicy />;
 
   if (WAITLIST_MODE && !user) return <Waitlist />;
 
