@@ -17,7 +17,7 @@ export const PrivacyPolicy = () => {
           Privacy Policy
         </h1>
         <p className="text-center text-sm mb-10" style={{ color: textSecondary }}>
-          Last updated: June 1, 2025
+          Last updated: April 18, 2026
         </p>
 
         <div className="rounded-lg border p-8 space-y-8" style={{ backgroundColor: cardBg, borderColor: cardBorder }}>
@@ -33,7 +33,7 @@ export const PrivacyPolicy = () => {
             },
             {
               title: '3. Children\'s Privacy (COPPA)',
-              body: `ReadToEarn is intended for users 13 and older. We do not knowingly collect personal information from children under 13 without verifiable parental consent. If you believe a child under 13 has provided us with personal information without consent, please contact us immediately at support@readtoearn.com and we will delete that information promptly.`,
+              body: `ReadToEarn is intended for users 13 and older. We do not knowingly collect personal information from children under 13 without verifiable parental consent. If you believe a child under 13 has provided us with personal information without consent, please contact us immediately at info@joinreadtoearn.com and we will delete that information promptly.`,
             },
             {
               title: '4. Sharing Your Information',
@@ -49,7 +49,7 @@ export const PrivacyPolicy = () => {
             },
             {
               title: '7. Your Rights',
-              body: `You have the right to access, correct, or delete your personal information. You may also request that we restrict processing of your data or object to certain uses. To exercise these rights, contact us at support@readtoearn.com. We will respond within 30 days.`,
+              body: `You have the right to access, correct, or delete your personal information. You may also request that we restrict processing of your data or object to certain uses. To exercise these rights, contact us at info@joinreadtoearn.com. We will respond within 30 days.`,
             },
             {
               title: '8. Cookies',
@@ -61,7 +61,7 @@ export const PrivacyPolicy = () => {
             },
             {
               title: '10. Contact Us',
-              body: `If you have questions about this Privacy Policy or how we handle your data, contact us at support@readtoearn.com.`,
+              body: `If you have questions about this Privacy Policy or how we handle your data, contact us at info@joinreadtoearn.com.`,
             },
           ].map(({ title, body }) => (
             <div key={title}>
