@@ -17,7 +17,7 @@ export const TermsOfService = () => {
           Terms of Service
         </h1>
         <p className="text-center text-sm mb-10" style={{ color: textSecondary }}>
-          Last updated: June 1, 2025
+          Last updated: April 18, 2026
         </p>
 
         <div className="rounded-lg border p-8 space-y-8" style={{ backgroundColor: cardBg, borderColor: cardBorder }}>
@@ -65,7 +65,7 @@ export const TermsOfService = () => {
             },
             {
               title: '11. Contact',
-              body: `Questions about these Terms? Contact us at support@readtoearn.com.`,
+              body: `Questions about these Terms? Contact us at info@joinreadtoearn.com.`,
             },
           ].map(({ title, body }) => (
             <div key={title}>
