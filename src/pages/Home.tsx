@@ -11,6 +11,7 @@ interface Book {
   title: string;
   author: string;
   cover_url: string | null;
+  buy_link?: string;
   bounty_amount: number;
   page_count: number;
   book_type: 'platform' | 'sponsored';
