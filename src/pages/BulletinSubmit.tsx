@@ -138,7 +138,7 @@ export const BulletinSubmit = () => {
     <div style={{ backgroundColor: bg, minHeight: '100vh' }} className="py-12 px-4">
       <div className="max-w-lg mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2" style={{ color: textPrimary }}>Pin Your Book. Free to all Authors.</h1>
+          <h1 className="text-3xl font-bold mb-2" style={{ color: textPrimary }}>Pin Your Book for Free.</h1>
           <p className="text-sm" style={{ color: textSecondary }}>Promote your new or upcoming release. Claim your book later by creating an account with your email. Already have an account? Use the link below to post it from your dashboard.</p>
         </div>
 
