@@ -207,11 +207,25 @@ export const BulletinSubmit = () => {
 
             {error && <div className="text-sm p-3 rounded bg-red-50 text-red-600">{error}</div>}
 
-            <button type="submit" disabled={submitting} className="w-full py-3 rounded-lg text-sm font-bold transition hover:opacity-90 disabled:opacity-60" style={{ backgroundColor: accent, color: '#1B2A4A' }}>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full py-3 rounded-lg text-sm font-bold transition hover:opacity-90 disabled:opacity-60"
+              style={{ backgroundColor: accent, color: '#1B2A4A' }}
+            >
               {submitting ? 'Pinning...' : '📌 Pin to Bulletin Board'}
             </button>
           </form>
         </div>
+
+        {/* Re-added: Already have an account? */}
+        <p className="text-center text-sm mt-6" style={{ color: textSecondary }}>
+          Have a ReadToEarn account?{' '}
+          <a href="/author-dashboard" style={{ color: accent }} className="font-medium hover:underline">
+            Post from your dashboard instead
+          </a>
+        </p>
+
       </div>
     </div>
   );
