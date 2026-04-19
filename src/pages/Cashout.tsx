@@ -61,7 +61,7 @@ export const Cashout = () => {
     e.preventDefault();
     setError('');
 
-    if (balance < 5) {
+    if (balance < 10) {
       setError('You need at least $10.00 to cash out.');
       return;
     }
