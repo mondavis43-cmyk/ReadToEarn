@@ -123,35 +123,50 @@ export const Quiz = ({ bookId }: QuizProps) => {
     setLoading(false);
   };
 
-  const handleSubmit = async (fromTimer = false) => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (fromTimer) setTimedOut(true);
+    {alreadyCompleted && (
+  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6 text-yellow-300 text-sm">
+    {completedData?.passed 
+      ? "You've already earned your reward for this book."
+      : "You've already used your one attempt for this book. Each book allows one quiz attempt."}
+  </div>
+)}
 
-    let correct = 0;
-    questions.forEach((q) => {
-      if (answers[q.id] === q.correct_answer) correct++;
-    });
+const handleSubmit = async (fromTimer = false) => {
+  if (timerRef.current) clearInterval(timerRef.current);
+  if (fromTimer) setTimedOut(true);
 
-    setScore(correct);
-    const pass = correct >= 8;
-    setPassed(pass);
-    setSubmitted(true);
+  let correct = 0;
+  questions.forEach((q) => {
+    if (answers[q.id] === q.correct_answer) correct++;
+  });
 
-    if (!user || !book) return;
+  setScore(correct);
+  const pass = correct >= 8;
+  setPassed(pass);
+  setSubmitted(true);
 
-    await supabase.from('quiz_attempts').insert({
+  if (!user || !book) return;
+
+  // Log every attempt for audit purposes
+  await supabase.from('quiz_attempts').insert({
+    user_id: user.id,
+    book_id: bookId,
+    score: correct,
+    passed: pass,
+  });
+
+  // Only process payout on first attempt (pass or fail)
+  if (!alreadyCompleted) {
+    await supabase.from('completed_books').insert({
       user_id: user.id,
       book_id: bookId,
-      score: correct,
       passed: pass,
+      score: correct,
+      completed_at: new Date().toISOString(),
     });
 
-    if (pass && !alreadyCompleted) {
-      await supabase.from('completed_books').insert({
-        user_id: user.id,
-        book_id: bookId,
-      });
-
+    // Only award earnings if they passed
+    if (pass) {
       const { data: profileData } = await supabase
         .from('profiles')
         .select('available_balance, streak_count, last_quiz_date, referred_by, subscription_tier')
