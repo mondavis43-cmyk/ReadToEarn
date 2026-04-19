@@ -7,7 +7,7 @@ const navLinks = [
   { label: 'Library', icon: BookOpen, page: '/' },
   { label: 'Pricing', icon: Tag, page: 'pricing' },
   { label: 'Profile', icon: User, page: 'profile' },
-  { label: 'Bulletin Board', path: '/bulletin-board', icon: <PinIcon /> }
+  { label: 'Bulletin Board', path: '/bulletin-board', icon: <PinIcon /> },
   { label: 'Refer', icon: Gift, page: 'refer' },
   { label: 'Request a Book', icon: BookMarked, page: 'request-book' },
   { label: 'For Authors', icon: PenLine, page: 'authors' },
