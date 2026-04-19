@@ -15,7 +15,6 @@ interface BulletinBook {
 
 const GENRES = ['All', 'Romance', 'Fantasy', 'Mystery', 'Thriller', 'Sci-Fi', 'Young Adult', 'Historical', 'Literary', 'Horror', 'Non-Fiction', 'Other'];
 
-// Subtle rotation classes for the pin-board feel
 const ROTATIONS = [
   'rotate-[-1.5deg]',
   'rotate-[1deg]',
@@ -63,10 +62,18 @@ export const BulletinBoard = () => {
 
   const loadBooks = async () => {
     setLoading(true);
+    
+    // Calculate 90 days ago
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    const dateLimit = ninetyDaysAgo.toISOString().split('T')[0];
+
     const { data, error } = await supabase
       .from('books')
       .select('id, title, author, cover_url, genre, release_date, blurb, is_listed')
       .eq('on_bulletin', true)
+      // Only show books released within the last 90 days or in the future
+      .gte('release_date', dateLimit) 
       .order('release_date', { ascending: false });
 
     if (!error && data) {
@@ -79,15 +86,18 @@ export const BulletinBoard = () => {
   const formatReleaseDate = (dateStr: string | null) => {
     if (!dateStr) return 'Coming Soon';
     const date = new Date(dateStr + 'T00:00:00');
-    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    
+    // Simple check to see if it's in the future
+    const isFuture = new Date(dateStr) > new Date();
+    const prefix = isFuture ? 'Releasing: ' : '';
+    
+    return prefix + date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   };
 
   return (
     <div style={{ backgroundColor: bg, minHeight: '100vh' }} className="pb-16">
-      {/* Header */}
       <div className="max-w-6xl mx-auto px-4 pt-10 pb-6">
         <div className="flex flex-col items-center text-center mb-2">
-          {/* Decorative pushpin row */}
           <div className="flex gap-3 mb-4">
             {['#ef4444', '#3b82f6', '#22c55e', '#f59e0b'].map((color, i) => (
               <svg key={i} width="14" height="20" viewBox="0 0 14 20" fill="none">
@@ -100,23 +110,21 @@ export const BulletinBoard = () => {
             Bulletin Board
           </h1>
           <p className="text-base max-w-md" style={{ color: textSecondary }}>
-            New releases and upcoming books that should be on your radar. Browse what is coming next.
+            Fresh finds and upcoming releases from independent authors. Browse what's new in the last 90 days.
           </p>
         </div>
 
-        {/* Post Your Book CTA */}
         <div className="flex justify-center mt-4">
           <a
             href="/bulletin-submit"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all hover:opacity-90"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all hover:opacity-90 shadow-sm"
             style={{ backgroundColor: accent, color: '#1B2A4A' }}
           >
-            📌 Post Your Book — Free
+            📌 Post Your New Release — Free
           </a>
         </div>
       </div>
 
-      {/* Genre Filter Tabs */}
       <div className="max-w-6xl mx-auto px-4 mb-8">
         <div className="flex flex-wrap gap-2 justify-center">
           {GENRES.map(genre => (
@@ -136,57 +144,43 @@ export const BulletinBoard = () => {
         </div>
       </div>
 
-      {/* Loading */}
       {loading && (
         <div className="flex justify-center py-20">
           <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: accent, borderTopColor: 'transparent' }} />
         </div>
       )}
 
-      {/* Empty State */}
       {!loading && filtered.length === 0 && (
         <div className="flex flex-col items-center py-20 gap-3">
           <span className="text-5xl">📌</span>
           <p className="text-lg font-medium" style={{ color: textPrimary }}>Nothing pinned yet</p>
-          <p className="text-sm" style={{ color: textSecondary }}>
-            {activeGenre !== 'All' ? `No ${activeGenre} books posted yet.` : 'Be the first to post your book.'}
+          <p className="text-sm text-center max-w-xs" style={{ color: textSecondary }}>
+            {activeGenre !== 'All' 
+              ? `No ${activeGenre} books have been posted in the last 90 days.` 
+              : 'Be the first to share your upcoming or recent release with our community.'}
           </p>
-          <a
-            href="/bulletin-submit"
-            className="mt-2 px-5 py-2 rounded-full text-sm font-semibold"
-            style={{ backgroundColor: accent, color: '#1B2A4A' }}
-          >
-            Post Your Book
-          </a>
         </div>
       )}
 
-      {/* Masonry Pin Grid */}
       {!loading && filtered.length > 0 && (
         <div className="max-w-6xl mx-auto px-4">
-          <div
-            className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-5"
-            style={{ columnGap: '20px' }}
-          >
+          <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-5" style={{ columnGap: '20px' }}>
             {filtered.map((book, index) => (
               <div
                 key={book.id}
                 className={`break-inside-avoid mb-5 inline-block w-full ${ROTATIONS[index % ROTATIONS.length]} transition-transform hover:rotate-0 hover:scale-[1.02]`}
                 style={{ transformOrigin: 'top center' }}
               >
-                {/* Card */}
                 <div
                   className="relative rounded-sm shadow-md border overflow-hidden"
                   style={{
                     backgroundColor: cardBg,
                     borderColor: cardBorder,
-                    // Subtle index card texture via box shadow
                     boxShadow: isDark
                       ? '0 2px 8px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.03)'
                       : '0 2px 8px rgba(0,0,0,0.12), inset 0 0 0 1px rgba(0,0,0,0.04)',
                   }}
                 >
-                  {/* Pushpin */}
                   <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center">
                     <svg width="16" height="22" viewBox="0 0 16 22" fill="none">
                       <circle cx="8" cy="6" r="6" fill={pinColor} />
@@ -195,71 +189,34 @@ export const BulletinBoard = () => {
                     </svg>
                   </div>
 
-                  {/* Cover Image */}
                   {book.cover_url ? (
                     <div className="w-full pt-6" style={{ aspectRatio: '2/3', maxHeight: '220px', overflow: 'hidden' }}>
-                      <img
-                        src={book.cover_url}
-                        alt={book.title}
-                        className="w-full h-full object-cover"
-                        style={{ display: 'block' }}
-                      />
+                      <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
                     </div>
                   ) : (
-                    <div
-                      className="w-full pt-6 flex items-center justify-center"
-                      style={{
-                        height: '160px',
-                        backgroundColor: isDark ? '#0f172a' : '#e8e0d0',
-                      }}
-                    >
+                    <div className="w-full pt-6 flex items-center justify-center" style={{ height: '160px', backgroundColor: isDark ? '#0f172a' : '#e8e0d0' }}>
                       <span className="text-4xl">📖</span>
                     </div>
                   )}
 
-                  {/* Card Body */}
                   <div className="p-3 pt-2">
-                    {/* Genre Tag */}
                     {book.genre && (
-                      <span
-                        className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full mb-1.5"
-                        style={{ backgroundColor: accent + '22', color: accent }}
-                      >
+                      <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full mb-1.5" style={{ backgroundColor: accent + '22', color: accent }}>
                         {book.genre}
                       </span>
                     )}
-
-                    {/* Title */}
-                    <h3 className="font-bold text-sm leading-snug mb-0.5" style={{ color: textPrimary }}>
-                      {book.title}
-                    </h3>
-
-                    {/* Author */}
-                    <p className="text-xs mb-1.5" style={{ color: textSecondary }}>
-                      by {book.author}
-                    </p>
-
-                    {/* Blurb */}
-                    {book.blurb && (
-                      <p className="text-xs leading-relaxed mb-2" style={{ color: textSecondary }}>
-                        {book.blurb}
-                      </p>
-                    )}
-
-                    {/* Footer row */}
+                    <h3 className="font-bold text-sm leading-snug mb-0.5" style={{ color: textPrimary }}>{book.title}</h3>
+                    <p className="text-xs mb-1.5" style={{ color: textSecondary }}>by {book.author}</p>
+                    {book.blurb && <p className="text-xs leading-relaxed mb-2 line-clamp-3" style={{ color: textSecondary }}>{book.blurb}</p>}
+                    
                     <div className="flex items-center justify-between mt-1 flex-wrap gap-1">
-                      {/* Release Date */}
-                      <span className="text-xs font-medium" style={{ color: accent }}>
+                      <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: accent }}>
                         {formatReleaseDate(book.release_date)}
                       </span>
 
-                      {/* Available on ReadToEarn badge */}
                       {book.is_listed && (
-                        <span
-                          className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                          style={{ backgroundColor: badgeBg, color: '#D4A843' }}
-                        >
-                          ✓ On ReadToEarn
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: badgeBg, color: '#D4A843', border: '1px solid #D4A843' }}>
+                          READ TO EARN
                         </span>
                       )}
                     </div>
