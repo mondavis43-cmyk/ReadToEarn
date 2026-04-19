@@ -126,8 +126,8 @@ export const Quiz = ({ bookId }: QuizProps) => {
     {alreadyCompleted && (
   <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6 text-yellow-300 text-sm">
     {completedData?.passed 
-      ? "You've already earned your reward for this book."
-      : "You've already used your one attempt for this book. Each book allows one quiz attempt."}
+      ? "You have already earned your reward for this book."
+      : "You have already used your one attempt for this book. Each book allows one quiz attempt."}
   </div>
 )}
 
