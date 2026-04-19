@@ -31,6 +31,7 @@ interface BookListing {
   total_completions: number;
   pass_count: number;
   total_paid_out: number;
+  on_bulletin?: boolean; // New property for the bulletin board status
 }
 
 interface ClaimableBook {
@@ -52,6 +53,10 @@ export default function AuthorDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+
+  // Bulletin Board state
+  const [bulletinModalBook, setBulletinModalBook] = useState<BookListing | null>(null);
+  const [bulletinSubmitting, setBulletinSubmitting] = useState(false);
 
   // Edit modal state
   const [editingBook, setEditingBook] = useState<BookListing | null>(null);
@@ -107,6 +112,7 @@ export default function AuthorDashboard() {
         page_count,
         description,
         is_platform_book,
+        on_bulletin,
         created_at,
         completed_books (
           id,
@@ -135,6 +141,7 @@ export default function AuthorDashboard() {
         page_count: book.page_count,
         description: book.description,
         is_platform_book: book.is_platform_book,
+        on_bulletin: book.on_bulletin,
         created_at: book.created_at,
         total_completions: totalCompletions,
         pass_count: passCount,
@@ -145,6 +152,22 @@ export default function AuthorDashboard() {
     setBooks(shaped);
     setLoading(false);
   }
+
+  const handlePostToBulletin = async (book: BookListing) => {
+    setBulletinSubmitting(true);
+    const { error } = await supabase
+      .from('books')
+      .update({ on_bulletin: true })
+      .eq('id', book.id);
+
+    if (!error) {
+      setBooks(prev => prev.map(b => b.id === book.id ? { ...b, on_bulletin: true } : b));
+    } else {
+      setError("Could not post to bulletin board. Please check your connection.");
+    }
+    setBulletinSubmitting(false);
+    setBulletinModalBook(null);
+  };
 
   // ─── Edit modal ───────────────────────────────────────────────
 
@@ -265,7 +288,6 @@ export default function AuthorDashboard() {
     setSaving(true);
     setSaveSuccess(false);
 
-    // Upsert all questions
     const upsertData = questions.map((q) => ({
       id: q.id,
       book_id: editingBook.id,
@@ -323,7 +345,7 @@ export default function AuthorDashboard() {
         is_platform_book: false,
       })
       .eq("id", book.id)
-      .is("author_id", null); // safety: only claim if still unclaimed
+      .is("author_id", null);
 
     if (claimError) {
       setError("Failed to claim this book. It may have already been claimed.");
@@ -337,8 +359,6 @@ export default function AuthorDashboard() {
     await fetchAuthorBooks(userId);
     setTimeout(() => setClaimSuccess(null), 3000);
   }
-
-  // ─── Render ───────────────────────────────────────────────────
 
   const totalReaders = books.reduce((sum, b) => sum + b.total_completions, 0);
   const totalPaidOut = books.reduce((sum, b) => sum + b.total_paid_out, 0);
@@ -377,7 +397,6 @@ export default function AuthorDashboard() {
           </div>
         </div>
 
-        {/* Error banner */}
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg flex justify-between items-center">
             <span>{error}</span>
@@ -385,7 +404,6 @@ export default function AuthorDashboard() {
           </div>
         )}
 
-        {/* Summary stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Listings</p>
@@ -401,7 +419,6 @@ export default function AuthorDashboard() {
           </div>
         </div>
 
-        {/* Book listings */}
         {books.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
             <p className="text-gray-500 text-sm mb-4">You haven't submitted any book listings yet.</p>
@@ -424,18 +441,14 @@ export default function AuthorDashboard() {
           <div className="space-y-4">
             {books.map((book) => (
               <div key={book.id} className="bg-white rounded-xl border border-gray-200 p-5 flex gap-4 items-start">
-                {/* Cover */}
                 <div className="flex-shrink-0 w-16 h-20 bg-gray-100 rounded-lg overflow-hidden">
                   {book.cover_url ? (
                     <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs text-center px-1">
-                      No cover
-                    </div>
+                    <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs text-center px-1">No cover</div>
                   )}
                 </div>
 
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div>
@@ -449,30 +462,37 @@ export default function AuthorDashboard() {
                     )}
                   </div>
 
-                  {/* Stats */}
                   <div className="mt-3 flex flex-wrap gap-4 text-sm text-gray-600">
                     <span><span className="font-medium text-gray-900">{book.page_count}</span> pages</span>
                     <span><span className="font-medium text-gray-900">${book.bounty_amount.toFixed(2)}</span> bounty</span>
                     <span><span className="font-medium text-gray-900">{book.total_completions}</span> attempts</span>
                     <span><span className="font-medium text-gray-900">{book.pass_count}</span> passed</span>
-                    <span>
-                      <span className="font-medium text-gray-900">
-                        {book.total_completions > 0
-                          ? Math.round((book.pass_count / book.total_completions) * 100)
-                          : 0}%
-                      </span>{" "}pass rate
-                    </span>
                     <span><span className="font-medium text-gray-900">${book.total_paid_out.toFixed(2)}</span> paid out</span>
                   </div>
 
-                  {/* Actions */}
-                  <div className="mt-3">
+                  <div className="mt-3 flex items-center gap-3">
                     <button
                       onClick={() => openEdit(book)}
                       className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
                     >
                       Edit listing
                     </button>
+
+                    <span className="text-gray-300">|</span>
+
+                    {/* Bulletin Board Action */}
+                    {!book.on_bulletin ? (
+                      <button
+                        onClick={() => setBulletinModalBook(book)}
+                        className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                      >
+                        📌 Post to Bulletin Board
+                      </button>
+                    ) : (
+                      <span className="text-sm font-medium text-green-600 flex items-center gap-1">
+                        ✓ On Bulletin Board
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -485,14 +505,11 @@ export default function AuthorDashboard() {
       {editingBook && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-8 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl">
-
-            {/* Modal header */}
             <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
               <h2 className="text-lg font-semibold text-gray-900">Edit Listing</h2>
               <button onClick={closeEdit} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
             </div>
 
-            {/* Tabs */}
             <div className="flex border-b border-gray-100 px-6">
               {(["details", "quiz"] as EditTab[]).map((tab) => (
                 <button
@@ -510,12 +527,8 @@ export default function AuthorDashboard() {
             </div>
 
             <div className="px-6 py-5">
-
-              {/* ── Details tab ── */}
               {activeTab === "details" && (
                 <div className="space-y-5">
-
-                  {/* Cover upload */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Cover Image</label>
                     <div className="flex items-center gap-4">
@@ -542,14 +555,10 @@ export default function AuthorDashboard() {
                         >
                           {editingBook.cover_url ? "Replace cover" : "Upload cover"}
                         </button>
-                        {coverFile && (
-                          <p className="text-xs text-gray-400 mt-1">{coverFile.name}</p>
-                        )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Title */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Book Title</label>
                     <input
@@ -560,7 +569,6 @@ export default function AuthorDashboard() {
                     />
                   </div>
 
-                  {/* Author */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Author Name</label>
                     <input
@@ -571,7 +579,6 @@ export default function AuthorDashboard() {
                     />
                   </div>
 
-                  {/* Description */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                     <textarea
@@ -582,7 +589,6 @@ export default function AuthorDashboard() {
                     />
                   </div>
 
-                  {/* Page count + bounty preview */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Page Count</label>
                     <div className="flex items-center gap-3">
@@ -593,29 +599,14 @@ export default function AuthorDashboard() {
                         onChange={(e) => setEditForm({ ...editForm, page_count: parseInt(e.target.value) || 0 })}
                         className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
-                      <span className="text-sm text-gray-500">
-                        → bounty:{" "}
-                        <span className="font-semibold text-gray-900">
-                          ${calcBounty(editForm.page_count).toFixed(2)}
-                        </span>
-                        {editForm.page_count * BOUNTY_RATE > BOUNTY_CAP && (
-                          <span className="ml-1 text-xs text-amber-600">(capped at $5.00)</span>
-                        )}
-                      </span>
+                      <span className="text-sm text-gray-500">→ bounty: <strong>${calcBounty(editForm.page_count).toFixed(2)}</strong></span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Bounty = page count × $0.0085, max $5.00
-                    </p>
                   </div>
 
-                  {saveSuccess && (
-                    <p className="text-sm text-green-600 font-medium">Changes saved!</p>
-                  )}
+                  {saveSuccess && <p className="text-sm text-green-600 font-medium">Changes saved!</p>}
 
                   <div className="flex justify-end gap-3 pt-2">
-                    <button onClick={closeEdit} className="text-sm text-gray-500 hover:text-gray-700 font-medium px-4 py-2">
-                      Cancel
-                    </button>
+                    <button onClick={closeEdit} className="text-sm text-gray-500 hover:text-gray-700 font-medium px-4 py-2">Cancel</button>
                     <button
                       onClick={handleSaveDetails}
                       disabled={saving || uploadingCover}
@@ -627,71 +618,47 @@ export default function AuthorDashboard() {
                 </div>
               )}
 
-              {/* ── Quiz tab ── */}
               {activeTab === "quiz" && (
                 <div>
                   {questionsLoading ? (
                     <p className="text-sm text-gray-400 py-4">Loading questions...</p>
-                  ) : questions.length === 0 ? (
-                    <p className="text-sm text-gray-400 py-4">No questions found for this book.</p>
                   ) : (
                     <div className="space-y-6">
                       {questions.map((q, i) => (
                         <div key={q.id} className="border border-gray-200 rounded-xl p-4">
-                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                            Question {i + 1}
-                          </p>
-
+                          <p className="text-xs font-semibold text-gray-400 mb-3">QUESTION {i + 1}</p>
                           <div className="space-y-3">
-                            <div>
-                              <label className="block text-xs font-medium text-gray-600 mb-1">Question</label>
-                              <textarea
-                                value={q.question_text}
-                                onChange={(e) => updateQuestion(i, "question_text", e.target.value)}
-                                rows={2}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-xs font-medium text-green-600 mb-1">✓ Correct Answer</label>
+                            <textarea
+                              value={q.question_text}
+                              onChange={(e) => updateQuestion(i, "question_text", e.target.value)}
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <input
+                              type="text"
+                              value={q.correct_answer}
+                              onChange={(e) => updateQuestion(i, "correct_answer", e.target.value)}
+                              placeholder="Correct answer"
+                              className="w-full border border-green-300 rounded-lg px-3 py-2 text-sm"
+                            />
+                            {["wrong_answer_1", "wrong_answer_2", "wrong_answer_3"].map((field) => (
                               <input
+                                key={field}
                                 type="text"
-                                value={q.correct_answer}
-                                onChange={(e) => updateQuestion(i, "correct_answer", e.target.value)}
-                                className="w-full border border-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                                value={(q as any)[field]}
+                                onChange={(e) => updateQuestion(i, field as keyof Question, e.target.value)}
+                                placeholder="Wrong answer"
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                               />
-                            </div>
-
-                            {(["wrong_answer_1", "wrong_answer_2", "wrong_answer_3"] as const).map((field, wi) => (
-                              <div key={field}>
-                                <label className="block text-xs font-medium text-gray-500 mb-1">
-                                  Wrong Answer {wi + 1}
-                                </label>
-                                <input
-                                  type="text"
-                                  value={q[field]}
-                                  onChange={(e) => updateQuestion(i, field, e.target.value)}
-                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                />
-                              </div>
                             ))}
                           </div>
                         </div>
                       ))}
-
-                      {saveSuccess && (
-                        <p className="text-sm text-green-600 font-medium">Questions saved!</p>
-                      )}
-
                       <div className="flex justify-end gap-3 pt-2">
-                        <button onClick={closeEdit} className="text-sm text-gray-500 hover:text-gray-700 font-medium px-4 py-2">
-                          Cancel
-                        </button>
+                        <button onClick={closeEdit} className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2">Cancel</button>
                         <button
                           onClick={handleSaveQuestions}
                           disabled={saving}
-                          className="bg-indigo-600 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition"
+                          className="bg-indigo-600 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-indigo-700 transition"
                         >
                           {saving ? "Saving..." : "Save Questions"}
                         </button>
@@ -710,78 +677,57 @@ export default function AuthorDashboard() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Claim a Platform Book</h2>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  If your book is already on Read to Earn, claim it to manage it from your dashboard.
-                </p>
-              </div>
-              <button onClick={() => setShowClaimModal(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none ml-4">✕</button>
+              <h2 className="text-lg font-semibold text-gray-900">Claim a Platform Book</h2>
+              <button onClick={() => setShowClaimModal(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
             </div>
-
-            {claimSuccess && (
-              <div className="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-lg">
-                "{claimSuccess}" has been claimed and added to your dashboard.
-              </div>
-            )}
-
             <div className="flex gap-2 mb-4">
               <input
                 type="text"
-                placeholder="Search by book title..."
+                placeholder="Search..."
                 value={claimSearch}
                 onChange={(e) => setClaimSearch(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && searchClaimableBooks()}
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
               />
-              <button
-                onClick={searchClaimableBooks}
-                disabled={claimSearching || !claimSearch.trim()}
-                className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition"
-              >
-                {claimSearching ? "Searching..." : "Search"}
-              </button>
+              <button onClick={searchClaimableBooks} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">Search</button>
             </div>
+            <div className="space-y-3 max-h-72 overflow-y-auto">
+              {claimResults.map((book) => (
+                <div key={book.id} className="flex items-center gap-3 border p-3 rounded-xl">
+                  <div className="flex-1 min-w-0"><p className="text-sm font-medium truncate">{book.title}</p></div>
+                  <button onClick={() => claimBook(book)} className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg">Claim</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
-            {claimResults.length > 0 && (
-              <div className="space-y-3 max-h-72 overflow-y-auto">
-                {claimResults.map((book) => (
-                  <div key={book.id} className="flex items-center gap-3 border border-gray-200 rounded-xl p-3">
-                    <div className="w-10 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
-                      {book.cover_url ? (
-                        <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs">?</div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{book.title}</p>
-                      <p className="text-xs text-gray-500">{book.author} · {book.page_count} pages · ${calcBounty(book.page_count).toFixed(2)} bounty</p>
-                    </div>
-                    <button
-                      onClick={() => claimBook(book)}
-                      disabled={claiming === book.id}
-                      className="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition flex-shrink-0"
-                    >
-                      {claiming === book.id ? "Claiming..." : "Claim"}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {claimResults.length === 0 && claimSearch && !claimSearching && (
-              <p className="text-sm text-gray-400 text-center py-4">
-                No unclaimed platform books found matching "{claimSearch}".
-              </p>
-            )}
-
-            <div className="mt-5 flex justify-end">
+      {/* ─── Bulletin Board Modal ─────────────────────────────────── */}
+      {bulletinModalBook && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+          <div className="w-full max-w-sm rounded-xl border p-6 bg-white border-gray-200 shadow-2xl">
+            <h3 className="text-lg font-bold mb-2 text-gray-900">
+              Post to Bulletin Board?
+            </h3>
+            <p className="text-sm mb-4 text-gray-600">
+              <strong className="text-gray-900">{bulletinModalBook.title}</strong> will appear on the public bulletin board immediately. Readers can discover it for free.
+            </p>
+            <p className="text-xs mb-5 p-3 rounded-lg bg-indigo-50 text-gray-500">
+              💡 Since this book is already listed on ReadToEarn, it will automatically show the "Available on ReadToEarn" badge on the board.
+            </p>
+            <div className="flex gap-3">
               <button
-                onClick={() => setShowClaimModal(false)}
-                className="text-sm text-gray-500 hover:text-gray-700 font-medium px-4 py-2"
+                onClick={() => setBulletinModalBook(null)}
+                className="flex-1 py-2 rounded-lg text-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
               >
-                Done
+                Cancel
+              </button>
+              <button
+                onClick={() => handlePostToBulletin(bulletinModalBook)}
+                disabled={bulletinSubmitting}
+                className="flex-1 py-2 rounded-lg text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition disabled:opacity-50"
+              >
+                {bulletinSubmitting ? 'Posting...' : '📌 Post It'}
               </button>
             </div>
           </div>
