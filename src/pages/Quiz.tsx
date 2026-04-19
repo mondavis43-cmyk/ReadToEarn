@@ -417,5 +417,6 @@ const handleSubmit = async (fromTimer = false) => {
         )}
       </div>
     </div>
-  );
-};
+   );
+ );
+);
