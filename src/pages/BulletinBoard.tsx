@@ -13,7 +13,7 @@ interface BulletinBook {
   is_listed: boolean;
 }
 
-const GENRES = ['All', 'Romance', 'Fantasy', 'Mystery', 'Thriller', 'Sci-Fi', 'Historical', 'Literary', 'Horror', 'Non-Fiction', 'Other'];
+const GENRES = ['All', 'Romance', 'Fantasy', 'Mystery', 'Thriller', 'Sci-Fi', 'Young Adult', 'Historical', 'Literary', 'Horror', 'Non-Fiction', 'Other'];
 
 // Subtle rotation classes for the pin-board feel
 const ROTATIONS = [
@@ -100,7 +100,7 @@ export const BulletinBoard = () => {
             Bulletin Board
           </h1>
           <p className="text-base max-w-md" style={{ color: textSecondary }}>
-            New releases and upcoming books from indie authors. Browse what is coming next.
+            New releases and upcoming books that should be on your radar. Browse what is coming next.
           </p>
         </div>
 
