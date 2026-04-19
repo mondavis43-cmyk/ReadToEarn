@@ -19,8 +19,8 @@ import { Pricing } from '../pages/Pricing';
 import { NavBar } from '../components/NavBar';
 import { TermsOfService } from '../pages/TermsOfService';
 import { PrivacyPolicy } from '../pages/PrivacyPolicy';
-import { BulletinBoard } from './pages/BulletinBoard';
-import { BulletinSubmit } from './pages/BulletinSubmit';
+import { BulletinBoard } from '../pages/BulletinBoard';
+import { BulletinSubmit } from '../pages/BulletinSubmit';
 
 const WAITLIST_MODE = true;
 
