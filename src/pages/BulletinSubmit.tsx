@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../lib/supabase';
 import { useTheme } from '../contexts/ThemeContext';
 
 const GENRES = ['Romance', 'Fantasy', 'Mystery', 'Thriller', 'Sci-Fi', 'Historical', 'Literary', 'Horror', 'Non-Fiction', 'Other'];
