@@ -56,6 +56,10 @@ const faqs = [
     answer: 'Absolutely. Head to the Request a Book page, enter the title and author, and optionally submit quiz questions to help us add it faster. We review all requests and prioritize the most-requested titles.',
   },
   {
+    question: 'Can I retake a quiz?',
+    answer: 'Yes, but earnings are limited to one payout per book. Once you earn from a book, you can't earn from it again.',
+  },
+  {
     question: 'I am an author. Can I list my book?',
     answer: 'Yes! Visit the For Authors page to learn how it works and submit your book. Listing fees start at $45 for a single title.',
   },
