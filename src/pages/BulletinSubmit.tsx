@@ -138,8 +138,8 @@ export const BulletinSubmit = () => {
     <div style={{ backgroundColor: bg, minHeight: '100vh' }} className="py-12 px-4">
       <div className="max-w-lg mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2" style={{ color: textPrimary }}>Pin Your Book for Free.</h1>
-          <p className="text-sm" style={{ color: textSecondary }}>Promote your new or upcoming release. Claim your book later by creating an account with your email. Already have an account? Use the link below to post it from your dashboard.</p>
+          <h1 className="text-3xl font-bold mb-2" style={{ color: textPrimary }}>Promote Your New or Upcoming Release for Free.</h1>
+          <p className="text-sm" style={{ color: textSecondary }}>Claim your book later by creating an account with your email. Already have an account? Use the link below to post it from your dashboard.</p>
         </div>
 
         <div className="rounded-xl border p-6 shadow-sm" style={{ backgroundColor: cardBg, borderColor: cardBorder }}>
@@ -222,7 +222,7 @@ export const BulletinSubmit = () => {
         <p className="text-center text-sm mt-6" style={{ color: textSecondary }}>
           Have a ReadToEarn account?{' '}
           <a href="/author-dashboard" style={{ color: accent }} className="font-medium hover:underline">
-            Post from your dashboard instead
+            Post from your author dashboard instead.
           </a>
         </p>
 
