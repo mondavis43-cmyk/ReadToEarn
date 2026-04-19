@@ -332,36 +332,71 @@ export const Home = () => {
           </div>
         )}
 
-        {/* Grid Display (Kept as provided) */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 transition-opacity duration-150 ${booksLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-          {books.map((book) => {
-            const isCompleted = completedBookIds.has(book.id);
-            return (
-              <div
-                key={book.id}
-                onClick={() => navigateTo(`/book/${book.id}`)}
-                className="bg-white dark:bg-[#1a1a1a] rounded-lg overflow-hidden border border-[#e8e0d5] dark:border-gray-800 hover:border-[#D4A843] transition group cursor-pointer shadow-sm hover:shadow-md"
-              >
-                <div className="aspect-[2/3] relative overflow-hidden bg-[#ede8e0] dark:bg-[#2a2a2a]">
-                  {book.cover_url && (
-                    <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-                  )}
-                  <div className="absolute top-3 right-3">
-                    <div className="bg-[#D4A843] text-[#1B2A4A] text-xs font-semibold px-3 py-1.5 rounded-full">
-                      {book.book_type === 'sponsored' ? `Earn $${book.bounty_amount.toFixed(2)}` : 'Earn $0.50–$0.95'}
-                    </div>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <h3 className="font-serif text-lg text-[#2C2C2C] dark:text-[#F5F0E8] mb-1 line-clamp-2">{book.title}</h3>
-                  <p className="text-[#2C2C2C]/50 dark:text-gray-500 text-sm mb-3">{book.author}</p>
-                  {isCompleted ? (
-                    <div className="flex items-center justify-center gap-2 py-2.5 bg-[#D4A843]/10 border border-[#D4A843]/40 rounded-lg text-[#D4A843] text-sm font-medium">
-                      <Check className="w-4 h-4" /> Completed
-                    </div>
-                  ) : (
-                    <div className="w-full bg-[#1B2A4A] dark:bg-[#D4A843] dark:text-[#1B2A4A] text-[#F5F0E8] font-medium py-2.5 rounded-lg text-center text-sm hover:bg-[#142038] transition">
-                      View Book
+{/* Book grid */}
+<div
+  className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 transition-opacity duration-150 ${
+    booksLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'
+  }`}
+>
+  {books.map((book) => {
+    const isCompleted = completedBookIds.has(book.id);
+    return (
+      <div
+        key={book.id}
+        onClick={() => navigateTo(`/book/${book.id}`)}
+        className="bg-white dark:bg-[#1a1a1a] rounded-lg overflow-hidden border border-[#e8e0d5] dark:border-gray-800 hover:border-[#D4A843] dark:hover:border-[#D4A843] transition group cursor-pointer shadow-sm hover:shadow-md"
+      >
+        <div className="aspect-[2/3] relative overflow-hidden bg-[#ede8e0] dark:bg-[#2a2a2a]">
+          {book.cover_url && (
+            <img
+              src={book.cover_url}
+              alt={book.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+            />
+          )}
+          <div className="absolute top-3 right-3">
+            <div className="bg-[#D4A843] text-[#1B2A4A] text-xs font-semibold px-3 py-1.5 rounded-full">
+              {book.book_type === 'sponsored'
+                ? `Earn $${book.bounty_amount.toFixed(2)}`
+                : 'Earn $0.50–$0.95'}
+            </div>
+          </div>
+        </div>
+        <div className="p-4">
+          <h3 className="font-serif text-lg text-[#2C2C2C] dark:text-[#F5F0E8] mb-1 line-clamp-2">
+            {book.title}
+          </h3>
+          <p className="text-[#2C2C2C]/50 dark:text-gray-500 text-sm mb-3">
+            {book.author}
+          </p>
+
+          {/* Restored Genre Tags */}
+          {book.genres && book.genres.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-4">
+              {book.genres.slice(0, 2).map((g) => (
+                <span
+                  key={g}
+                  className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#1B2A4A]/5 dark:bg-white/5 text-[#1B2A4A]/60 dark:text-[#F5F0E8]/50 border border-[#1B2A4A]/10 dark:border-white/10"
+                >
+                  {g}
+                </span>
+              ))}
+              {book.genres.length > 2 && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#1B2A4A]/5 dark:bg-white/5 text-[#1B2A4A]/60 dark:text-[#F5F0E8]/50">
+                  +{book.genres.length - 2}
+                </span>
+              )}
+            </div>
+          )}
+
+          {isCompleted ? (
+            <div className="flex items-center justify-center gap-2 py-2.5 bg-[#D4A843]/10 border border-[#D4A843]/40 rounded-lg text-[#D4A843] text-sm font-medium">
+              <Check className="w-4 h-4" />
+              Completed
+            </div>
+          ) : (
+            <div className="w-full bg-[#1B2A4A] dark:bg-[#D4A843] dark:text-[#1B2A4A] text-[#F5F0E8] font-medium py-2.5 rounded-lg text-center text-sm hover:bg-[#142038] dark:hover:bg-[#bf9538] transition">
+              View Book
                     </div>
                   )}
                 </div>
