@@ -91,7 +91,7 @@ export const BulletinSubmit = () => {
         cover_url,
         on_bulletin: true,
         is_listed: false,
-        author_id: null,
+        author: null,
         // Required fields with defaults
         bounty_amount: 0,
         page_count: 0,
