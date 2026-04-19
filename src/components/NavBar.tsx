@@ -1,13 +1,13 @@
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
-import { BookOpen, User, Gift, BookMarked, PenLine, HelpCircle, Tag, Menu, X } from 'lucide-react';
+import { BookOpen, User, Gift, BookMarked, Pin, PenLine, HelpCircle, Tag, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
 const navLinks = [
   { label: 'Library', icon: BookOpen, page: '/' },
   { label: 'Pricing', icon: Tag, page: 'pricing' },
   { label: 'Profile', icon: User, page: 'profile' },
-  { label: 'Bulletin Board', path: '/bulletin-board', icon: <PinIcon /> },
+  { label: 'Bulletin Board', path: '/bulletin-board', icon: Pin },
   { label: 'Refer', icon: Gift, page: 'refer' },
   { label: 'Request a Book', icon: BookMarked, page: 'request-book' },
   { label: 'For Authors', icon: PenLine, page: 'authors' },
