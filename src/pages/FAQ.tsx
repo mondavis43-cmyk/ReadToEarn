@@ -57,7 +57,7 @@ const faqs = [
   },
   {
     question: 'Can I retake a quiz?',
-    answer: 'Yes, but earnings are limited to one payout per book. Once you earn from a book, you can't earn from it again.',
+    answer: 'Yes, but no matter how many times you take it, you can only earn the payout once.',
   },
   {
     question: 'I am an author. Can I list my book?',
