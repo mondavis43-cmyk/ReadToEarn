@@ -107,7 +107,7 @@ export const BulletinBoard = () => {
             Bulletin Board
           </h1>
           <p className="text-base max-w-md" style={{ color: textSecondary }}>
-            Fresh finds and upcoming releases from independent authors. Browse what's new in the last 90 days.
+            Fresh finds and upcoming releases. Browse what's new in books from the last 90 days.
           </p>
         </div>
 
