@@ -61,7 +61,7 @@ export const BulletinSubmit = () => {
     setSubmitting(true);
 
     try {
-      let cover_url = form.cover_url || null;
+      let final_cover_url = form.cover_url || null;
 
       // Upload cover if provided
       if (coverFile) {
@@ -77,22 +77,20 @@ export const BulletinSubmit = () => {
           .from('book-covers')
           .getPublicUrl(uploadData.path);
 
-        cover_url = urlData.publicUrl;
+        final_cover_url = urlData.publicUrl;
       }
 
-      // Insert book row — Path A (no account)
+      // Insert book row 
       const { error: insertError } = await supabase.from('books').insert({
         title: form.title.trim(),
-        author: form.author.trim(),
+        author: form.author.trim(), // This is the user-provided author name string
         genre: form.genre || null,
         release_date: form.release_date || null,
         blurb: form.blurb.trim() || null,
         contact_email: form.contact_email.trim() || null,
-        cover_url,
+        cover_url: final_cover_url,
         on_bulletin: true,
         is_listed: false,
-        author: null,
-        // Required fields with defaults
         bounty_amount: 0,
         page_count: 0,
       });
@@ -188,8 +186,6 @@ export const BulletinSubmit = () => {
                   borderColor: inputBorder,
                   color: textPrimary,
                 }}
-                onFocus={e => (e.target.style.borderColor = accent)}
-                onBlur={e => (e.target.style.borderColor = inputBorder)}
               />
             </div>
 
@@ -211,8 +207,6 @@ export const BulletinSubmit = () => {
                   borderColor: inputBorder,
                   color: textPrimary,
                 }}
-                onFocus={e => (e.target.style.borderColor = accent)}
-                onBlur={e => (e.target.style.borderColor = inputBorder)}
               />
             </div>
 
@@ -279,8 +273,6 @@ export const BulletinSubmit = () => {
                   borderColor: inputBorder,
                   color: textPrimary,
                 }}
-                onFocus={e => (e.target.style.borderColor = accent)}
-                onBlur={e => (e.target.style.borderColor = inputBorder)}
               />
             </div>
 
@@ -307,13 +299,13 @@ export const BulletinSubmit = () => {
                     style={{ color: textSecondary }}
                   />
                   <p className="text-xs mt-1" style={{ color: textSecondary }}>
-                    JPG or PNG. Recommended: 2:3 ratio (book cover proportions).
+                    JPG or PNG. Recommended: 2:3 ratio.
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Contact Email (optional, for Path D claim-back) */}
+            {/* Contact Email */}
             <div>
               <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>
                 Your Email <span className="font-normal" style={{ color: textSecondary }}>(optional)</span>
@@ -330,12 +322,7 @@ export const BulletinSubmit = () => {
                   borderColor: inputBorder,
                   color: textPrimary,
                 }}
-                onFocus={e => (e.target.style.borderColor = accent)}
-                onBlur={e => (e.target.style.borderColor = inputBorder)}
               />
-              <p className="text-xs mt-1" style={{ color: textSecondary }}>
-                Add your email so you can claim this listing if you create an account later.
-              </p>
             </div>
 
             {/* Error */}
@@ -360,14 +347,6 @@ export const BulletinSubmit = () => {
             </p>
           </form>
         </div>
-
-        {/* Already have an account? */}
-        <p className="text-center text-sm mt-4" style={{ color: textSecondary }}>
-          Have a ReadToEarn account?{' '}
-          <a href="/author-dashboard" style={{ color: accent }} className="font-medium hover:underline">
-            Post from your dashboard instead
-          </a>
-        </p>
       </div>
     </div>
   );
