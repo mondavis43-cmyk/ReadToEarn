@@ -269,7 +269,7 @@ export const Home = () => {
             Book Library
           </h2>
           <p className="text-[#2C2C2C]/60 dark:text-gray-400 mt-1">
-            Browse our curated collection of books with active rewards.
+            Browse our library, choose a title, and take its quiz and pass it to earn a reward.
           </p>
         </div>
 
