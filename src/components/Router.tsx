@@ -19,6 +19,8 @@ import { Pricing } from '../pages/Pricing';
 import { NavBar } from '../components/NavBar';
 import { TermsOfService } from '../pages/TermsOfService';
 import { PrivacyPolicy } from '../pages/PrivacyPolicy';
+import { BulletinBoard } from './pages/BulletinBoard';
+import { BulletinSubmit } from './pages/BulletinSubmit';
 
 const WAITLIST_MODE = true;
 
@@ -33,6 +35,7 @@ export const Router = () => {
   }, []);
 
   useEffect(() => {
+    // Added bulletin routes to the "allowed" list for unauthenticated/reset checks if needed
     if (!loading && !user && route !== '/login' && route !== '/signup' && route !== '/admin' && route !== '/reset-password') {
       if (!WAITLIST_MODE) {
         window.history.pushState({}, '', '/login');
@@ -69,12 +72,29 @@ export const Router = () => {
       {route === '/request-book' && <RequestBook />}
       {route === '/authors' && <Authors />}
       {route === '/author-submit' && <AuthorSubmit />}
+      {route === '/bulletin-board' && <BulletinBoard />}
+      {route === '/bulletin-submit' && <BulletinSubmit />}
       {route === '/faq' && <FAQ />}
       {route.startsWith('/quiz/') && <Quiz bookId={route.split('/')[2]} />}
       {route.startsWith('/book/') && <BookPage />}
-      {![ '/pricing', '/profile', '/cashout', '/refer', '/request-book', '/authors', '/faq', '/author-submit' ].includes(route) &&
-  !route.startsWith('/quiz/') &&
-  !route.startsWith('/book/') && <Home />}
+      
+      {/* Updated the exclusion list to include bulletin routes. 
+          If the route doesn't match any of these, show Home.
+      */}
+      {![ 
+        '/pricing', 
+        '/profile', 
+        '/cashout', 
+        '/refer', 
+        '/request-book', 
+        '/authors', 
+        '/faq', 
+        '/author-submit',
+        '/bulletin-board',
+        '/bulletin-submit'
+      ].includes(route) &&
+      !route.startsWith('/quiz/') &&
+      !route.startsWith('/book/') && <Home />}
     </>
   );
 };
