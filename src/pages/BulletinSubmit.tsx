@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -6,6 +6,9 @@ const GENRES = ['Romance', 'Fantasy', 'Mystery', 'Thriller', 'Sci-Fi', 'Young Ad
 
 export const BulletinSubmit = () => {
   const { isDark } = useTheme();
+
+  // State for the current logged-in user
+  const [userId, setUserId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     title: '',
@@ -16,11 +19,25 @@ export const BulletinSubmit = () => {
     contact_email: '',
     cover_url: '',
   });
+
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+
+  // Check for auth session on load
+  useEffect(() => {
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUserId(session.user.id);
+        // Pre-fill email if they are logged in
+        setForm(prev => ({ ...prev, contact_email: session.user.email || '' }));
+      }
+    };
+    getSession();
+  }, []);
 
   // Theme tokens
   const bg = isDark ? '#0f172a' : '#F5F0E8';
@@ -50,11 +67,7 @@ export const BulletinSubmit = () => {
     setError('');
 
     if (!form.title.trim() || !form.author.trim()) {
-      setError('Title and author are required.');
-      return;
-    }
-    if (form.blurb.length > 150) {
-      setError('Blurb must be 150 characters or fewer.');
+      setError('Title and author name are required.');
       return;
     }
 
@@ -63,7 +76,6 @@ export const BulletinSubmit = () => {
     try {
       let final_cover_url = form.cover_url || null;
 
-      // Upload cover if provided
       if (coverFile) {
         const ext = coverFile.name.split('.').pop();
         const fileName = `bulletin-${Date.now()}.${ext}`;
@@ -80,17 +92,18 @@ export const BulletinSubmit = () => {
         final_cover_url = urlData.publicUrl;
       }
 
-      // Insert book row 
+      // THE UNIFIED DATA OBJECT
       const { error: insertError } = await supabase.from('books').insert({
         title: form.title.trim(),
-        author: form.author.trim(), // This is the user-provided author name string
+        author: form.author.trim(),     // The display name string
+        user_id: userId || null,        // Optional: links to account if logged in
         genre: form.genre || null,
         release_date: form.release_date || null,
         blurb: form.blurb.trim() || null,
         contact_email: form.contact_email.trim() || null,
         cover_url: final_cover_url,
         on_bulletin: true,
-        is_listed: false,
+        is_listed: false,               // Default to false (it's not a paid listing yet)
         bounty_amount: 0,
         page_count: 0,
       });
@@ -99,7 +112,8 @@ export const BulletinSubmit = () => {
 
       setSubmitted(true);
     } catch (err: any) {
-      setError(err.message || 'Something went wrong. Please try again.');
+      console.error("Submission Error:", err);
+      setError(err.message || 'Submission failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -117,7 +131,7 @@ export const BulletinSubmit = () => {
             You are on the board!
           </h2>
           <p className="text-sm mb-6" style={{ color: textSecondary }}>
-            Your book has been pinned to the bulletin board. Readers can discover it right now.
+            Your book has been pinned. If you have an account, it will appear in your dashboard soon.
           </p>
           <div className="flex flex-col gap-3">
             <a
@@ -126,13 +140,6 @@ export const BulletinSubmit = () => {
               style={{ backgroundColor: accent, color: '#1B2A4A' }}
             >
               View the Bulletin Board
-            </a>
-            <a
-              href="/signup"
-              className="block w-full py-2.5 rounded-lg text-sm font-semibold text-center border transition hover:opacity-80"
-              style={{ borderColor: cardBorder, color: textSecondary }}
-            >
-              Create an Account to Manage Your Listing
             </a>
           </div>
         </div>
@@ -143,32 +150,20 @@ export const BulletinSubmit = () => {
   return (
     <div style={{ backgroundColor: bg, minHeight: '100vh' }} className="py-12 px-4">
       <div className="max-w-lg mx-auto">
-        {/* Header */}
         <div className="text-center mb-8">
-          <div className="flex justify-center gap-2 mb-3">
-            {['#ef4444', '#3b82f6', '#22c55e'].map((color, i) => (
-              <svg key={i} width="12" height="18" viewBox="0 0 12 18" fill="none">
-                <circle cx="6" cy="5" r="5" fill={color} />
-                <rect x="5" y="9" width="2" height="9" rx="1" fill={color} opacity="0.6" />
-              </svg>
-            ))}
-          </div>
           <h1 className="text-3xl font-bold mb-2" style={{ color: textPrimary }}>
             Pin Your Book
           </h1>
           <p className="text-sm" style={{ color: textSecondary }}>
-            Free for all authors. No account required. Your book goes live immediately.
+            Promote your work for free. Claim it later by creating an account with your email.
           </p>
         </div>
 
-        {/* Form Card */}
         <div
           className="rounded-xl border p-6 shadow-sm"
           style={{ backgroundColor: cardBg, borderColor: cardBorder }}
         >
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-
-            {/* Title */}
             <div>
               <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>
                 Book Title <span style={{ color: '#ef4444' }}>*</span>
@@ -178,18 +173,12 @@ export const BulletinSubmit = () => {
                 name="title"
                 value={form.title}
                 onChange={handleChange}
-                placeholder="The Name of the Wind"
                 required
-                className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none transition"
-                style={{
-                  backgroundColor: inputBg,
-                  borderColor: inputBorder,
-                  color: textPrimary,
-                }}
+                className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none"
+                style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
               />
             </div>
 
-            {/* Author */}
             <div>
               <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>
                 Author Name <span style={{ color: '#ef4444' }}>*</span>
@@ -199,152 +188,83 @@ export const BulletinSubmit = () => {
                 name="author"
                 value={form.author}
                 onChange={handleChange}
-                placeholder="Patrick Rothfuss"
                 required
-                className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none transition"
-                style={{
-                  backgroundColor: inputBg,
-                  borderColor: inputBorder,
-                  color: textPrimary,
-                }}
+                className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none"
+                style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
               />
             </div>
 
-            {/* Genre + Release Date row */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>
-                  Genre
-                </label>
+                <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>Genre</label>
                 <select
                   name="genre"
                   value={form.genre}
                   onChange={handleChange}
                   className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none"
-                  style={{
-                    backgroundColor: inputBg,
-                    borderColor: inputBorder,
-                    color: form.genre ? textPrimary : textSecondary,
-                  }}
+                  style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
                 >
                   <option value="">Select genre</option>
-                  {GENRES.map(g => (
-                    <option key={g} value={g}>{g}</option>
-                  ))}
+                  {GENRES.map(g => <option key={g} value={g}>{g}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>
-                  Release Date
-                </label>
+                <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>Release Date</label>
                 <input
                   type="date"
                   name="release_date"
                   value={form.release_date}
                   onChange={handleChange}
                   className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none"
-                  style={{
-                    backgroundColor: inputBg,
-                    borderColor: inputBorder,
-                    color: textPrimary,
-                  }}
+                  style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
                 />
               </div>
             </div>
 
-            {/* Blurb */}
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>
-                One-Liner Blurb
-                <span className="ml-1 font-normal" style={{ color: textSecondary }}>
-                  ({form.blurb.length}/150)
-                </span>
-              </label>
+              <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>One-Liner Blurb (max 150)</label>
               <textarea
                 name="blurb"
                 value={form.blurb}
                 onChange={handleChange}
-                placeholder="A young man grows up to become the most notorious wizard his world has ever seen."
-                rows={2}
                 maxLength={150}
+                rows={2}
                 className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none resize-none"
-                style={{
-                  backgroundColor: inputBg,
-                  borderColor: inputBorder,
-                  color: textPrimary,
-                }}
+                style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
               />
             </div>
 
-            {/* Cover Upload */}
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>
-                Cover Image
-              </label>
+              <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>Cover Image</label>
               <div className="flex items-start gap-4">
-                {coverPreview && (
-                  <img
-                    src={coverPreview}
-                    alt="Cover preview"
-                    className="w-16 h-24 object-cover rounded border"
-                    style={{ borderColor: cardBorder }}
-                  />
-                )}
-                <div className="flex-1">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleCoverChange}
-                    className="w-full text-sm"
-                    style={{ color: textSecondary }}
-                  />
-                  <p className="text-xs mt-1" style={{ color: textSecondary }}>
-                    JPG or PNG. Recommended: 2:3 ratio.
-                  </p>
-                </div>
+                {coverPreview && <img src={coverPreview} className="w-16 h-24 object-cover rounded border" />}
+                <input type="file" accept="image/*" onChange={handleCoverChange} className="text-sm" />
               </div>
             </div>
 
-            {/* Contact Email */}
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>
-                Your Email <span className="font-normal" style={{ color: textSecondary }}>(optional)</span>
-              </label>
+              <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>Your Contact Email (optional)</label>
               <input
                 type="email"
                 name="contact_email"
                 value={form.contact_email}
                 onChange={handleChange}
-                placeholder="you@example.com"
+                placeholder="Required to claim listing later"
                 className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none"
-                style={{
-                  backgroundColor: inputBg,
-                  borderColor: inputBorder,
-                  color: textPrimary,
-                }}
+                style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
               />
             </div>
 
-            {/* Error */}
-            {error && (
-              <div className="text-sm px-3 py-2 rounded-lg" style={{ backgroundColor: '#fef2f2', color: '#dc2626' }}>
-                {error}
-              </div>
-            )}
+            {error && <div className="text-sm p-3 rounded bg-red-50 text-red-600">{error}</div>}
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={submitting}
               className="w-full py-3 rounded-lg text-sm font-bold transition hover:opacity-90 disabled:opacity-60"
               style={{ backgroundColor: accent, color: '#1B2A4A' }}
             >
-              {submitting ? 'Pinning your book...' : '📌 Pin to Bulletin Board'}
+              {submitting ? 'Pinning...' : '📌 Pin to Bulletin Board'}
             </button>
-
-            <p className="text-xs text-center" style={{ color: textSecondary }}>
-              Your book goes live immediately. No review required.
-            </p>
           </form>
         </div>
       </div>
