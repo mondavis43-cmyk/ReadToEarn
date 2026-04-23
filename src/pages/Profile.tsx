@@ -111,7 +111,7 @@ export const Profile = () => {
       <div className={`border-b ${dividerColor} px-4 py-4 mb-8`}>
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <button onClick={() => navigateTo('/')} className={`${subColor} hover:text-[#D4A843]`}><ArrowLeft className="w-5 h-5" /></button>
-          <h1 className={`font-serif text-3xl ${headingColor}`}>Reader Dashboard</h1>
+          <h1 className={`font-serif text-3xl ${headingColor}`}>Profile</h1>
         </div>
       </div>
 
