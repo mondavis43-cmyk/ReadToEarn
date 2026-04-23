@@ -1,163 +1,217 @@
-import { useState } from 'react';
-import { useTheme } from '../contexts/ThemeContext';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
-import { Check, Star, Zap, Bell, Trophy, ZapOff } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
+import { ArrowLeft, DollarSign, Gift, Trophy, Target, BookCheck, Star } from 'lucide-react';
 
-interface FaqItem {
-  q: string;
-  a: string;
+interface Profile {
+  email: string;
+  available_balance: number;
+  site_credit: number; // New for Daily Trivia
+  birthday: string | null;
+  birthday_bonus_last_claimed: number | null;
+  streak_count: number | null;
+  is_upgraded: boolean; // Simplified 2.0 Membership
+  accuracy_rate: number; // New Stats
+  wins_count: number;
+  completed_this_month: number;
 }
 
-const faqItems: FaqItem[] = [
-  {
-    q: 'How do I earn rewards?',
-    a: 'You can earn through Bounties and Tournaments. Bounties are specific tasks—like reading an indie title and passing a quiz—that pay out cash rewards. Tournaments are competitive events where top-performing readers split a prize pool.',
-  },
-  {
-    q: 'What are Site Credits?',
-    a: 'Credits are earned by passing Daily Trivia quizzes. You use these credits to enter Tournaments or unlock specific platform features without spending cash.',
-  },
-  {
-    q: 'How does the Priority Queue work?',
-    a: 'Bounties and Surveys often have limited spots. Upgraded members are notified of new opportunities 30 minutes before they go live to the general public, giving them the best chance to claim high-value spots.',
-  },
-  {
-    q: 'Is there a minimum age to participate?',
-    a: 'Readers 13 and older can participate with parental consent. Please note that for users under 18, rewards are issued as digital gift cards.',
-  },
-  {
-    q: 'Why is there a timer on quizzes?',
-    a: 'To ensure fairness and reward genuine reading, quizzes have an 8-minute limit. This rewards readers who know the material and prevents "search-as-you-go" tactics.',
-  },
-];
+interface CompletedBook {
+  book_id: string;
+  books: {
+    title: string;
+    author: string;
+    cover_url: string | null;
+  };
+}
 
-export function Pricing() {
-  const { isDark } = useTheme();
+const BIRTHDAY_BONUS = 0.25;
+
+export const Profile = () => {
+  const { user } = useAuth();
   const { navigateTo } = useNavigate();
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const { isDark } = useTheme();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [completedBooks, setCompletedBooks] = useState<CompletedBook[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [birthdayInput, setBirthdayInput] = useState('');
+  const [savingBirthday, setSavingBirthday] = useState(false);
+  const [birthdaySuccess, setBirthdaySuccess] = useState(false);
+  const [birthdayError, setBirthdayError] = useState('');
+  const [claimingBonus, setClaimingBonus] = useState(false);
+  const [bonusClaimed, setBonusClaimed] = useState(false);
 
-  const bg = isDark ? 'bg-[#0f1a2e]' : 'bg-[#F5F0E8]';
-  const cardBg = isDark ? 'bg-[#1B2A4A]' : 'bg-white';
-  const cardBorder = isDark ? 'border-[#2a3f6f]' : 'border-[#e2ddd6]';
-  const textPrimary = isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]';
-  const textMuted = isDark ? 'text-[#a0aec0]' : 'text-[#6b7280]';
+  const get1099Warning = () => {
+    if (!profile) return null;
+    const earned = profile.available_balance;
+    if (earned >= 550) return 'critical';
+    if (earned >= 500) return 'warning';
+    return null;
+  };
+
+  useEffect(() => {
+    loadProfile();
+  }, [user]);
+
+  const loadProfile = async () => {
+    if (!user) return;
+
+    // In a real Supabase setup, these stats would come from an RPC or a dedicated 'stats' view
+    const [profileResult, completedResult] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', user.id).single(),
+      supabase
+        .from('completed_books')
+        .select('book_id, books(title, author, cover_url)')
+        .eq('user_id', user.id)
+        .limit(10), // Limit view on profile for performance
+    ]);
+
+    if (profileResult.data) {
+      setProfile(profileResult.data);
+      if (profileResult.data.birthday) {
+        setBirthdayInput(profileResult.data.birthday);
+      }
+    }
+
+    if (completedResult.data) {
+      setCompletedBooks(completedResult.data as CompletedBook[]);
+    }
+
+    setLoading(false);
+  };
+
+  const handleSaveBirthday = async () => {
+    if (!user || !birthdayInput) return;
+    setSavingBirthday(true);
+    const { error } = await supabase.from('profiles').update({ birthday: birthdayInput }).eq('id', user.id);
+    if (!error) {
+      setBirthdaySuccess(true);
+      await loadProfile();
+    } else {
+      setBirthdayError('Could not save birthday.');
+    }
+    setSavingBirthday(false);
+  };
+
+  // Theme tokens
+  const bg = isDark ? 'bg-[#1B2A4A]' : 'bg-[#F5F0E8]';
+  const cardBg = isDark ? 'bg-[#162238]' : 'bg-white';
+  const cardBorder = isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10';
+  const headingColor = isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]';
+  const subColor = isDark ? 'text-[#F5F0E8]/50' : 'text-[#1B2A4A]/50';
+  const dividerColor = isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10';
+
+  if (loading) return <div className={`min-h-screen ${bg} flex items-center justify-center`}><div className="w-8 h-8 border-2 border-[#D4A843] border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
-    <div className={`min-h-screen ${bg} transition-colors duration-300 pb-20`}>
-      {/* Hero */}
-      <section className="pt-24 pb-16 px-4 text-center">
-        <h1 className={`text-4xl md:text-6xl font-serif font-bold ${textPrimary} mb-6`}>
-          Choose Your Path.
-        </h1>
-        <p className={`text-lg ${textMuted} max-w-2xl mx-auto leading-relaxed`}>
-          Whether you’re a casual trivia fan or a competitive reader, 
-          we have a place for you. Join the community and start earning for your insights.
-        </p>
-      </section>
+    <div className={`min-h-screen ${bg} pb-12 transition-colors duration-300`}>
+      {/* Header */}
+      <div className={`border-b ${dividerColor} px-4 py-4 mb-8`}>
+        <div className="max-w-2xl mx-auto flex items-center gap-3">
+          <button onClick={() => navigateTo('/')} className={`${subColor} hover:text-[#D4A843]`}><ArrowLeft className="w-5 h-5" /></button>
+          <h1 className={`font-serif text-3xl ${headingColor}`}>Reader Dashboard</h1>
+        </div>
+      </div>
 
-      {/* Tiers */}
-      <section className="px-4 max-w-5xl mx-auto grid md:grid-cols-2 gap-8 mb-24">
+      <div className="max-w-2xl mx-auto px-4 space-y-6">
         
-        {/* Standard Tier */}
-        <div className={`rounded-2xl border ${cardBorder} ${cardBg} p-8 flex flex-col shadow-sm`}>
-          <h2 className={`text-xl font-bold ${textPrimary} mb-2`}>Standard</h2>
-          <div className="flex items-baseline gap-1 mb-8">
-            <span className={`text-4xl font-serif font-bold ${textPrimary}`}>Free</span>
+        {/* 1099 Warning Section */}
+        {get1099Warning() && (
+          <div className={`${get1099Warning() === 'critical' ? 'bg-red-500/10 border-red-500/30' : 'bg-yellow-500/10 border-yellow-500/30'} border rounded-lg p-4`}>
+             <p className={`${get1099Warning() === 'critical' ? 'text-red-400' : 'text-yellow-400'} font-medium text-sm`}>
+               {get1099Warning() === 'critical' ? '⚠️ Action Required: Tax Info Needed' : '📋 Approaching Tax Threshold'}
+             </p>
+             <p className={`text-xs ${subColor} mt-1`}>
+               You've earned ${profile?.available_balance.toFixed(2)}. To keep earning past $600, we'll need your tax info soon for 1099 reporting.
+             </p>
           </div>
-          
-          <ul className="space-y-5 mb-10 flex-1">
-            <li className="flex gap-3 text-sm">
-              <Check className="w-5 h-5 text-green-500 shrink-0" />
-              <span className={textPrimary}>Daily Trivia Access (Earn Site Credits)</span>
-            </li>
-            <li className="flex gap-3 text-sm">
-              <Check className="w-5 h-5 text-green-500 shrink-0" />
-              <span className={textPrimary}>Enter Public Tournaments</span>
-            </li>
-            <li className="flex gap-3 text-sm">
-              <Check className="w-5 h-5 text-green-500 shrink-0" />
-              <span className={textPrimary}>Claim Public Book Bounties</span>
-            </li>
-            <li className="flex gap-3 text-sm italic">
-              <ZapOff className="w-5 h-5 text-gray-400 shrink-0" />
-              <span className={textMuted}>Standard Notification Timing</span>
-            </li>
-          </ul>
+        )}
 
-          <button 
-            onClick={() => navigateTo('/signup')}
-            className={`w-full py-3 rounded-xl font-bold border-2 ${isDark ? 'border-[#2a3f6f] text-white' : 'border-[#1B2A4A] text-[#1B2A4A]'} hover:bg-black/5 transition`}
-          >
-            Get Started
-          </button>
-        </div>
-
-        {/* Upgraded Tier */}
-        <div className={`relative rounded-2xl border-2 border-[#D4A843] ${cardBg} p-8 flex flex-col shadow-xl transform md:scale-105`}>
-          <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#D4A843] text-[#1B2A4A] text-[10px] font-bold uppercase tracking-widest px-4 py-1 rounded-full">
-            Most Popular
-          </div>
-          
-          <h2 className={`text-xl font-bold ${textPrimary} mb-2 flex items-center gap-2`}>
-            Member <Star className="w-4 h-4 fill-[#D4A843] text-[#D4A843]" />
-          </h2>
-          <div className="flex items-baseline gap-1 mb-8">
-            <span className={`text-4xl font-serif font-bold ${textPrimary}`}>$4.99</span>
-            <span className={textMuted}>/month</span>
-          </div>
-          
-          <ul className="space-y-5 mb-10 flex-1">
-            <li className="flex gap-3 text-sm font-bold">
-              <Bell className="w-5 h-5 text-[#D4A843] shrink-0" />
-              <span className={textPrimary}>Priority Queue: 30m early access to Bounties</span>
-            </li>
-            <li className="flex gap-3 text-sm">
-              <Trophy className="w-5 h-5 text-[#D4A843] shrink-0" />
-              <span className={textPrimary}>30% Off Tournament Entry Fees</span>
-            </li>
-            <li className="flex gap-3 text-sm">
-              <Zap className="w-5 h-5 text-[#D4A843] shrink-0" />
-              <span className={textPrimary}>Exclusive Member-Only Surveys</span>
-            </li>
-            <li className="flex gap-3 text-sm font-bold">
-              <Check className="w-5 h-5 text-green-500 shrink-0" />
-              <span className={textPrimary}>Completely Ad-Free Reading</span>
-            </li>
-          </ul>
-
-          <button 
-            onClick={() => navigateTo('/signup')}
-            className="w-full py-4 rounded-xl font-bold bg-[#D4A843] text-[#1B2A4A] hover:bg-[#c49a38] transition shadow-lg shadow-[#D4A843]/20"
-          >
-            Upgrade Membership
-          </button>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="px-4 max-w-2xl mx-auto">
-        <h3 className={`text-2xl font-serif font-bold ${textPrimary} text-center mb-10`}>
-          Everything you need to know
-        </h3>
-        <div className="space-y-4">
-          {faqItems.map((item, i) => (
-            <div key={i} className={`rounded-xl border ${cardBorder} ${cardBg} overflow-hidden`}>
-              <button
-                onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                className={`w-full text-left px-5 py-4 flex justify-between items-center ${textPrimary} font-bold text-sm`}
+        {/* Earning Overview */}
+        <div className={`${cardBg} rounded-xl p-8 border ${cardBorder} shadow-sm`}>
+          <div className="grid grid-cols-2 gap-8">
+            <div>
+              <p className={`text-xs font-bold uppercase tracking-wider ${subColor} mb-1`}>Cash Balance</p>
+              <p className={`text-4xl font-serif ${headingColor}`}>${profile?.available_balance?.toFixed(2) ?? '0.00'}</p>
+              <button 
+                onClick={() => navigateTo('/cashout')}
+                disabled={!profile || profile.available_balance < 10}
+                className="mt-4 flex items-center gap-2 bg-[#D4A843] text-[#1B2A4A] font-bold px-4 py-2 rounded-lg text-sm hover:bg-[#c49a38] disabled:opacity-40"
               >
-                {item.q}
-                <span className="text-[#D4A843] text-xl">{openFaq === i ? '−' : '+'}</span>
+                <DollarSign className="w-4 h-4" /> Cash Out
               </button>
-              {openFaq === i && (
-                <div className={`px-5 pb-5 text-sm ${textMuted} leading-relaxed`}>
-                  {item.a}
-                </div>
-              )}
             </div>
-          ))}
+            <div className={`border-l ${dividerColor} pl-8`}>
+              <p className={`text-xs font-bold uppercase tracking-wider ${subColor} mb-1`}>Site Credit</p>
+              <p className={`text-4xl font-serif text-[#D4A843]`}>${profile?.site_credit?.toFixed(2) ?? '0.00'}</p>
+              <p className={`text-[10px] ${subColor} mt-2 uppercase`}>Use for entries & boosts</p>
+            </div>
+          </div>
         </div>
-      </section>
+
+        {/* Stats Grid (New for 2.0) */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className={`${cardBg} p-4 border ${cardBorder} rounded-xl text-center`}>
+            <BookCheck className="w-5 h-5 mx-auto mb-2 text-green-500" />
+            <p className={`text-xl font-serif ${headingColor}`}>{profile?.completed_this_month ?? 0}</p>
+            <p className={`text-[10px] uppercase ${subColor}`}>Books this Month</p>
+          </div>
+          <div className={`${cardBg} p-4 border ${cardBorder} rounded-xl text-center`}>
+            <Target className="w-5 h-5 mx-auto mb-2 text-blue-500" />
+            <p className={`text-xl font-serif ${headingColor}`}>{profile?.accuracy_rate ?? 0}%</p>
+            <p className={`text-[10px] uppercase ${subColor}`}>Accuracy Rate</p>
+          </div>
+          <div className={`${cardBg} p-4 border ${cardBorder} rounded-xl text-center`}>
+            <Trophy className="w-5 h-5 mx-auto mb-2 text-[#D4A843]" />
+            <p className={`text-xl font-serif ${headingColor}`}>{profile?.wins_count ?? 0}</p>
+            <p className={`text-[10px] uppercase ${subColor}`}>Competition Wins</p>
+          </div>
+        </div>
+
+        {/* Membership Upgrade Section */}
+        <div className={`${cardBg} rounded-xl p-6 border-2 ${profile?.is_upgraded ? 'border-[#D4A843]' : 'border-dashed ' + cardBorder}`}>
+          <div className="flex justify-between items-start">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Star className={`w-5 h-5 ${profile?.is_upgraded ? 'text-[#D4A843] fill-[#D4A843]' : subColor}`} />
+                <h3 className={`font-bold ${headingColor}`}>{profile?.is_upgraded ? 'Upgraded Member' : 'Standard Account'}</h3>
+              </div>
+              <p className={`text-xs ${subColor}`}>
+                {profile?.is_upgraded 
+                  ? 'Active: Enjoy ad-free reading, priority survey access, and 30% off entries.' 
+                  : 'Upgrade for $4.99/mo to unlock priority survey queues and entry discounts.'}
+              </p>
+            </div>
+            {!profile?.is_upgraded && (
+              <button onClick={() => navigateTo('/upgrade')} className="bg-[#1B2A4A] text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-black transition">Upgrade</button>
+            )}
+          </div>
+        </div>
+
+        {/* Birthday & Streak (Combined for space) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className={`${cardBg} rounded-xl p-6 border ${cardBorder}`}>
+            <h3 className={`text-sm font-bold ${headingColor} mb-4 flex items-center gap-2`}><Gift className="w-4 h-4 text-[#D4A843]" /> Birthday Bonus</h3>
+            <input 
+              type="date" 
+              value={birthdayInput} 
+              onChange={(e) => setBirthdayInput(e.target.value)}
+              className={`w-full mb-3 p-2 rounded border ${isDark ? 'bg-[#1B2A4A] border-white/10 text-white' : 'bg-gray-50 border-black/10'}`} 
+            />
+            <button onClick={handleSaveBirthday} disabled={savingBirthday} className="text-xs font-bold text-[#D4A843] hover:underline">
+              {savingBirthday ? 'Saving...' : 'Update Birthday'}
+            </button>
+          </div>
+
+          <div className={`${cardBg} rounded-xl p-6 border ${cardBorder} flex flex-col justify-center items-center text-center`}>
+            <p className="text-3xl font-serif text-[#D4A843]">{profile?.streak_count ?? 0}</p>
+            <p className={`text-xs font-bold ${headingColor} uppercase`}>Day Reading Streak</p>
+            <p className={`text-[10px] ${subColor} mt-1`}>Keep reading to earn site credits!</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
-}
+};
