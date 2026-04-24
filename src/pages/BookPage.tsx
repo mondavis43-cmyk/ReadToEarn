@@ -289,12 +289,12 @@ export const BookPage = () => {
       {/* Header */}
       <header className={`border-b ${borderFaint}`}>
         <div className="max-w-5xl mx-auto px-4 py-6 flex items-center gap-4">
-          <button
-            onClick={() => window.history.back()}>
-            className={`transition ${textFaint} hover:${textPrimary}`}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
+<button
+  onClick={() => window.history.back()}
+  className={`transition ${textFaint} hover:${textPrimary}`}
+>
+  <ArrowLeft className="w-5 h-5" />
+</button>
           <h1 className={`font-serif text-3xl ${textPrimary}`}>Book Details</h1>
         </div>
       </header>
