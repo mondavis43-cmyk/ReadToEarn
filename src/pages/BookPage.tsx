@@ -290,7 +290,7 @@ export const BookPage = () => {
       <header className={`border-b ${borderFaint}`}>
         <div className="max-w-5xl mx-auto px-4 py-6 flex items-center gap-4">
           <button
-            onClick={() => navigateTo('/')}
+            onClick={() => window.history.back()}>
             className={`transition ${textFaint} hover:${textPrimary}`}
           >
             <ArrowLeft className="w-5 h-5" />
