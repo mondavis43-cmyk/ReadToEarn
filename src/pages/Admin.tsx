@@ -2,68 +2,72 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
-import { ArrowLeft, Plus, Trash2, Check, X, Pencil, Mail, Sun, Moon, Tag } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Check, X, Pencil, Mail, Sun, Moon, Tag, Trophy, BookOpen, Zap } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 const ADMIN_EMAIL = 'mondavis43@gmail.com';
-const RATE_PER_PAGE = 0.0085;
 
 export const GENRES = [
-  'Action & Adventure',
-  'Biography & Memoir',
-  'Business',
-  "Children's",
-  'Chick Lit',
-  'Comics / Graphic Novels / Manga',
-  'Cozy Mystery',
-  'Dark Romance',
-  'Dystopian',
-  'Erotica',
-  'Fantasy',
-  'Fiction',
-  'Gothic',
-  'Health & Wellness',
-  'Historical Fiction',
-  'History',
-  'Horror',
-  'LGBTQIA+',
-  'Literary Fiction',
-  'Magical Realism',
-  'Mystery',
-  'Noir',
-  'Non-Fiction',
-  'Paranormal',
-  'Poetry',
-  'Religious',
-  'Romance',
-  'Romantasy / Romantic Fantasy',
-  'Satire',
-  'Science Fiction',
-  'Self-Help',
-  'Short Stories',
-  'Space Opera',
-  'Sports',
-  'Spy',
-  'Suspense',
-  'Thriller',
-  'True Crime',
-  'War & Military',
-  'Western',
-  "Women's Fiction",
-  'Young Adult',
+  'Action & Adventure', 'Biography & Memoir', 'Business', "Children's", 'Chick Lit',
+  'Comics / Graphic Novels / Manga', 'Cozy Mystery', 'Dark Romance', 'Dystopian', 'Erotica',
+  'Fantasy', 'Fiction', 'Gothic', 'Health & Wellness', 'Historical Fiction', 'History',
+  'Horror', 'LGBTQIA+', 'Literary Fiction', 'Magical Realism', 'Mystery', 'Noir',
+  'Non-Fiction', 'Paranormal', 'Poetry', 'Religious', 'Romance', 'Romantasy / Romantic Fantasy',
+  'Satire', 'Science Fiction', 'Self-Help', 'Short Stories', 'Space Opera', 'Sports',
+  'Spy', 'Suspense', 'Thriller', 'True Crime', 'War & Military', 'Western', "Women's Fiction", 'Young Adult',
 ];
+
+const BOUNTY_POOL_OPTIONS = [25, 50, 100, 200, 500];
+
+const LISTING_PACKAGES = [
+  { label: 'Single (1 book)', price: 7, count: 1 },
+  { label: 'Trilogy (3 books)', price: 18, count: 3 },
+  { label: 'Series (5 books)', price: 30, count: 5 },
+  { label: 'Catalog (10 books)', price: 50, count: 10 },
+  { label: 'Imprint (25 books)', price: 100, count: 25 },
+];
+
+const COMPETITION_TYPES = ['Sprint', 'Read-A-Thon', 'Elimination Bracket'] as const;
+type CompetitionType = typeof COMPETITION_TYPES[number];
+
+// ─── Interfaces ───────────────────────────────────────────────────────────────
 
 interface Book {
   id: string;
   title: string;
   author: string;
   cover_url: string | null;
-  bounty_amount: number;
   page_count: number;
   description: string | null;
   geniuslink_url: string | null;
-  book_type: 'platform' | 'sponsored';
+  book_type: 'standard' | 'bulletin_board';
   genres: string[];
+}
+
+interface Bounty {
+  id: string;
+  book_id: string;
+  pool_size: number;
+  per_pass_amount: number;
+  platform_fee: number;
+  reader_pool: number;
+  status: 'active' | 'completed' | 'paused';
+  created_at: string;
+  books: { title: string; author: string } | null;
+}
+
+interface Competition {
+  id: string;
+  type: CompetitionType;
+  title: string;
+  entry_fee: number;
+  prize_pool: number;
+  platform_cut: number;
+  start_date: string;
+  end_date: string;
+  status: 'upcoming' | 'active' | 'completed';
+  book_ids: string[];
+  created_at: string;
 }
 
 interface Question {
@@ -86,9 +90,7 @@ interface CashoutRequest {
   reloadly_product_id: number | null;
   status: string;
   created_at: string;
-  profiles: {
-    email: string;
-  };
+  profiles: { email: string };
 }
 
 interface WaitlistEntry {
@@ -119,7 +121,7 @@ interface NewBook {
   page_count: string;
   description: string;
   geniuslink_url: string;
-  book_type: 'platform' | 'sponsored';
+  book_type: 'standard' | 'bulletin_board';
   genres: string[];
 }
 
@@ -131,872 +133,925 @@ interface NewQuestion {
   wrong_answer_3: string;
 }
 
+interface NewBounty {
+  book_id: string;
+  pool_size: number;
+  per_pass_amount: number;
+}
+
+interface NewCompetition {
+  type: CompetitionType;
+  title: string;
+  entry_fee: string;
+  prize_pool: string;
+  start_date: string;
+  end_date: string;
+  book_ids: string[];
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 const emptyBook: NewBook = {
-  title: '',
-  author: '',
-  cover_url: '',
-  page_count: '',
-  description: '',
-  geniuslink_url: '',
-  book_type: 'platform',
-  genres: [],
+  title: '', author: '', cover_url: '', page_count: '',
+  description: '', geniuslink_url: '', book_type: 'standard', genres: [],
 };
 
 const emptyQuestion: NewQuestion = {
-  question_text: '',
-  correct_answer: '',
-  wrong_answer_1: '',
-  wrong_answer_2: '',
-  wrong_answer_3: '',
+  question_text: '', correct_answer: '',
+  wrong_answer_1: '', wrong_answer_2: '', wrong_answer_3: '',
 };
 
-// Reusable genre picker used in both Add and Edit forms
-const GenrePicker = ({
-  selected,
-  onChange,
-  selectClass,
+const emptyBounty: NewBounty = { book_id: '', pool_size: 25, per_pass_amount: 1 };
+
+const emptyCompetition: NewCompetition = {
+  type: 'Sprint', title: '', entry_fee: '', prize_pool: '',
+  start_date: '', end_date: '', book_ids: [],
+};
+
+// ─── GenrePicker ──────────────────────────────────────────────────────────────
+
+function GenrePicker({
+  selected, onChange, selectClass,
 }: {
   selected: string[];
   onChange: (genres: string[]) => void;
   selectClass: string;
-}) => {
-  const toggle = (genre: string) => {
-    onChange(
-      selected.includes(genre)
-        ? selected.filter((g) => g !== genre)
-        : [...selected, genre]
-    );
-  };
-
+}) {
   return (
-    <div className="sm:col-span-2">
-      <label className="block text-xs font-medium text-[#2C2C2C]/60 dark:text-gray-400 mb-2">
-        Genres{' '}
-        <span className="font-normal text-[#2C2C2C]/40 dark:text-gray-600">
-          (select all that apply)
-        </span>
-      </label>
-      {selected.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {selected.map((g) => (
-            <span
-              key={g}
-              className="flex items-center gap-1 bg-[#1B2A4A]/10 dark:bg-[#D4A843]/15 text-[#1B2A4A] dark:text-[#D4A843] text-xs font-medium px-2.5 py-1 rounded-full"
-            >
-              {g}
-              <button
-                type="button"
-                onClick={() => toggle(g)}
-                className="hover:text-red-500 dark:hover:text-red-400 transition ml-0.5"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
+    <div className="space-y-2">
+      <label className="text-xs text-[#6B7280] dark:text-gray-400">Genres</label>
       <select
         className={selectClass}
         value=""
         onChange={(e) => {
-          if (e.target.value) toggle(e.target.value);
-          e.target.value = '';
+          if (e.target.value && !selected.includes(e.target.value)) {
+            onChange([...selected, e.target.value]);
+          }
         }}
       >
-        <option value="">+ Add a genre...</option>
+        <option value="">Add a genre...</option>
         {GENRES.filter((g) => !selected.includes(g)).map((g) => (
-          <option key={g} value={g}>
-            {g}
-          </option>
+          <option key={g} value={g}>{g}</option>
         ))}
       </select>
+      <div className="flex flex-wrap gap-2">
+        {selected.map((g) => (
+          <span
+            key={g}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#D4A843]/20 text-[#D4A843] text-xs"
+          >
+            {g}
+            <button onClick={() => onChange(selected.filter((x) => x !== g))}>
+              <X size={10} />
+            </button>
+          </span>
+        ))}
+      </div>
     </div>
   );
-};
+}
 
-export const Admin = () => {
+// ─── Main Admin Component ─────────────────────────────────────────────────────
+
+export default function Admin() {
   const { user } = useAuth();
-  const { navigateTo } = useNavigate();
+  const { navigate } = useNavigate();
   const { theme, toggleTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<'books' | 'cashouts' | 'waitlist' | 'tropes'>('books');
+
+  type Tab = 'books' | 'bounties' | 'competitions' | 'cashouts' | 'waitlist' | 'tropes';
+  const [activeTab, setActiveTab] = useState<Tab>('books');
+
+  // Books
   const [books, setBooks] = useState<Book[]>([]);
+  const [newBook, setNewBook] = useState<NewBook>(emptyBook);
+  const [questions, setQuestions] = useState<NewQuestion[]>(Array(10).fill(null).map(() => ({ ...emptyQuestion })));
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingBook, setEditingBook] = useState<Book | null>(null);
+  const [editingQuestions, setEditingQuestions] = useState<Question[]>([]);
+
+  // Bounties
+  const [bounties, setBounties] = useState<Bounty[]>([]);
+  const [newBounty, setNewBounty] = useState<NewBounty>(emptyBounty);
+  const [showAddBountyForm, setShowAddBountyForm] = useState(false);
+
+  // Competitions
+  const [competitions, setCompetitions] = useState<Competition[]>([]);
+  const [newComp, setNewComp] = useState<NewCompetition>(emptyCompetition);
+  const [showAddCompForm, setShowAddCompForm] = useState(false);
+
+  // Other
   const [cashouts, setCashouts] = useState<CashoutRequest[]>([]);
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
   const [tropes, setTropes] = useState<Trope[]>([]);
   const [tropeSuggestions, setTropeSuggestions] = useState<TropeSuggestion[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [newBook, setNewBook] = useState<NewBook>(emptyBook);
-  const [questions, setQuestions] = useState<NewQuestion[]>(
-    Array(10).fill(null).map(() => ({ ...emptyQuestion }))
-  );
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [editingBook, setEditingBook] = useState<Book | null>(null);
-  const [editingQuestions, setEditingQuestions] = useState<Question[]>([]);
   const [newTropeName, setNewTropeName] = useState('');
   const [addingTrope, setAddingTrope] = useState(false);
 
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  // ── Styling helpers ──────────────────────────────────────────────────────────
+  const inputClass =
+    'w-full px-3 py-2 rounded-lg border border-[#e8e0d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A843]/40';
+  const correctInputClass =
+    'w-full px-3 py-2 rounded-lg border border-green-400 bg-green-50 dark:bg-green-900/20 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none focus:ring-2 focus:ring-green-400/40';
+  const selectClass =
+    'w-full px-3 py-2 rounded-lg border border-[#e8e0d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A843]/40';
+
+  // ── Auth guard ───────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (user?.email !== ADMIN_EMAIL) {
-      navigateTo('/');
-      return;
-    }
-    loadData();
+    if (user && user.email !== ADMIN_EMAIL) navigate('/');
   }, [user]);
 
-  const loadData = async () => {
-    const [booksResult, cashoutsResult, waitlistResult, tropesResult, suggestionsResult] =
-      await Promise.all([
-        supabase.from('books').select('*').order('title'),
-        supabase
-          .from('cashout_requests')
-          .select('*, profiles(email)')
-          .order('created_at', { ascending: false }),
-        supabase.from('waitlist').select('*').order('created_at', { ascending: false }),
-        supabase.from('tropes').select('*').order('name'),
-        supabase
-          .from('trope_suggestions')
-          .select('*, books(title)')
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false }),
-      ]);
+  // ── Load data ────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    loadData();
+  }, []);
 
-    if (booksResult.data) setBooks(booksResult.data);
-    if (cashoutsResult.data) setCashouts(cashoutsResult.data);
-    if (waitlistResult.data) setWaitlist(waitlistResult.data);
-    if (tropesResult.data) setTropes(tropesResult.data);
-    if (suggestionsResult.data) setTropeSuggestions(suggestionsResult.data as TropeSuggestion[]);
+  async function loadData() {
+    setLoading(true);
+    const [
+      { data: booksData },
+      { data: bountiesData },
+      { data: compsData },
+      { data: cashoutsData },
+      { data: waitlistData },
+      { data: tropesData },
+      { data: suggestionsData },
+    ] = await Promise.all([
+      supabase.from('books').select('*').order('created_at', { ascending: false }),
+      supabase.from('bounties').select('*, books(title, author)').order('created_at', { ascending: false }),
+      supabase.from('competitions').select('*').order('start_date', { ascending: false }),
+      supabase.from('cashout_requests').select('*, profiles(email)').order('created_at', { ascending: false }),
+      supabase.from('waitlist').select('*').order('created_at', { ascending: false }),
+      supabase.from('tropes').select('*').order('name'),
+      supabase.from('trope_suggestions').select('*, books(title)').eq('status', 'pending').order('created_at', { ascending: false }),
+    ]);
+    setBooks(booksData || []);
+    setBounties(bountiesData || []);
+    setCompetitions(compsData || []);
+    setCashouts(cashoutsData || []);
+    setWaitlist(waitlistData || []);
+    setTropes(tropesData || []);
+    setTropeSuggestions(suggestionsData || []);
     setLoading(false);
-  };
+  }
 
-  // ── Trope handlers ──────────────────────────────────────────────────────────
-
-  const handleAddTrope = async () => {
-    const name = newTropeName.trim();
-    if (!name) return;
-    setAddingTrope(true);
-    const { error: err } = await supabase.from('tropes').insert({ name });
-    if (err) {
-      setError('Failed to add trope.');
-    } else {
-      setNewTropeName('');
-      setSuccess('Trope added!');
-      setTimeout(() => setSuccess(''), 2000);
-      loadData();
+  // ── Books ────────────────────────────────────────────────────────────────────
+  async function handleSaveBook() {
+    if (!newBook.title || !newBook.author || !newBook.page_count) {
+      setError('Title, author, and page count are required.');
+      return;
     }
-    setAddingTrope(false);
-  };
-
-  const handleDeleteTrope = async (id: string) => {
-    if (!confirm('Delete this trope? It will be removed from all books.')) return;
-    await supabase.from('book_tropes').delete().eq('trope_id', id);
-    await supabase.from('tropes').delete().eq('id', id);
-    loadData();
-  };
-
-  const handleApproveSuggestion = async (suggestion: TropeSuggestion) => {
-    const { data: existing } = await supabase
-      .from('tropes')
-      .select('id')
-      .ilike('name', suggestion.suggested_name)
-      .maybeSingle();
-
-    let tropeId: string;
-
-    if (existing) {
-      tropeId = existing.id;
-    } else {
-      const { data: newTrope, error: insertErr } = await supabase
-        .from('tropes')
-        .insert({ name: suggestion.suggested_name })
-        .select('id')
-        .single();
-      if (insertErr || !newTrope) {
-        setError('Failed to create trope from suggestion.');
-        return;
-      }
-      tropeId = newTrope.id;
-    }
-
-    await supabase
-      .from('book_tropes')
-      .upsert({ book_id: suggestion.book_id, trope_id: tropeId }, { onConflict: 'book_id,trope_id' });
-
-    await supabase
-      .from('trope_suggestions')
-      .update({ status: 'approved' })
-      .eq('id', suggestion.id);
-
-    setSuccess('Suggestion approved and trope linked!');
-    setTimeout(() => setSuccess(''), 2500);
-    loadData();
-  };
-
-  const handleRejectSuggestion = async (id: string) => {
-    await supabase.from('trope_suggestions').update({ status: 'rejected' }).eq('id', id);
-    loadData();
-  };
-
-  // ── Book handlers ───────────────────────────────────────────────────────────
-
-  const handleSaveBook = async () => {
-    setError('');
-    const incomplete = questions.some(
-      (q) =>
-        !q.question_text ||
-        !q.correct_answer ||
-        !q.wrong_answer_1 ||
-        !q.wrong_answer_2 ||
-        !q.wrong_answer_3
-    );
-    if (incomplete) {
-      setError('Please complete all 10 questions.');
+    if (questions.some((q) => !q.question_text || !q.correct_answer)) {
+      setError('All 10 questions must have a question and correct answer.');
       return;
     }
     setSaving(true);
-    const bounty =
-      newBook.book_type === 'sponsored'
-        ? Math.min(parseFloat(newBook.page_count) * RATE_PER_PAGE, 5)
-        : 0;
-    const { data: bookData, error: bookError } = await supabase
+    setError('');
+    const { data: bookData, error: bookErr } = await supabase
       .from('books')
       .insert({
         title: newBook.title,
         author: newBook.author,
-        cover_url: newBook.cover_url,
+        cover_url: newBook.cover_url || null,
         page_count: parseInt(newBook.page_count),
-        description: newBook.description,
-        geniuslink_url: newBook.geniuslink_url,
+        description: newBook.description || null,
+        geniuslink_url: newBook.geniuslink_url || null,
         book_type: newBook.book_type,
         genres: newBook.genres,
-        bounty_amount: bounty,
       })
       .select()
       .single();
-    if (bookError || !bookData) {
-      setError('Failed to save book.');
-      setSaving(false);
-      return;
-    }
+    if (bookErr || !bookData) { setError('Failed to save book.'); setSaving(false); return; }
     const questionsToInsert = questions.map((q) => ({ ...q, book_id: bookData.id }));
-    const { error: qError } = await supabase.from('questions').insert(questionsToInsert);
-    if (qError) {
-      setError('Book saved but questions failed.');
-    } else {
-      setSuccess('Book and questions saved!');
-      setNewBook(emptyBook);
-      setQuestions(Array(10).fill(null).map(() => ({ ...emptyQuestion })));
-      setShowAddForm(false);
-      loadData();
-      setTimeout(() => setSuccess(''), 2000);
-    }
+    const { error: qErr } = await supabase.from('questions').insert(questionsToInsert);
+    if (qErr) { setError('Book saved but questions failed.'); setSaving(false); return; }
+    setSuccess('Book added!');
+    setNewBook(emptyBook);
+    setQuestions(Array(10).fill(null).map(() => ({ ...emptyQuestion })));
+    setShowAddForm(false);
     setSaving(false);
-  };
+    loadData();
+  }
 
-  const handleEditBook = async (book: Book) => {
+  async function handleEditBook(book: Book) {
+    setEditingBook(book);
     const { data } = await supabase.from('questions').select('*').eq('book_id', book.id);
-    setEditingBook({ ...book, genres: book.genres ?? [] });
     setEditingQuestions(data || []);
-  };
+  }
 
-  const handleSaveEdit = async () => {
+  async function handleSaveEdit() {
     if (!editingBook) return;
-    setError('');
     setSaving(true);
-    const bounty =
-      editingBook.book_type === 'sponsored'
-        ? Math.min(editingBook.page_count * RATE_PER_PAGE, 5)
-        : 0;
-    const { error: bookError } = await supabase
-      .from('books')
-      .update({
-        title: editingBook.title,
-        author: editingBook.author,
-        cover_url: editingBook.cover_url,
-        page_count: editingBook.page_count,
-        description: editingBook.description,
-        geniuslink_url: editingBook.geniuslink_url,
-        book_type: editingBook.book_type,
-        genres: editingBook.genres,
-        bounty_amount: bounty,
-      })
-      .eq('id', editingBook.id);
-    if (bookError) {
-      setError('Failed to update book.');
-      setSaving(false);
-      return;
-    }
+    await supabase.from('books').update({
+      title: editingBook.title,
+      author: editingBook.author,
+      cover_url: editingBook.cover_url,
+      page_count: editingBook.page_count,
+      description: editingBook.description,
+      geniuslink_url: editingBook.geniuslink_url,
+      book_type: editingBook.book_type,
+      genres: editingBook.genres,
+    }).eq('id', editingBook.id);
     for (const q of editingQuestions) {
-      await supabase.from('questions').update(q).eq('id', q.id);
+      await supabase.from('questions').update({
+        question_text: q.question_text,
+        correct_answer: q.correct_answer,
+        wrong_answer_1: q.wrong_answer_1,
+        wrong_answer_2: q.wrong_answer_2,
+        wrong_answer_3: q.wrong_answer_3,
+      }).eq('id', q.id);
     }
     setSuccess('Book updated!');
     setEditingBook(null);
-    loadData();
-    setTimeout(() => setSuccess(''), 2000);
     setSaving(false);
-  };
-
-  const handleDeleteBook = async (bookId: string) => {
-    if (!confirm('Delete this book and all its questions?')) return;
-    await supabase.from('questions').delete().eq('book_id', bookId);
-    await supabase.from('books').delete().eq('id', bookId);
     loadData();
-  };
+  }
 
-  const handleUpdateCashoutStatus = async (id: string, status: string) => {
+  async function handleDeleteBook(id: string) {
+    if (!confirm('Delete this book and all its questions?')) return;
+    await supabase.from('questions').delete().eq('book_id', id);
+    await supabase.from('books').delete().eq('id', id);
+    loadData();
+  }
+
+  // ── Bounties ─────────────────────────────────────────────────────────────────
+  async function handleSaveBounty() {
+    if (!newBounty.book_id) { setError('Select a book for this bounty.'); return; }
+    setSaving(true);
+    setError('');
+    const platform_fee = Math.round(newBounty.pool_size * 0.2 * 100) / 100;
+    const reader_pool = Math.round(newBounty.pool_size * 0.8 * 100) / 100;
+    const { error: err } = await supabase.from('bounties').insert({
+      book_id: newBounty.book_id,
+      pool_size: newBounty.pool_size,
+      per_pass_amount: newBounty.per_pass_amount,
+      platform_fee,
+      reader_pool,
+      status: 'active',
+    });
+    if (err) { setError('Failed to save bounty.'); setSaving(false); return; }
+    setSuccess('Bounty created!');
+    setNewBounty(emptyBounty);
+    setShowAddBountyForm(false);
+    setSaving(false);
+    loadData();
+  }
+
+  async function handleUpdateBountyStatus(id: string, status: 'active' | 'completed' | 'paused') {
+    await supabase.from('bounties').update({ status }).eq('id', id);
+    loadData();
+  }
+
+  async function handleDeleteBounty(id: string) {
+    if (!confirm('Delete this bounty?')) return;
+    await supabase.from('bounties').delete().eq('id', id);
+    loadData();
+  }
+
+  // ── Competitions ─────────────────────────────────────────────────────────────
+  async function handleSaveCompetition() {
+    if (!newComp.title || !newComp.start_date || !newComp.end_date || !newComp.entry_fee) {
+      setError('Title, dates, and entry fee are required.');
+      return;
+    }
+    if ((newComp.type === 'Sprint' || newComp.type === 'Elimination Bracket') && newComp.book_ids.length === 0) {
+      setError('Select at least one book for this competition type.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    const entryFee = parseFloat(newComp.entry_fee);
+    const prizePool = parseFloat(newComp.prize_pool) || 0;
+    const { error: err } = await supabase.from('competitions').insert({
+      type: newComp.type,
+      title: newComp.title,
+      entry_fee: entryFee,
+      prize_pool: prizePool,
+      platform_cut: Math.round(prizePool * 0.25 * 100) / 100,
+      start_date: newComp.start_date,
+      end_date: newComp.end_date,
+      status: 'upcoming',
+      book_ids: newComp.type === 'Read-A-Thon' ? [] : newComp.book_ids,
+    });
+    if (err) { setError('Failed to save competition.'); setSaving(false); return; }
+    setSuccess('Competition created!');
+    setNewComp(emptyCompetition);
+    setShowAddCompForm(false);
+    setSaving(false);
+    loadData();
+  }
+
+  async function handleUpdateCompStatus(id: string, status: 'upcoming' | 'active' | 'completed') {
+    await supabase.from('competitions').update({ status }).eq('id', id);
+    loadData();
+  }
+
+  async function handleDeleteCompetition(id: string) {
+    if (!confirm('Delete this competition?')) return;
+    await supabase.from('competitions').delete().eq('id', id);
+    loadData();
+  }
+
+  // ── Cashouts ─────────────────────────────────────────────────────────────────
+  async function handleUpdateCashoutStatus(id: string, status: string) {
     await supabase.from('cashout_requests').update({ status }).eq('id', id);
     loadData();
-  };
+  }
 
-  const handleDeleteWaitlistEntry = async (id: string) => {
+  // ── Waitlist ─────────────────────────────────────────────────────────────────
+  async function handleDeleteWaitlistEntry(id: string) {
     await supabase.from('waitlist').delete().eq('id', id);
     loadData();
+  }
+
+  // ── Tropes ───────────────────────────────────────────────────────────────────
+  async function handleAddTrope() {
+    if (!newTropeName.trim()) return;
+    setAddingTrope(true);
+    await supabase.from('tropes').insert({ name: newTropeName.trim() });
+    setNewTropeName('');
+    setAddingTrope(false);
+    loadData();
+  }
+
+  async function handleDeleteTrope(id: string) {
+    await supabase.from('book_tropes').delete().eq('trope_id', id);
+    await supabase.from('tropes').delete().eq('id', id);
+    loadData();
+  }
+
+  async function handleApproveSuggestion(suggestion: TropeSuggestion) {
+    const existing = tropes.find((t) => t.name.toLowerCase() === suggestion.suggested_name.toLowerCase());
+    let tropeId = existing?.id;
+    if (!tropeId) {
+      const { data } = await supabase.from('tropes').insert({ name: suggestion.suggested_name }).select().single();
+      tropeId = data?.id;
+    }
+    if (tropeId) {
+      await supabase.from('book_tropes').upsert({ book_id: suggestion.book_id, trope_id: tropeId });
+    }
+    await supabase.from('trope_suggestions').update({ status: 'approved' }).eq('id', suggestion.id);
+    loadData();
+  }
+
+  async function handleRejectSuggestion(id: string) {
+    await supabase.from('trope_suggestions').update({ status: 'rejected' }).eq('id', id);
+    loadData();
+  }
+
+  // ── Eligible books for competitions (non-bulletin) ───────────────────────────
+  const eligibleBooks = books.filter((b) => b.book_type !== 'bulletin_board');
+
+  // ── Guards ───────────────────────────────────────────────────────────────────
+  if (!user || user.email !== ADMIN_EMAIL) return null;
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#F5F0E8] dark:bg-gray-900">
+      <p className="text-[#1B2A4A] dark:text-[#F5F0E8]">Loading...</p>
+    </div>
+  );
+
+  // ── Tab counts ───────────────────────────────────────────────────────────────
+  const tabCounts: Record<Tab, number | null> = {
+    books: books.length,
+    bounties: bounties.filter((b) => b.status === 'active').length,
+    competitions: competitions.filter((c) => c.status !== 'completed').length,
+    cashouts: cashouts.filter((c) => c.status === 'pending').length,
+    waitlist: waitlist.length,
+    tropes: tropeSuggestions.length,
   };
 
-  // ── Shared styles ───────────────────────────────────────────────────────────
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'books', label: 'Books & Questions' },
+    { key: 'bounties', label: 'Bounties' },
+    { key: 'competitions', label: 'Competitions' },
+    { key: 'cashouts', label: 'Cashout Requests' },
+    { key: 'waitlist', label: 'Waitlist' },
+    { key: 'tropes', label: 'Tropes' },
+  ];
 
-  const inputClass =
-    'w-full px-3 py-2 bg-white dark:bg-[#1a1a1a] border border-[#e8e0d5] dark:border-gray-700 rounded-lg text-[#2C2C2C] dark:text-[#F5F0E8] placeholder-[#2C2C2C]/30 dark:placeholder-gray-600 focus:outline-none focus:border-[#1B2A4A] dark:focus:border-[#D4A843] transition text-sm';
-
-  const correctInputClass =
-    'w-full px-3 py-2 bg-[#D4A843]/10 dark:bg-[#D4A843]/10 border border-[#D4A843]/40 rounded-lg text-[#2C2C2C] dark:text-[#F5F0E8] placeholder-[#2C2C2C]/30 dark:placeholder-gray-600 focus:outline-none focus:border-[#D4A843] transition text-sm';
-
-  const selectClass =
-    'w-full px-3 py-2 bg-white dark:bg-[#1a1a1a] border border-[#e8e0d5] dark:border-gray-700 rounded-lg text-[#2C2C2C] dark:text-[#F5F0E8] focus:outline-none focus:border-[#1B2A4A] dark:focus:border-[#D4A843] transition text-sm';
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#F5F0E8] dark:bg-[#0f0f0f] flex items-center justify-center">
-        <div className="text-[#1B2A4A] dark:text-[#F5F0E8] font-medium">Loading...</div>
-      </div>
-    );
-  }
-
-  // ── Edit Mode ───────────────────────────────────────────────────────────────
-  if (editingBook) {
-    return (
-      <div className="min-h-screen bg-[#F5F0E8] dark:bg-[#0f0f0f] transition-colors duration-200">
-        <header className="bg-[#1B2A4A] dark:bg-[#111111] border-b border-[#142038] dark:border-gray-800">
-          <div className="max-w-5xl mx-auto px-4 py-6 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setEditingBook(null)}
-                className="text-[#F5F0E8]/70 hover:text-[#F5F0E8] transition"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <h1 className="font-serif text-2xl text-[#F5F0E8]">Edit Book</h1>
-            </div>
-            <button
-              onClick={toggleTheme}
-              className="text-[#F5F0E8]/50 hover:text-[#F5F0E8] transition"
-              aria-label="Toggle dark mode"
-            >
-              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
-          </div>
-        </header>
-
-        <main className="max-w-5xl mx-auto px-4 py-10 space-y-6">
-          {error && <p className="text-red-500 dark:text-red-400 text-sm">{error}</p>}
-          {success && (
-            <p className="text-[#1B2A4A] dark:text-[#D4A843] text-sm font-medium">{success}</p>
-          )}
-
-          <div className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-[#e8e0d5] dark:border-gray-800 p-6 space-y-4">
-            <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Book Details</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input
-                className={inputClass}
-                placeholder="Title"
-                value={editingBook.title}
-                onChange={(e) => setEditingBook({ ...editingBook, title: e.target.value })}
-              />
-              <input
-                className={inputClass}
-                placeholder="Author"
-                value={editingBook.author}
-                onChange={(e) => setEditingBook({ ...editingBook, author: e.target.value })}
-              />
-              <input
-                className={inputClass}
-                placeholder="Cover URL"
-                value={editingBook.cover_url || ''}
-                onChange={(e) => setEditingBook({ ...editingBook, cover_url: e.target.value })}
-              />
-              <div>
-                <input
-                  className={inputClass}
-                  placeholder="Page Count"
-                  type="number"
-                  value={editingBook.page_count}
-                  onChange={(e) =>
-                    setEditingBook({ ...editingBook, page_count: parseInt(e.target.value) || 0 })
-                  }
-                />
-                <p className="text-[#2C2C2C]/50 dark:text-gray-500 text-xs mt-1">
-                  {editingBook.book_type === 'sponsored'
-                    ? `Bounty: $${Math.min(editingBook.page_count * RATE_PER_PAGE, 5).toFixed(2)}`
-                    : 'Payout: free $0.50 / casual $0.65 / avid $0.80 / voracious $0.95'}
-                </p>
-              </div>
-              <input
-                className={inputClass}
-                placeholder="Geniuslink URL"
-                value={editingBook.geniuslink_url || ''}
-                onChange={(e) =>
-                  setEditingBook({ ...editingBook, geniuslink_url: e.target.value })
-                }
-              />
-              <textarea
-                className={inputClass}
-                placeholder="Description"
-                rows={3}
-                value={editingBook.description || ''}
-                onChange={(e) =>
-                  setEditingBook({ ...editingBook, description: e.target.value })
-                }
-              />
-              <div>
-                <label className="block text-xs font-medium text-[#2C2C2C]/60 dark:text-gray-400 mb-1">
-                  Book Type
-                </label>
-                <select
-                  className={selectClass}
-                  value={editingBook.book_type || 'platform'}
-                  onChange={(e) =>
-                    setEditingBook({
-                      ...editingBook,
-                      book_type: e.target.value as 'platform' | 'sponsored',
-                    })
-                  }
-                >
-                  <option value="platform">Platform</option>
-                  <option value="sponsored">Sponsored</option>
-                </select>
-              </div>
-
-              {/* Genre picker -- edit mode */}
-              <GenrePicker
-                selected={editingBook.genres ?? []}
-                onChange={(genres) => setEditingBook({ ...editingBook, genres })}
-                selectClass={selectClass}
-              />
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-[#e8e0d5] dark:border-gray-800 p-6 space-y-6">
-            <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Questions</h2>
-            {editingQuestions.map((q, i) => (
-              <div
-                key={q.id}
-                className="border border-[#e8e0d5] dark:border-gray-700 rounded-lg p-4 space-y-3"
-              >
-                <p className="text-[#1B2A4A] dark:text-[#F5F0E8] text-sm font-medium">
-                  Question {i + 1}
-                </p>
-                <input
-                  className={inputClass}
-                  placeholder="Question"
-                  value={q.question_text}
-                  onChange={(e) => {
-                    const updated = [...editingQuestions];
-                    updated[i] = { ...updated[i], question_text: e.target.value };
-                    setEditingQuestions(updated);
-                  }}
-                />
-                <input
-                  className={correctInputClass}
-                  placeholder="Correct Answer"
-                  value={q.correct_answer}
-                  onChange={(e) => {
-                    const updated = [...editingQuestions];
-                    updated[i] = { ...updated[i], correct_answer: e.target.value };
-                    setEditingQuestions(updated);
-                  }}
-                />
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {(['wrong_answer_1', 'wrong_answer_2', 'wrong_answer_3'] as const).map(
-                    (field, wi) => (
-                      <input
-                        key={field}
-                        className={inputClass}
-                        placeholder={`Wrong Answer ${wi + 1}`}
-                        value={q[field]}
-                        onChange={(e) => {
-                          const updated = [...editingQuestions];
-                          updated[i] = { ...updated[i], [field]: e.target.value };
-                          setEditingQuestions(updated);
-                        }}
-                      />
-                    )
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <button
-            onClick={handleSaveEdit}
-            disabled={saving}
-            className="w-full bg-[#1B2A4A] hover:bg-[#142038] dark:bg-[#D4A843] dark:hover:bg-[#bf9538] dark:text-[#1B2A4A] text-[#F5F0E8] font-medium py-3 rounded-lg transition disabled:opacity-50"
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-        </main>
-      </div>
-    );
-  }
-
-  // ── Main Admin Panel ────────────────────────────────────────────────────────
-  const pendingCashouts = cashouts.filter((c) => c.status === 'pending').length;
-
+  // ─────────────────────────────────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#F5F0E8] dark:bg-[#0f0f0f] transition-colors duration-200">
-      <header className="bg-[#1B2A4A] dark:bg-[#111111] border-b border-[#142038] dark:border-gray-800">
-        <div className="max-w-5xl mx-auto px-4 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigateTo('/')}
-              className="text-[#F5F0E8]/70 hover:text-[#F5F0E8] transition"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <h1 className="font-serif text-2xl text-[#F5F0E8]">Admin Panel</h1>
-          </div>
-          <button
-            onClick={toggleTheme}
-            className="text-[#F5F0E8]/50 hover:text-[#F5F0E8] transition"
-            aria-label="Toggle dark mode"
-          >
-            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+    <div className="min-h-screen bg-[#F5F0E8] dark:bg-gray-900 pb-16">
+      {/* Header */}
+      <div className="bg-white dark:bg-gray-800 border-b border-[#e8e0d5] dark:border-gray-700 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate('/')} className="text-[#6B7280] hover:text-[#1B2A4A] dark:hover:text-[#F5F0E8]">
+            <ArrowLeft size={20} />
           </button>
+          <h1 className="text-lg font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Admin Panel</h1>
         </div>
-      </header>
+        <button onClick={toggleTheme} className="text-[#6B7280] hover:text-[#1B2A4A] dark:hover:text-[#F5F0E8]">
+          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+      </div>
 
-      <main className="max-w-5xl mx-auto px-4 py-10">
-        {success && (
-          <p className="text-[#1B2A4A] dark:text-[#D4A843] text-sm font-medium mb-4">{success}</p>
+      <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+        {/* Alerts */}
+        {error && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3 text-red-700 dark:text-red-400 text-sm flex items-center justify-between">
+            {error}
+            <button onClick={() => setError('')}><X size={14} /></button>
+          </div>
         )}
-        {error && <p className="text-red-500 dark:text-red-400 text-sm mb-4">{error}</p>}
+        {success && (
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-4 py-3 text-green-700 dark:text-green-400 text-sm flex items-center justify-between">
+            {success}
+            <button onClick={() => setSuccess('')}><X size={14} /></button>
+          </div>
+        )}
 
-       {/* Tabs */}
-<div className="flex gap-3 mb-8 flex-wrap">
-  {[
-    { key: 'books', label: `Books & Questions (${books.length})` },
-    { key: 'cashouts', label: `Cashout Requests (${pendingCashouts} pending)` },
-    { key: 'waitlist', label: `Waitlist (${waitlist.length})` },
-    {
-      key: 'tropes',
-      label: `Tropes (${tropeSuggestions.length > 0 ? `${tropeSuggestions.length} pending` : tropes.length})`,
-    },
-  ].map(({ key, label }) => (
-    <button
-      key={key}
-      onClick={() => setActiveTab(key as typeof activeTab)}
-      className={
-        activeTab === key
-          ? 'px-4 py-2 rounded-lg text-sm font-medium transition bg-[#1B2A4A] dark:bg-[#D4A843] dark:text-[#1B2A4A] text-[#F5F0E8]'
-          : 'px-4 py-2 rounded-lg text-sm font-medium transition bg-white dark:bg-[#1a1a1a] text-[#2C2C2C] dark:text-[#F5F0E8] border border-[#e8e0d5] dark:border-gray-700 hover:border-[#1B2A4A] dark:hover:border-[#D4A843]'
-      }
-    >
-      {label}
-    </button>
-  ))}
-</div>
+        {/* Tabs */}
+        <div className="flex flex-wrap gap-2">
+          {tabs.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors relative ${
+                activeTab === key
+                  ? 'bg-[#1B2A4A] text-white dark:bg-[#D4A843] dark:text-[#1B2A4A]'
+                  : 'bg-white dark:bg-gray-800 text-[#6B7280] dark:text-gray-400 hover:text-[#1B2A4A] dark:hover:text-[#F5F0E8]'
+              }`}
+            >
+              {label}
+              {tabCounts[key] !== null && tabCounts[key]! > 0 && (
+                <span className="ml-2 bg-[#D4A843] text-[#1B2A4A] text-xs rounded-full px-1.5 py-0.5">
+                  {tabCounts[key]}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
 
-        {/* ── Books Tab ── */}
+        {/* ── BOOKS TAB ─────────────────────────────────────────────────────── */}
         {activeTab === 'books' && (
           <div className="space-y-4">
-            {books.map((book) => (
-              <div
-                key={book.id}
-                className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-[#e8e0d5] dark:border-gray-800 p-4 flex items-center gap-4"
-              >
-                {book.cover_url && (
-                  <img
-                    src={book.cover_url}
-                    alt={book.title}
-                    className="w-12 h-16 object-cover rounded"
-                  />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8] truncate">
-                    {book.title}
-                  </p>
-                  <p className="text-[#2C2C2C]/50 dark:text-gray-400 text-sm">{book.author}</p>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <p className="text-[#2C2C2C]/40 dark:text-gray-500 text-xs">
-                      {book.page_count} pages ·{' '}
-                      {book.book_type === 'sponsored'
-                        ? `Bounty: $${book.bounty_amount.toFixed(2)}`
-                        : 'Payout: free $0.50 / casual $0.65 / avid $0.80 / voracious $0.95'}
-                    </p>
-                    <span
-                      className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                        book.book_type === 'sponsored'
-                          ? 'bg-[#D4A843]/15 text-[#1B2A4A] dark:text-[#D4A843]'
-                          : 'bg-[#1B2A4A]/10 text-[#1B2A4A] dark:bg-[#F5F0E8]/10 dark:text-[#F5F0E8]'
-                      }`}
-                    >
-                      {book.book_type === 'sponsored' ? 'Sponsored' : 'Platform'}
-                    </span>
-                  </div>
-                  {book.genres && book.genres.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      {book.genres.map((g) => (
-                        <span
-                          key={g}
-                          className="text-xs px-2 py-0.5 rounded-full bg-[#1B2A4A]/5 dark:bg-white/5 text-[#1B2A4A]/60 dark:text-[#F5F0E8]/50"
-                        >
-                          {g}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+            {/* Edit mode */}
+            {editingBook ? (
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Edit Book</h2>
+                  <button onClick={() => setEditingBook(null)} className="text-[#6B7280] hover:text-[#1B2A4A] dark:hover:text-[#F5F0E8]">
+                    <X size={18} />
+                  </button>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEditBook(book)}
-                    className="p-2 text-[#1B2A4A]/60 dark:text-gray-400 hover:text-[#1B2A4A] dark:hover:text-[#F5F0E8] hover:bg-[#F5F0E8] dark:hover:bg-[#2a2a2a] rounded-lg transition"
-                  >
-                    <Pencil className="w-4 h-4" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <input className={inputClass} placeholder="Title" value={editingBook.title} onChange={(e) => setEditingBook({ ...editingBook, title: e.target.value })} />
+                  <input className={inputClass} placeholder="Author" value={editingBook.author} onChange={(e) => setEditingBook({ ...editingBook, author: e.target.value })} />
+                  <input className={inputClass} placeholder="Cover URL" value={editingBook.cover_url || ''} onChange={(e) => setEditingBook({ ...editingBook, cover_url: e.target.value })} />
+                  <input className={inputClass} type="number" placeholder="Page Count" value={editingBook.page_count} onChange={(e) => setEditingBook({ ...editingBook, page_count: parseInt(e.target.value) })} />
+                  <input className={inputClass} placeholder="Geniuslink URL" value={editingBook.geniuslink_url || ''} onChange={(e) => setEditingBook({ ...editingBook, geniuslink_url: e.target.value })} />
+                  <select className={selectClass} value={editingBook.book_type} onChange={(e) => setEditingBook({ ...editingBook, book_type: e.target.value as Book['book_type'] })}>
+                    <option value="standard">Standard Listing</option>
+                    <option value="bulletin_board">Bulletin Board</option>
+                  </select>
+                </div>
+                <textarea className={inputClass} placeholder="Description" rows={3} value={editingBook.description || ''} onChange={(e) => setEditingBook({ ...editingBook, description: e.target.value })} />
+                <GenrePicker selected={editingBook.genres} onChange={(genres) => setEditingBook({ ...editingBook, genres })} selectClass={selectClass} />
+                <div className="space-y-4">
+                  <h3 className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8] text-sm">Questions</h3>
+                  {editingQuestions.map((q, i) => (
+                    <div key={q.id} className="border border-[#e8e0d5] dark:border-gray-700 rounded-lg p-4 space-y-3">
+                      <p className="text-[#1B2A4A] dark:text-[#F5F0E8] text-sm font-medium">Question {i + 1}</p>
+                      <input className={inputClass} placeholder="Question" value={q.question_text} onChange={(e) => { const u = [...editingQuestions]; u[i] = { ...u[i], question_text: e.target.value }; setEditingQuestions(u); }} />
+                      <input className={correctInputClass} placeholder="Correct Answer" value={q.correct_answer} onChange={(e) => { const u = [...editingQuestions]; u[i] = { ...u[i], correct_answer: e.target.value }; setEditingQuestions(u); }} />
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {(['wrong_answer_1', 'wrong_answer_2', 'wrong_answer_3'] as const).map((field) => (
+                          <input key={field} className={inputClass} placeholder={`Wrong ${field.slice(-1)}`} value={q[field]} onChange={(e) => { const u = [...editingQuestions]; u[i] = { ...u[i], [field]: e.target.value }; setEditingQuestions(u); }} />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={handleSaveEdit} disabled={saving} className="px-4 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-medium hover:bg-[#c49a3a] disabled:opacity-50">
+                    {saving ? 'Saving...' : 'Save Changes'}
                   </button>
-                  <button
-                    onClick={() => handleDeleteBook(book.id)}
-                    className="p-2 text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <button onClick={() => setEditingBook(null)} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-[#6B7280] rounded-lg text-sm">Cancel</button>
                 </div>
               </div>
-            ))}
-
-            {!showAddForm ? (
-              <button
-                onClick={() => setShowAddForm(true)}
-                className="w-full border-2 border-dashed border-[#e8e0d5] dark:border-gray-700 hover:border-[#1B2A4A] dark:hover:border-[#D4A843] rounded-lg py-4 text-[#2C2C2C]/50 dark:text-gray-500 hover:text-[#1B2A4A] dark:hover:text-[#D4A843] transition flex items-center justify-center gap-2 text-sm"
-              >
-                <Plus className="w-4 h-4" /> Add New Book
-              </button>
             ) : (
-              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-[#e8e0d5] dark:border-gray-800 p-6 space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">New Book</h2>
-                  <button
-                    onClick={() => setShowAddForm(false)}
-                    className="text-[#2C2C2C]/40 dark:text-gray-500 hover:text-[#2C2C2C] dark:hover:text-[#F5F0E8] transition"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <input
-                    className={inputClass}
-                    placeholder="Title"
-                    value={newBook.title}
-                    onChange={(e) => setNewBook({ ...newBook, title: e.target.value })}
-                  />
-                  <input
-                    className={inputClass}
-                    placeholder="Author"
-                    value={newBook.author}
-                    onChange={(e) => setNewBook({ ...newBook, author: e.target.value })}
-                  />
-                  <input
-                    className={inputClass}
-                    placeholder="Cover URL"
-                    value={newBook.cover_url}
-                    onChange={(e) => setNewBook({ ...newBook, cover_url: e.target.value })}
-                  />
-                  <div>
-                    <input
-                      className={inputClass}
-                      placeholder="Page Count"
-                      type="number"
-                      value={newBook.page_count}
-                      onChange={(e) => setNewBook({ ...newBook, page_count: e.target.value })}
-                    />
-                    {newBook.page_count && (
-                      <p className="text-[#2C2C2C]/50 dark:text-gray-500 text-xs mt-1">
-                        {newBook.book_type === 'sponsored'
-                          ? `Bounty: $${Math.min(
-                              parseFloat(newBook.page_count) * RATE_PER_PAGE,
-                              5
-                            ).toFixed(2)}`
-                          : 'Payout: free $0.50 / casual $0.65 / avid $0.80 / voracious $0.95'}
-                      </p>
-                    )}
+              <>
+                {/* Add book form */}
+                {showAddForm && (
+                  <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Add New Book</h2>
+                      <button onClick={() => setShowAddForm(false)} className="text-[#6B7280]"><X size={18} /></button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <input className={inputClass} placeholder="Title" value={newBook.title} onChange={(e) => setNewBook({ ...newBook, title: e.target.value })} />
+                      <input className={inputClass} placeholder="Author" value={newBook.author} onChange={(e) => setNewBook({ ...newBook, author: e.target.value })} />
+                      <input className={inputClass} placeholder="Cover URL" value={newBook.cover_url} onChange={(e) => setNewBook({ ...newBook, cover_url: e.target.value })} />
+                      <input className={inputClass} type="number" placeholder="Page Count" value={newBook.page_count} onChange={(e) => setNewBook({ ...newBook, page_count: e.target.value })} />
+                      <input className={inputClass} placeholder="Geniuslink URL" value={newBook.geniuslink_url} onChange={(e) => setNewBook({ ...newBook, geniuslink_url: e.target.value })} />
+                      <select className={selectClass} value={newBook.book_type} onChange={(e) => setNewBook({ ...newBook, book_type: e.target.value as NewBook['book_type'] })}>
+                        <option value="standard">Standard Listing</option>
+                        <option value="bulletin_board">Bulletin Board</option>
+                      </select>
+                    </div>
+                    <textarea className={inputClass} placeholder="Description" rows={3} value={newBook.description} onChange={(e) => setNewBook({ ...newBook, description: e.target.value })} />
+                    <GenrePicker selected={newBook.genres} onChange={(genres) => setNewBook({ ...newBook, genres })} selectClass={selectClass} />
+                    <div className="space-y-4">
+                      <h3 className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8] text-sm">Questions (10 required)</h3>
+                      {questions.map((q, i) => (
+                        <div key={i} className="border border-[#e8e0d5] dark:border-gray-700 rounded-lg p-4 space-y-3">
+                          <p className="text-[#1B2A4A] dark:text-[#F5F0E8] text-sm font-medium">Question {i + 1}</p>
+                          <input className={inputClass} placeholder="Question" value={q.question_text} onChange={(e) => { const u = [...questions]; u[i] = { ...u[i], question_text: e.target.value }; setQuestions(u); }} />
+                          <input className={correctInputClass} placeholder="Correct Answer" value={q.correct_answer} onChange={(e) => { const u = [...questions]; u[i] = { ...u[i], correct_answer: e.target.value }; setQuestions(u); }} />
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {(['wrong_answer_1', 'wrong_answer_2', 'wrong_answer_3'] as const).map((field) => (
+                              <input key={field} className={inputClass} placeholder={`Wrong ${field.slice(-1)}`} value={q[field]} onChange={(e) => { const u = [...questions]; u[i] = { ...u[i], [field]: e.target.value }; setQuestions(u); }} />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-3">
+                      <button onClick={handleSaveBook} disabled={saving} className="px-4 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-medium hover:bg-[#c49a3a] disabled:opacity-50">
+                        {saving ? 'Saving...' : 'Add Book'}
+                      </button>
+                      <button onClick={() => setShowAddForm(false)} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-[#6B7280] rounded-lg text-sm">Cancel</button>
+                    </div>
                   </div>
-                  <input
-                    className={inputClass}
-                    placeholder="Geniuslink URL"
-                    value={newBook.geniuslink_url}
-                    onChange={(e) => setNewBook({ ...newBook, geniuslink_url: e.target.value })}
-                  />
-                  <textarea
-                    className={inputClass}
-                    placeholder="Description"
-                    rows={3}
-                    value={newBook.description}
-                    onChange={(e) => setNewBook({ ...newBook, description: e.target.value })}
-                  />
-                  <div>
-                    <label className="block text-xs font-medium text-[#2C2C2C]/60 dark:text-gray-400 mb-1">
-                      Book Type
-                    </label>
-                    <select
-                      className={selectClass}
-                      value={newBook.book_type}
-                      onChange={(e) =>
-                        setNewBook({
-                          ...newBook,
-                          book_type: e.target.value as 'platform' | 'sponsored',
-                        })
-                      }
-                    >
-                      <option value="platform">Platform</option>
-                      <option value="sponsored">Sponsored</option>
-                    </select>
-                  </div>
+                )}
 
-                  {/* Genre picker -- add mode */}
-                  <GenrePicker
-                    selected={newBook.genres}
-                    onChange={(genres) => setNewBook({ ...newBook, genres })}
-                    selectClass={selectClass}
-                  />
+                {/* Book list */}
+                <div className="flex items-center justify-between">
+                  <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Books ({books.length})</h2>
+                  {!showAddForm && (
+                    <button onClick={() => setShowAddForm(true)} className="flex items-center gap-2 px-3 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-medium hover:bg-[#c49a3a]">
+                      <Plus size={16} /> Add Book
+                    </button>
+                  )}
                 </div>
-
-                <div className="space-y-4">
-                  <h3 className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8] text-sm">
-                    Questions (10 required)
-                  </h3>
-                  {questions.map((q, i) => (
-                    <div
-                      key={i}
-                      className="border border-[#e8e0d5] dark:border-gray-700 rounded-lg p-4 space-y-3"
-                    >
-                      <p className="text-[#1B2A4A] dark:text-[#F5F0E8] text-sm font-medium">
-                        Question {i + 1}
-                      </p>
-                      <input
-                        className={inputClass}
-                        placeholder="Question"
-                        value={q.question_text}
-                        onChange={(e) => {
-                          const updated = [...questions];
-                          updated[i] = { ...updated[i], question_text: e.target.value };
-                          setQuestions(updated);
-                        }}
-                      />
-                      <input
-                        className={correctInputClass}
-                        placeholder="Correct Answer"
-                        value={q.correct_answer}
-                        onChange={(e) => {
-                          const updated = [...questions];
-                          updated[i] = { ...updated[i], correct_answer: e.target.value };
-                          setQuestions(updated);
-                        }}
-                      />
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        {(['wrong_answer_1', 'wrong_answer_2', 'wrong_answer_3'] as const).map(
-                          (field, wi) => (
-                            <input
-                              key={field}
-                              className={inputClass}
-                              placeholder={`Wrong Answer ${wi + 1}`}
-                              value={q[field]}
-                              onChange={(e) => {
-                                const updated = [...questions];
-                                updated[i] = { ...updated[i], [field]: e.target.value };
-                                setQuestions(updated);
-                              }}
-                            />
-                          )
+                <div className="space-y-3">
+                  {books.map((book) => (
+                    <div key={book.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-4 flex gap-4">
+                      {book.cover_url && (
+                        <img src={book.cover_url} alt={book.title} className="w-12 h-16 object-cover rounded" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8] text-sm">{book.title}</p>
+                            <p className="text-xs text-[#6B7280] dark:text-gray-400">{book.author} · {book.page_count} pages</p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                              book.book_type === 'bulletin_board'
+                                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                                : 'bg-[#D4A843]/20 text-[#D4A843]'
+                            }`}>
+                              {book.book_type === 'bulletin_board' ? 'Bulletin Board' : 'Standard'}
+                            </span>
+                            <button onClick={() => handleEditBook(book)} className="text-[#6B7280] hover:text-[#1B2A4A] dark:hover:text-[#F5F0E8]"><Pencil size={15} /></button>
+                            <button onClick={() => handleDeleteBook(book.id)} className="text-red-400 hover:text-red-600"><Trash2 size={15} /></button>
+                          </div>
+                        </div>
+                        {book.genres?.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {book.genres.map((g) => (
+                              <span key={g} className="text-xs bg-[#F5F0E8] dark:bg-gray-700 text-[#6B7280] dark:text-gray-400 px-2 py-0.5 rounded-full">{g}</span>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </div>
                   ))}
                 </div>
-
-                {error && <p className="text-red-500 dark:text-red-400 text-sm">{error}</p>}
-                <button
-                  onClick={handleSaveBook}
-                  disabled={saving}
-                  className="w-full bg-[#1B2A4A] hover:bg-[#142038] dark:bg-[#D4A843] dark:hover:bg-[#bf9538] dark:text-[#1B2A4A] text-[#F5F0E8] font-medium py-3 rounded-lg transition disabled:opacity-50"
-                >
-                  {saving ? 'Saving...' : 'Save Book & Questions'}
-                </button>
-              </div>
+              </>
             )}
           </div>
         )}
 
-        {/* ── Cashouts Tab ── */}
+        {/* ── BOUNTIES TAB ──────────────────────────────────────────────────── */}
+        {activeTab === 'bounties' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Author Bounties</h2>
+              {!showAddBountyForm && (
+                <button onClick={() => setShowAddBountyForm(true)} className="flex items-center gap-2 px-3 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-medium hover:bg-[#c49a3a]">
+                  <Plus size={16} /> New Bounty
+                </button>
+              )}
+            </div>
+
+            {showAddBountyForm && (
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Create Bounty</h3>
+                  <button onClick={() => setShowAddBountyForm(false)} className="text-[#6B7280]"><X size={18} /></button>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Book</label>
+                    <select className={selectClass} value={newBounty.book_id} onChange={(e) => setNewBounty({ ...newBounty, book_id: e.target.value })}>
+                      <option value="">Select a book...</option>
+                      {books.filter((b) => b.book_type === 'standard').map((b) => (
+                        <option key={b.id} value={b.id}>{b.title} — {b.author}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Pool Size</label>
+                    <div className="flex flex-wrap gap-2">
+                      {BOUNTY_POOL_OPTIONS.map((amt) => (
+                        <button
+                          key={amt}
+                          onClick={() => setNewBounty({ ...newBounty, pool_size: amt })}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                            newBounty.pool_size === amt
+                              ? 'bg-[#D4A843] text-[#1B2A4A] border-[#D4A843]'
+                              : 'bg-white dark:bg-gray-800 text-[#6B7280] border-[#e8e0d5] dark:border-gray-700 hover:border-[#D4A843]'
+                          }`}
+                        >
+                          ${amt}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-2">
+                      Platform keeps 20% (${(newBounty.pool_size * 0.2).toFixed(2)}) · Readers earn 80% (${(newBounty.pool_size * 0.8).toFixed(2)})
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Per-Pass Payout ($)</label>
+                    <input
+                      className={inputClass}
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      placeholder="e.g. 1.00"
+                      value={newBounty.per_pass_amount}
+                      onChange={(e) => setNewBounty({ ...newBounty, per_pass_amount: parseFloat(e.target.value) })}
+                    />
+                    <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-1">
+                      At ${newBounty.per_pass_amount}/pass, reader pool funds ~{Math.floor((newBounty.pool_size * 0.8) / newBounty.per_pass_amount)} passes
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={handleSaveBounty} disabled={saving} className="px-4 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-medium hover:bg-[#c49a3a] disabled:opacity-50">
+                    {saving ? 'Saving...' : 'Create Bounty'}
+                  </button>
+                  <button onClick={() => setShowAddBountyForm(false)} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-[#6B7280] rounded-lg text-sm">Cancel</button>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {bounties.length === 0 && <p className="text-sm text-[#6B7280] dark:text-gray-400">No bounties yet.</p>}
+              {bounties.map((bounty) => (
+                <div key={bounty.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8] text-sm">
+                        {bounty.books?.title ?? 'Unknown Book'}
+                      </p>
+                      <p className="text-xs text-[#6B7280] dark:text-gray-400">{bounty.books?.author}</p>
+                      <div className="flex flex-wrap gap-3 mt-2 text-xs text-[#6B7280] dark:text-gray-400">
+                        <span>Pool: <strong className="text-[#1B2A4A] dark:text-[#F5F0E8]">${bounty.pool_size}</strong></span>
+                        <span>Platform: <strong className="text-[#1B2A4A] dark:text-[#F5F0E8]">${bounty.platform_fee}</strong></span>
+                        <span>Reader Pool: <strong className="text-[#1B2A4A] dark:text-[#F5F0E8]">${bounty.reader_pool}</strong></span>
+                        <span>Per Pass: <strong className="text-[#1B2A4A] dark:text-[#F5F0E8]">${bounty.per_pass_amount}</strong></span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        bounty.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        : bounty.status === 'paused' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                        : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                      }`}>
+                        {bounty.status}
+                      </span>
+                      <button onClick={() => handleDeleteBounty(bounty.id)} className="text-red-400 hover:text-red-600"><Trash2 size={15} /></button>
+                    </div>
+                  </div>
+                  {bounty.status !== 'completed' && (
+                    <div className="flex gap-2 mt-3">
+                      {bounty.status === 'active' && (
+                        <button onClick={() => handleUpdateBountyStatus(bounty.id, 'paused')} className="text-xs px-3 py-1 rounded-lg bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 hover:opacity-80">Pause</button>
+                      )}
+                      {bounty.status === 'paused' && (
+                        <button onClick={() => handleUpdateBountyStatus(bounty.id, 'active')} className="text-xs px-3 py-1 rounded-lg bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:opacity-80">Resume</button>
+                      )}
+                      <button onClick={() => handleUpdateBountyStatus(bounty.id, 'completed')} className="text-xs px-3 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-[#6B7280] hover:opacity-80">Mark Completed</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── COMPETITIONS TAB ──────────────────────────────────────────────── */}
+        {activeTab === 'competitions' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Competitions</h2>
+              {!showAddCompForm && (
+                <button onClick={() => setShowAddCompForm(true)} className="flex items-center gap-2 px-3 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-medium hover:bg-[#c49a3a]">
+                  <Plus size={16} /> New Competition
+                </button>
+              )}
+            </div>
+
+            {showAddCompForm && (
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Create Competition</h3>
+                  <button onClick={() => setShowAddCompForm(false)} className="text-[#6B7280]"><X size={18} /></button>
+                </div>
+                <div className="space-y-3">
+                  {/* Type selector */}
+                  <div>
+                    <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Type</label>
+                    <div className="flex flex-wrap gap-2">
+                      {COMPETITION_TYPES.map((type) => (
+                        <button
+                          key={type}
+                          onClick={() => setNewComp({ ...newComp, type, book_ids: [] })}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                            newComp.type === type
+                              ? 'bg-[#1B2A4A] text-white dark:bg-[#D4A843] dark:text-[#1B2A4A] border-transparent'
+                              : 'bg-white dark:bg-gray-800 text-[#6B7280] border-[#e8e0d5] dark:border-gray-700 hover:border-[#D4A843]'
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-1">
+                      {newComp.type === 'Read-A-Thon'
+                        ? 'All standard listed books are automatically eligible — no book selection needed.'
+                        : 'You\'ll select specific books for this competition below.'}
+                    </p>
+                  </div>
+
+                  <input className={inputClass} placeholder="Competition Title (e.g. April Sprint)" value={newComp.title} onChange={(e) => setNewComp({ ...newComp, title: e.target.value })} />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Start Date</label>
+                      <input className={inputClass} type="date" value={newComp.start_date} onChange={(e) => setNewComp({ ...newComp, start_date: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">End Date</label>
+                      <input className={inputClass} type="date" value={newComp.end_date} onChange={(e) => setNewComp({ ...newComp, end_date: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Entry Fee ($)</label>
+                      <input className={inputClass} type="number" step="0.01" placeholder="e.g. 5.00" value={newComp.entry_fee} onChange={(e) => setNewComp({ ...newComp, entry_fee: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Starting Prize Pool ($)</label>
+                      <input className={inputClass} type="number" step="0.01" placeholder="e.g. 0.00" value={newComp.prize_pool} onChange={(e) => setNewComp({ ...newComp, prize_pool: e.target.value })} />
+                      {newComp.prize_pool && (
+                        <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-1">
+                          Platform keeps 25% (${(parseFloat(newComp.prize_pool) * 0.25).toFixed(2)}) · Winners share 75% (${(parseFloat(newComp.prize_pool) * 0.75).toFixed(2)})
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Book selection for Sprint & Elimination Bracket */}
+                  {newComp.type !== 'Read-A-Thon' && (
+                    <div>
+                      <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
+                        Select Books ({newComp.book_ids.length} selected)
+                      </label>
+                      <div className="border border-[#e8e0d5] dark:border-gray-700 rounded-lg max-h-48 overflow-y-auto divide-y divide-[#e8e0d5] dark:divide-gray-700">
+                        {eligibleBooks.map((book) => {
+                          const selected = newComp.book_ids.includes(book.id);
+                          return (
+                            <button
+                              key={book.id}
+                              onClick={() => {
+                                const ids = selected
+                                  ? newComp.book_ids.filter((id) => id !== book.id)
+                                  : [...newComp.book_ids, book.id];
+                                setNewComp({ ...newComp, book_ids: ids });
+                              }}
+                              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#F5F0E8] dark:hover:bg-gray-700 transition-colors ${selected ? 'bg-[#D4A843]/10' : ''}`}
+                            >
+                              <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${selected ? 'bg-[#D4A843] border-[#D4A843]' : 'border-[#e8e0d5] dark:border-gray-600'}`}>
+                                {selected && <Check size={10} className="text-[#1B2A4A]" />}
+                              </div>
+                              <div>
+                                <p className="text-sm text-[#1B2A4A] dark:text-[#F5F0E8]">{book.title}</p>
+                                <p className="text-xs text-[#6B7280] dark:text-gray-400">{book.author}</p>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={handleSaveCompetition} disabled={saving} className="px-4 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-medium hover:bg-[#c49a3a] disabled:opacity-50">
+                    {saving ? 'Saving...' : 'Create Competition'}
+                  </button>
+                  <button onClick={() => setShowAddCompForm(false)} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-[#6B7280] rounded-lg text-sm">Cancel</button>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {competitions.length === 0 && <p className="text-sm text-[#6B7280] dark:text-gray-400">No competitions yet.</p>}
+              {competitions.map((comp) => (
+                <div key={comp.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8] text-sm">{comp.title}</p>
+                        <span className="text-xs bg-[#1B2A4A]/10 dark:bg-white/10 text-[#1B2A4A] dark:text-[#F5F0E8] px-2 py-0.5 rounded-full">{comp.type}</span>
+                      </div>
+                      <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-0.5">
+                        {new Date(comp.start_date).toLocaleDateString()} – {new Date(comp.end_date).toLocaleDateString()}
+                      </p>
+                      <div className="flex flex-wrap gap-3 mt-2 text-xs text-[#6B7280] dark:text-gray-400">
+                        <span>Entry: <strong className="text-[#1B2A4A] dark:text-[#F5F0E8]">${comp.entry_fee}</strong></span>
+                        <span>Prize Pool: <strong className="text-[#1B2A4A] dark:text-[#F5F0E8]">${comp.prize_pool}</strong></span>
+                        <span>Platform Cut: <strong className="text-[#1B2A4A] dark:text-[#F5F0E8]">${comp.platform_cut}</strong></span>
+                        {comp.type !== 'Read-A-Thon' && (
+                          <span>Books: <strong className="text-[#1B2A4A] dark:text-[#F5F0E8]">{comp.book_ids?.length ?? 0}</strong></span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        comp.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        : comp.status === 'upcoming' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                        : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                      }`}>
+                        {comp.status}
+                      </span>
+                      <button onClick={() => handleDeleteCompetition(comp.id)} className="text-red-400 hover:text-red-600"><Trash2 size={15} /></button>
+                    </div>
+                  </div>
+                  {comp.status !== 'completed' && (
+                    <div className="flex gap-2 mt-3">
+                      {comp.status === 'upcoming' && (
+                        <button onClick={() => handleUpdateCompStatus(comp.id, 'active')} className="text-xs px-3 py-1 rounded-lg bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:opacity-80">Go Live</button>
+                      )}
+                      {comp.status === 'active' && (
+                        <button onClick={() => handleUpdateCompStatus(comp.id, 'completed')} className="text-xs px-3 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-[#6B7280] hover:opacity-80">End Competition</button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── CASHOUTS TAB ──────────────────────────────────────────────────── */}
         {activeTab === 'cashouts' && (
           <div className="space-y-3">
-            {cashouts.length === 0 && (
-              <p className="text-[#2C2C2C]/50 dark:text-gray-500 text-sm">
-                No cashout requests yet.
-              </p>
-            )}
-            {cashouts.map((c) => (
-              <div
-                key={c.id}
-                className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-[#e8e0d5] dark:border-gray-800 p-4"
-              >
-                <div className="flex items-start justify-between gap-4 flex-wrap">
+            <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">
+              Cashout Requests ({cashouts.filter((c) => c.status === 'pending').length} pending)
+            </h2>
+            {cashouts.length === 0 && <p className="text-sm text-[#6B7280] dark:text-gray-400">No cashout requests.</p>}
+            {cashouts.map((cashout) => (
+              <div key={cashout.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-4">
+                <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8] text-sm">
-                      {c.profiles?.email}
+                    <div className="flex items-center gap-2">
+                      <Mail size={14} className="text-[#6B7280]" />
+                      <p className="text-sm text-[#1B2A4A] dark:text-[#F5F0E8]">{cashout.profiles?.email}</p>
+                    </div>
+                    <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-0.5">
+                      {new Date(cashout.created_at).toLocaleDateString()} · {cashout.payout_type}
                     </p>
-                    <p className="text-[#2C2C2C]/50 dark:text-gray-500 text-xs mt-0.5">
-                      {new Date(c.created_at).toLocaleString()} · {c.payout_type}
-                    </p>
-                    <p className="text-[#2C2C2C]/60 dark:text-gray-400 text-xs mt-1">
-                      {c.payout_details}
-                    </p>
-                    {c.gift_card_brand && (
-                      <p className="text-[#2C2C2C]/50 dark:text-gray-500 text-xs">
-                        Brand: {c.gift_card_brand}
-                      </p>
+                    <p className="text-xs text-[#6B7280] dark:text-gray-400">{cashout.payout_details}</p>
+                    {cashout.gift_card_brand && (
+                      <p className="text-xs text-[#6B7280] dark:text-gray-400">Gift card: {cashout.gift_card_brand}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[#1B2A4A] dark:text-[#F5F0E8] font-semibold">
-                      ${c.amount.toFixed(2)}
-                    </span>
-                    <span
-                      className={`text-xs font-medium px-2 py-1 rounded-full ${
-                        c.status === 'completed'
-                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                          : c.status === 'failed'
-                          ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                          : 'bg-[#D4A843]/15 text-[#1B2A4A] dark:text-[#D4A843]'
-                      }`}
-                    >
-                      {c.status}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8] text-sm">${cashout.amount.toFixed(2)}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      cashout.status === 'pending' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      : cashout.status === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                    }`}>
+                      {cashout.status}
                     </span>
                   </div>
                 </div>
-                {c.status === 'pending' && (
+                {cashout.status === 'pending' && (
                   <div className="flex gap-2 mt-3">
-                    <button
-                      onClick={() => handleUpdateCashoutStatus(c.id, 'completed')}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 text-xs font-medium rounded-lg transition"
-                    >
-                      <Check className="w-3.5 h-3.5" /> Mark Sent
+                    <button onClick={() => handleUpdateCashoutStatus(cashout.id, 'completed')} className="flex items-center gap-1 text-xs px-3 py-1 rounded-lg bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:opacity-80">
+                      <Check size={12} /> Sent
                     </button>
-                    <button
-                      onClick={() => handleUpdateCashoutStatus(c.id, 'failed')}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 text-xs font-medium rounded-lg transition"
-                    >
-                      <X className="w-3.5 h-3.5" /> Mark Failed
+                    <button onClick={() => handleUpdateCashoutStatus(cashout.id, 'failed')} className="flex items-center gap-1 text-xs px-3 py-1 rounded-lg bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 hover:opacity-80">
+                      <X size={12} /> Failed
                     </button>
                   </div>
                 )}
@@ -1005,136 +1060,81 @@ export const Admin = () => {
           </div>
         )}
 
-        {/* ── Waitlist Tab ── */}
+        {/* ── WAITLIST TAB ──────────────────────────────────────────────────── */}
         {activeTab === 'waitlist' && (
           <div className="space-y-3">
-            {waitlist.length === 0 && (
-              <p className="text-[#2C2C2C]/50 dark:text-gray-500 text-sm">
-                No waitlist entries yet.
-              </p>
-            )}
+            <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Waitlist ({waitlist.length})</h2>
+            {waitlist.length === 0 && <p className="text-sm text-[#6B7280] dark:text-gray-400">Waitlist is empty.</p>}
             {waitlist.map((entry) => (
-              <div
-                key={entry.id}
-                className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-[#e8e0d5] dark:border-gray-800 p-4 flex items-center gap-3"
-              >
-                <Mail className="w-4 h-4 text-[#1B2A4A]/40 dark:text-gray-500 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-[#1B2A4A] dark:text-[#F5F0E8] text-sm font-medium truncate">
-                    {entry.email}
-                  </p>
-                  <p className="text-[#2C2C2C]/40 dark:text-gray-600 text-xs">
-                    {new Date(entry.created_at).toLocaleDateString()}
-                  </p>
+              <div key={entry.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-[#1B2A4A] dark:text-[#F5F0E8]">{entry.email}</p>
+                  <p className="text-xs text-[#6B7280] dark:text-gray-400">{new Date(entry.created_at).toLocaleDateString()}</p>
                 </div>
-                <button
-                  onClick={() => handleDeleteWaitlistEntry(entry.id)}
-                  className="p-2 text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <button onClick={() => handleDeleteWaitlistEntry(entry.id)} className="text-red-400 hover:text-red-600"><Trash2 size={15} /></button>
               </div>
             ))}
           </div>
         )}
 
-        {/* ── Tropes Tab ── */}
+        {/* ── TROPES TAB ────────────────────────────────────────────────────── */}
         {activeTab === 'tropes' && (
-          <div className="space-y-8">
+          <div className="space-y-6">
+            {/* Pending suggestions */}
             {tropeSuggestions.length > 0 && (
-              <div>
-                <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8] mb-3 flex items-center gap-2">
-                  <Tag className="w-4 h-4 text-[#D4A843]" />
+              <div className="space-y-3">
+                <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">
                   Pending Suggestions ({tropeSuggestions.length})
                 </h2>
-                <div className="space-y-3">
-                  {tropeSuggestions.map((s) => (
-                    <div
-                      key={s.id}
-                      className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-[#D4A843]/30 dark:border-[#D4A843]/20 p-4 flex items-center gap-4"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8] text-sm">
-                          {s.suggested_name}
-                        </p>
-                        <p className="text-[#2C2C2C]/50 dark:text-gray-500 text-xs mt-0.5">
-                          Suggested for: {s.books?.title ?? 'Unknown book'}
-                        </p>
-                        <p className="text-[#2C2C2C]/40 dark:text-gray-600 text-xs">
-                          {new Date(s.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex gap-2 flex-shrink-0">
-                        <button
-                          onClick={() => handleApproveSuggestion(s)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 text-xs font-medium rounded-lg transition"
-                        >
-                          <Check className="w-3.5 h-3.5" /> Approve
-                        </button>
-                        <button
-                          onClick={() => handleRejectSuggestion(s.id)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 text-xs font-medium rounded-lg transition"
-                        >
-                          <X className="w-3.5 h-3.5" /> Reject
-                        </button>
-                      </div>
+                {tropeSuggestions.map((s) => (
+                  <div key={s.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-4 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-[#1B2A4A] dark:text-[#F5F0E8]">{s.suggested_name}</p>
+                      <p className="text-xs text-[#6B7280] dark:text-gray-400">for: {s.books?.title ?? 'Unknown'}</p>
                     </div>
-                  ))}
-                </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button onClick={() => handleApproveSuggestion(s)} className="flex items-center gap-1 text-xs px-3 py-1 rounded-lg bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:opacity-80">
+                        <Check size={12} /> Approve
+                      </button>
+                      <button onClick={() => handleRejectSuggestion(s.id)} className="flex items-center gap-1 text-xs px-3 py-1 rounded-lg bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 hover:opacity-80">
+                        <X size={12} /> Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
-            <div>
-              <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8] mb-3 flex items-center gap-2">
-                <Tag className="w-4 h-4" />
-                Trope Library ({tropes.length})
-              </h2>
-              <div className="flex gap-2 mb-4">
+            {/* Trope library */}
+            <div className="space-y-3">
+              <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Trope Library ({tropes.length})</h2>
+              <div className="flex gap-2">
                 <input
                   className={inputClass}
-                  placeholder="New trope name (e.g. Enemies to Lovers)"
+                  placeholder="New trope name..."
                   value={newTropeName}
                   onChange={(e) => setNewTropeName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleAddTrope();
-                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddTrope()}
                 />
-                <button
-                  onClick={handleAddTrope}
-                  disabled={addingTrope || !newTropeName.trim()}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-[#1B2A4A] hover:bg-[#142038] dark:bg-[#D4A843] dark:hover:bg-[#bf9538] dark:text-[#1B2A4A] text-[#F5F0E8] text-sm font-medium rounded-lg transition disabled:opacity-40 flex-shrink-0"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add
+                <button onClick={handleAddTrope} disabled={addingTrope || !newTropeName.trim()} className="px-4 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-medium hover:bg-[#c49a3a] disabled:opacity-50 shrink-0">
+                  <Plus size={16} />
                 </button>
               </div>
-              {tropes.length === 0 ? (
-                <p className="text-[#2C2C2C]/50 dark:text-gray-500 text-sm">
-                  No tropes yet. Add one above.
-                </p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {tropes.map((trope) => (
-                    <div
-                      key={trope.id}
-                      className="flex items-center gap-1.5 bg-white dark:bg-[#1a1a1a] border border-[#e8e0d5] dark:border-gray-700 rounded-full px-3 py-1.5 text-sm text-[#1B2A4A] dark:text-[#F5F0E8]"
-                    >
-                      <span>{trope.name}</span>
-                      <button
-                        onClick={() => handleDeleteTrope(trope.id)}
-                        className="text-[#2C2C2C]/30 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition ml-0.5"
-                        aria-label={`Delete ${trope.name}`}
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="flex flex-wrap gap-2">
+                {tropes.map((trope) => (
+                  <span key={trope.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-gray-800 border border-[#e8e0d5] dark:border-gray-700 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm">
+                    <Tag size={12} className="text-[#D4A843]" />
+                    {trope.name}
+                    <button onClick={() => handleDeleteTrope(trope.id)} className="text-[#6B7280] hover:text-red-500 ml-0.5">
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
-};
+}
