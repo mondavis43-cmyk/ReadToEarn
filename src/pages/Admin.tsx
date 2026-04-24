@@ -847,286 +847,459 @@ export function Admin() {
         )}
 
         {/* ── BOUNTIES TAB ──────────────────────────────────────────────────── */}
-        {activeTab === 'bounties' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Author Bounties</h2>
-              {!showAddBountyForm && (
-                <button onClick={() => setShowAddBountyForm(true)} className="flex items-center gap-2 px-3 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-medium hover:bg-[#c49a3a]">
-                  <Plus size={16} /> New Bounty
+{activeTab === 'bounties' && (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Author Bounties</h2>
+      {!showAddBountyForm && (
+        <button
+          onClick={() => setShowAddBountyForm(true)}
+          className="flex items-center gap-2 px-3 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-medium hover:bg-[#c49a3a]"
+        >
+          <Plus size={16} /> New Bounty
+        </button>
+      )}
+    </div>
+
+    {/* Create Form */}
+    {showAddBountyForm && (
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Create Bounty</h3>
+          <button onClick={() => { setShowAddBountyForm(false); setNewBounty(emptyBounty); }} className="text-[#6B7280]">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {/* Book selector */}
+          <div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Book</label>
+            <select
+              className={selectClass}
+              value={newBounty.book_id}
+              onChange={(e) => setNewBounty({ ...newBounty, book_id: e.target.value })}
+            >
+              <option value="">Select a book...</option>
+              {books.map((book) => (
+                <option key={book.id} value={book.id}>{book.title} — {book.author}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Pool size */}
+          <div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Pool Size</label>
+            <div className="flex flex-wrap gap-2">
+              {BOUNTY_POOL_OPTIONS.map((amt) => (
+                <button
+                  key={amt}
+                  onClick={() => setNewBounty({ ...newBounty, pool_size: amt })}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
+                    newBounty.pool_size === amt
+                      ? 'bg-[#D4A843] border-[#D4A843] text-[#1B2A4A]'
+                      : 'border-gray-300 dark:border-gray-600 text-[#1B2A4A] dark:text-[#F5F0E8] hover:border-[#D4A843]'
+                  }`}
+                >
+                  ${amt}
                 </button>
-              )}
-            </div>
-
-            {showAddBountyForm && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Create Bounty</h3>
-                  <button onClick={() => setShowAddBountyForm(false)} className="text-[#6B7280]"><X size={18} /></button>
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Book</label>
-                    <select className={selectClass} value={newBounty.book_id} onChange={(e) => setNewBounty({ ...newBounty, book_id: e.target.value })}>
-                      <option value="">Select a book...</option>
-                      {books.map((book) => (
-                        <option key={b.id} value={b.id}>{b.title} — {b.author}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Pool Size</label>
-                    <div className="flex flex-wrap gap-2">
-                      {BOUNTY_POOL_OPTIONS.map((amt) => (
-                        <button
-                          key={amt}
-                          onClick={() => setNewBounty({ ...newBounty, pool_size: amt })}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                            newBounty.pool_size === amt
-                              ? 'bg-[#D4A843] text-[#1B2A4A] border-[#D4A843]'
-                              : 'bg-white dark:bg-gray-800 text-[#6B7280] border-[#e8e0d5] dark:border-gray-700 hover:border-[#D4A843]'
-                          }`}
-                        >
-                          ${amt}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-2">
-                      Platform keeps 20% (${(newBounty.pool_size * 0.2).toFixed(2)}) · Readers earn 80% (${(newBounty.pool_size * 0.8).toFixed(2)})
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Per-Pass Payout ($)</label>
-                    <input
-                      className={inputClass}
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      placeholder="e.g. 1.00"
-                      value={newBounty.per_pass_amount}
-                      onChange={(e) => setNewBounty({ ...newBounty, per_pass_amount: parseFloat(e.target.value) })}
-                    />
-                    <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-1">
-                      At ${newBounty.per_pass_amount}/pass, reader pool funds ~{Math.floor((newBounty.pool_size * 0.8) / newBounty.per_pass_amount)} passes
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <button onClick={handleSaveBounty} disabled={saving} className="px-4 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-medium hover:bg-[#c49a3a] disabled:opacity-50">
-                    {saving ? 'Saving...' : 'Create Bounty'}
-                  </button>
-                  <button onClick={() => setShowAddBountyForm(false)} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-[#6B7280] rounded-lg text-sm">Cancel</button>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-3">
-              {bounties.length === 0 && <p className="text-sm text-[#6B7280] dark:text-gray-400">No bounties yet.</p>}
-              {bounties.map((bounty) => (
-                <div key={bounty.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8] text-sm">
-                        {bounty.books?.title ?? 'Unknown Book'}
-                      </p>
-                      <p className="text-xs text-[#6B7280] dark:text-gray-400">{bounty.books?.author}</p>
-                      <div className="flex flex-wrap gap-3 mt-2 text-xs text-[#6B7280] dark:text-gray-400">
-                        <span>Pool: <strong className="text-[#1B2A4A] dark:text-[#F5F0E8]">${bounty.pool_size}</strong></span>
-                        <span>Platform: <strong className="text-[#1B2A4A] dark:text-[#F5F0E8]">${bounty.platform_fee}</strong></span>
-                        <span>Reader Pool: <strong className="text-[#1B2A4A] dark:text-[#F5F0E8]">${bounty.reader_pool}</strong></span>
-                        <span>Per Pass: <strong className="text-[#1B2A4A] dark:text-[#F5F0E8]">${bounty.per_pass_amount}</strong></span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        bounty.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                        : bounty.status === 'paused' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                        : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-                      }`}>
-                        {bounty.status}
-                      </span>
-                      <button onClick={() => handleDeleteBounty(bounty.id)} className="text-red-400 hover:text-red-600"><Trash2 size={15} /></button>
-                    </div>
-                  </div>
-                  {bounty.status !== 'completed' && (
-                    <div className="flex gap-2 mt-3">
-                      {bounty.status === 'active' && (
-                        <button onClick={() => handleUpdateBountyStatus(bounty.id, 'paused')} className="text-xs px-3 py-1 rounded-lg bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 hover:opacity-80">Pause</button>
-                      )}
-                      {bounty.status === 'paused' && (
-                        <button onClick={() => handleUpdateBountyStatus(bounty.id, 'active')} className="text-xs px-3 py-1 rounded-lg bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:opacity-80">Resume</button>
-                      )}
-                      <button onClick={() => handleUpdateBountyStatus(bounty.id, 'completed')} className="text-xs px-3 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-[#6B7280] hover:opacity-80">Mark Completed</button>
-                    </div>
-                  )}
-                </div>
               ))}
             </div>
+            <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-1">
+              Platform keeps ${(newBounty.pool_size * 0.2).toFixed(2)} · Readers earn ${(newBounty.pool_size * 0.8).toFixed(2)}
+            </p>
           </div>
-        )}
+
+          {/* Per-pass payout */}
+          <div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Per-Pass Payout ($)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              className={inputClass}
+              value={newBounty.per_pass_amount}
+              onChange={(e) => setNewBounty({ ...newBounty, per_pass_amount: parseFloat(e.target.value) || 0 })}
+              placeholder="e.g. 0.50"
+            />
+            <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-1">
+              Estimated passes: {newBounty.per_pass_amount > 0 ? Math.floor((newBounty.pool_size * 0.8) / newBounty.per_pass_amount) : '—'}
+            </p>
+          </div>
+        </div>
+
+        {error && <p className="text-red-500 text-sm">{error}</p>}
+        <div className="flex gap-2 pt-2">
+          <button
+            onClick={handleSaveBounty}
+            disabled={saving}
+            className="px-4 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-semibold hover:bg-[#c49a3a] disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : 'Create Bounty'}
+          </button>
+          <button
+            onClick={() => { setShowAddBountyForm(false); setNewBounty(emptyBounty); }}
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-[#6B7280] hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    )}
+
+    {/* Bounties List */}
+    {bounties.length === 0 ? (
+      <p className="text-sm text-[#6B7280] dark:text-gray-400">No bounties yet.</p>
+    ) : (
+      <div className="space-y-3">
+        {bounties.map((bounty) => {
+          const passesTotal = bounty.per_pass_amount > 0
+            ? Math.floor(bounty.reader_pool / bounty.per_pass_amount)
+            : 0;
+          return (
+            <div
+              key={bounty.id}
+              className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-4"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <p className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8]">
+                    {books.find((b) => b.id === bounty.book_id)?.title ?? 'Unknown Book'}
+                  </p>
+                  <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-0.5">
+                    {books.find((b) => b.id === bounty.book_id)?.author ?? ''}
+                  </p>
+                  <div className="flex flex-wrap gap-4 mt-2 text-sm">
+                    <span className="text-[#1B2A4A] dark:text-[#F5F0E8]">
+                      Pool: <strong>${bounty.pool_size}</strong>
+                    </span>
+                    <span className="text-[#6B7280] dark:text-gray-400">
+                      Platform: ${bounty.platform_fee}
+                    </span>
+                    <span className="text-[#6B7280] dark:text-gray-400">
+                      Reader pool: ${bounty.reader_pool}
+                    </span>
+                    <span className="text-[#D4A843] font-medium">
+                      ${bounty.per_pass_amount}/pass · ~{passesTotal} passes
+                    </span>
+                  </div>
+                </div>
+
+                {/* Status badge */}
+                <span className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 ${
+                  bounty.status === 'active'
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                    : bounty.status === 'paused'
+                    ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                    : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                }`}>
+                  {bounty.status}
+                </span>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 mt-3 flex-wrap">
+                {bounty.status === 'active' && (
+                  <button
+                    onClick={() => handleUpdateBountyStatus(bounty.id, 'paused')}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-yellow-400 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition"
+                  >
+                    Pause
+                  </button>
+                )}
+                {bounty.status === 'paused' && (
+                  <button
+                    onClick={() => handleUpdateBountyStatus(bounty.id, 'active')}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-green-400 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition"
+                  >
+                    Resume
+                  </button>
+                )}
+                {bounty.status !== 'completed' && (
+                  <button
+                    onClick={() => handleUpdateBountyStatus(bounty.id, 'completed')}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-[#6B7280] hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                  >
+                    Mark Completed
+                  </button>
+                )}
+                <button
+                  onClick={() => handleDeleteBounty(bounty.id)}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition ml-auto"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </div>
+)}
 
         {/* ── COMPETITIONS TAB ──────────────────────────────────────────────── */}
-        {activeTab === 'competitions' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Competitions</h2>
-              {!showAddCompForm && (
-                <button onClick={() => setShowAddCompForm(true)} className="flex items-center gap-2 px-3 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-medium hover:bg-[#c49a3a]">
-                  <Plus size={16} /> New Competition
+{activeTab === 'competitions' && (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Competitions</h2>
+      {!showAddCompForm && (
+        <button
+          onClick={() => setShowAddCompForm(true)}
+          className="flex items-center gap-2 px-3 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-medium hover:bg-[#c49a3a]"
+        >
+          <Plus size={16} /> New Competition
+        </button>
+      )}
+    </div>
+
+    {/* Create Form */}
+    {showAddCompForm && (
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Create Competition</h3>
+          <button onClick={() => { setShowAddCompForm(false); setNewComp(emptyCompetition); }} className="text-[#6B7280]">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {/* Type */}
+          <div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Type</label>
+            <div className="flex flex-wrap gap-2">
+              {COMPETITION_TYPES.map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setNewComp({ ...newComp, type, book_ids: [] })}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
+                    newComp.type === type
+                      ? 'bg-[#D4A843] border-[#D4A843] text-[#1B2A4A]'
+                      : 'border-gray-300 dark:border-gray-600 text-[#1B2A4A] dark:text-[#F5F0E8] hover:border-[#D4A843]'
+                  }`}
+                >
+                  {type}
                 </button>
-              )}
-            </div>
-
-            {showAddCompForm && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Create Competition</h3>
-                  <button onClick={() => setShowAddCompForm(false)} className="text-[#6B7280]"><X size={18} /></button>
-                </div>
-                <div className="space-y-3">
-                  {/* Type selector */}
-                  <div>
-                    <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Type</label>
-                    <div className="flex flex-wrap gap-2">
-                      {COMPETITION_TYPES.map((type) => (
-                        <button
-                          key={type}
-                          onClick={() => setNewComp({ ...newComp, type, book_ids: [] })}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                            newComp.type === type
-                              ? 'bg-[#1B2A4A] text-white dark:bg-[#D4A843] dark:text-[#1B2A4A] border-transparent'
-                              : 'bg-white dark:bg-gray-800 text-[#6B7280] border-[#e8e0d5] dark:border-gray-700 hover:border-[#D4A843]'
-                          }`}
-                        >
-                          {type}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-1">
-                      {newComp.type === 'Read-A-Thon'
-                        ? 'All standard listed books are automatically eligible — no book selection needed.'
-                        : 'You\'ll select specific books for this competition below.'}
-                    </p>
-                  </div>
-
-                  <input className={inputClass} placeholder="Competition Title (e.g. April Sprint)" value={newComp.title} onChange={(e) => setNewComp({ ...newComp, title: e.target.value })} />
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Start Date</label>
-                      <input className={inputClass} type="date" value={newComp.start_date} onChange={(e) => setNewComp({ ...newComp, start_date: e.target.value })} />
-                    </div>
-                    <div>
-                      <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">End Date</label>
-                      <input className={inputClass} type="date" value={newComp.end_date} onChange={(e) => setNewComp({ ...newComp, end_date: e.target.value })} />
-                    </div>
-                    <div>
-                      <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Entry Fee ($)</label>
-                      <input className={inputClass} type="number" step="0.01" placeholder="e.g. 5.00" value={newComp.entry_fee} onChange={(e) => setNewComp({ ...newComp, entry_fee: e.target.value })} />
-                    </div>
-                    <div>
-                      <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Starting Prize Pool ($)</label>
-                      <input className={inputClass} type="number" step="0.01" placeholder="e.g. 0.00" value={newComp.prize_pool} onChange={(e) => setNewComp({ ...newComp, prize_pool: e.target.value })} />
-                      {newComp.prize_pool && (
-                        <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-1">
-                          Platform keeps 25% (${(parseFloat(newComp.prize_pool) * 0.25).toFixed(2)}) · Winners share 75% (${(parseFloat(newComp.prize_pool) * 0.75).toFixed(2)})
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Book selection for Sprint & Elimination Bracket */}
-                  {newComp.type !== 'Read-A-Thon' && (
-                    <div>
-                      <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
-                        Select Books ({newComp.book_ids.length} selected)
-                      </label>
-                      <div className="border border-[#e8e0d5] dark:border-gray-700 rounded-lg max-h-48 overflow-y-auto divide-y divide-[#e8e0d5] dark:divide-gray-700">
-                        {eligibleBooks.map((book) => {
-                          const selected = newComp.book_ids.includes(book.id);
-                          return (
-                            <button
-                              key={book.id}
-                              onClick={() => {
-                                const ids = selected
-                                  ? newComp.book_ids.filter((id) => id !== book.id)
-                                  : [...newComp.book_ids, book.id];
-                                setNewComp({ ...newComp, book_ids: ids });
-                              }}
-                              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#F5F0E8] dark:hover:bg-gray-700 transition-colors ${selected ? 'bg-[#D4A843]/10' : ''}`}
-                            >
-                              <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${selected ? 'bg-[#D4A843] border-[#D4A843]' : 'border-[#e8e0d5] dark:border-gray-600'}`}>
-                                {selected && <Check size={10} className="text-[#1B2A4A]" />}
-                              </div>
-                              <div>
-                                <p className="text-sm text-[#1B2A4A] dark:text-[#F5F0E8]">{book.title}</p>
-                                <p className="text-xs text-[#6B7280] dark:text-gray-400">{book.author}</p>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-3">
-                  <button onClick={handleSaveCompetition} disabled={saving} className="px-4 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-medium hover:bg-[#c49a3a] disabled:opacity-50">
-                    {saving ? 'Saving...' : 'Create Competition'}
-                  </button>
-                  <button onClick={() => setShowAddCompForm(false)} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-[#6B7280] rounded-lg text-sm">Cancel</button>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-3">
-              {competitions.length === 0 && <p className="text-sm text-[#6B7280] dark:text-gray-400">No competitions yet.</p>}
-              {competitions.map((comp) => (
-                <div key={comp.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8] text-sm">{comp.title}</p>
-                        <span className="text-xs bg-[#1B2A4A]/10 dark:bg-white/10 text-[#1B2A4A] dark:text-[#F5F0E8] px-2 py-0.5 rounded-full">{comp.type}</span>
-                      </div>
-                      <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-0.5">
-                        {new Date(comp.start_date).toLocaleDateString()} – {new Date(comp.end_date).toLocaleDateString()}
-                      </p>
-                      <div className="flex flex-wrap gap-3 mt-2 text-xs text-[#6B7280] dark:text-gray-400">
-                        <span>Entry: <strong className="text-[#1B2A4A] dark:text-[#F5F0E8]">${comp.entry_fee}</strong></span>
-                        <span>Prize Pool: <strong className="text-[#1B2A4A] dark:text-[#F5F0E8]">${comp.prize_pool}</strong></span>
-                        <span>Platform Cut: <strong className="text-[#1B2A4A] dark:text-[#F5F0E8]">${comp.platform_cut}</strong></span>
-                        {comp.type !== 'Read-A-Thon' && (
-                          <span>Books: <strong className="text-[#1B2A4A] dark:text-[#F5F0E8]">{comp.book_ids?.length ?? 0}</strong></span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        comp.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                        : comp.status === 'upcoming' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                        : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-                      }`}>
-                        {comp.status}
-                      </span>
-                      <button onClick={() => handleDeleteCompetition(comp.id)} className="text-red-400 hover:text-red-600"><Trash2 size={15} /></button>
-                    </div>
-                  </div>
-                  {comp.status !== 'completed' && (
-                    <div className="flex gap-2 mt-3">
-                      {comp.status === 'upcoming' && (
-                        <button onClick={() => handleUpdateCompStatus(comp.id, 'active')} className="text-xs px-3 py-1 rounded-lg bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:opacity-80">Go Live</button>
-                      )}
-                      {comp.status === 'active' && (
-                        <button onClick={() => handleUpdateCompStatus(comp.id, 'completed')} className="text-xs px-3 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-[#6B7280] hover:opacity-80">End Competition</button>
-                      )}
-                    </div>
-                  )}
-                </div>
               ))}
             </div>
+            <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-1">
+              {newComp.type === 'Read-A-Thon'
+                ? 'Read-A-Thon: readers earn across any books on the platform — no book selection needed.'
+                : 'Sprint & Elimination: select specific books readers will be quizzed on.'}
+            </p>
           </div>
-        )}
 
+          {/* Title */}
+          <div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Title</label>
+            <input
+              type="text"
+              className={inputClass}
+              value={newComp.title}
+              onChange={(e) => setNewComp({ ...newComp, title: e.target.value })}
+              placeholder="e.g. April Sprint — Week 1"
+            />
+          </div>
+
+          {/* Book selection (Sprint + Elimination only) */}
+          {newComp.type !== 'Read-A-Thon' && (
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
+                Books ({newComp.book_ids.length} selected)
+              </label>
+              <div className="max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg divide-y divide-gray-100 dark:divide-gray-700">
+                {books.map((book) => {
+                  const selected = newComp.book_ids.includes(book.id);
+                  return (
+                    <label
+                      key={book.id}
+                      className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => {
+                          const updated = selected
+                            ? newComp.book_ids.filter((id) => id !== book.id)
+                            : [...newComp.book_ids, book.id];
+                          setNewComp({ ...newComp, book_ids: updated });
+                        }}
+                        className="accent-[#D4A843]"
+                      />
+                      <span className="text-sm text-[#1B2A4A] dark:text-[#F5F0E8]">
+                        {book.title}
+                        <span className="text-[#6B7280] dark:text-gray-400 ml-1">— {book.author}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Dates */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Start Date</label>
+              <input
+                type="date"
+                className={inputClass}
+                value={newComp.start_date}
+                onChange={(e) => setNewComp({ ...newComp, start_date: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">End Date</label>
+              <input
+                type="date"
+                className={inputClass}
+                value={newComp.end_date}
+                onChange={(e) => setNewComp({ ...newComp, end_date: e.target.value })}
+              />
+            </div>
+          </div>
+
+          {/* Entry fee + prize pool */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Entry Fee ($)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                className={inputClass}
+                value={newComp.entry_fee}
+                onChange={(e) => setNewComp({ ...newComp, entry_fee: e.target.value })}
+                placeholder="e.g. 5.00"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Starting Prize Pool ($)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                className={inputClass}
+                value={newComp.prize_pool}
+                onChange={(e) => setNewComp({ ...newComp, prize_pool: e.target.value })}
+                placeholder="e.g. 100.00"
+              />
+            </div>
+          </div>
+          {newComp.prize_pool && (
+            <p className="text-xs text-[#6B7280] dark:text-gray-400">
+              Platform keeps ${(parseFloat(newComp.prize_pool) * 0.25).toFixed(2)} · Winners split ${(parseFloat(newComp.prize_pool) * 0.75).toFixed(2)}
+            </p>
+          )}
+        </div>
+
+        {error && <p className="text-red-500 text-sm">{error}</p>}
+        <div className="flex gap-2 pt-2">
+          <button
+            onClick={handleSaveCompetition}
+            disabled={saving}
+            className="px-4 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-semibold hover:bg-[#c49a3a] disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : 'Create Competition'}
+          </button>
+          <button
+            onClick={() => { setShowAddCompForm(false); setNewComp(emptyCompetition); }}
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-[#6B7280] hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    )}
+
+    {/* Competitions List */}
+    {competitions.length === 0 ? (
+      <p className="text-sm text-[#6B7280] dark:text-gray-400">No competitions yet.</p>
+    ) : (
+      <div className="space-y-3">
+        {competitions.map((comp) => (
+          <div
+            key={comp.id}
+            className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-4"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <p className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8]">{comp.title}</p>
+                <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-0.5">{comp.type}</p>
+                <div className="flex flex-wrap gap-4 mt-2 text-sm">
+                  <span className="text-[#1B2A4A] dark:text-[#F5F0E8]">
+                    Entry: <strong>${comp.entry_fee}</strong>
+                  </span>
+                  <span className="text-[#D4A843] font-medium">
+                    Prize pool: ${comp.prize_pool}
+                  </span>
+                  <span className="text-[#6B7280] dark:text-gray-400">
+                    Platform: ${comp.platform_cut}
+                  </span>
+                  <span className="text-[#6B7280] dark:text-gray-400">
+                    {comp.start_date} → {comp.end_date}
+                  </span>
+                </div>
+                {comp.book_ids && comp.book_ids.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {comp.book_ids.map((id: string) => {
+                      const b = books.find((bk) => bk.id === id);
+                      return b ? (
+                        <span
+                          key={id}
+                          className="text-xs bg-[#1B2A4A]/10 dark:bg-[#F5F0E8]/10 text-[#1B2A4A] dark:text-[#F5F0E8] px-2 py-0.5 rounded-full"
+                        >
+                          {b.title}
+                        </span>
+                      ) : null;
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Status badge */}
+              <span className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 ${
+                comp.status === 'active'
+                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                  : comp.status === 'upcoming'
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                  : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+              }`}>
+                {comp.status}
+              </span>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 mt-3 flex-wrap">
+              {comp.status === 'upcoming' && (
+                <button
+                  onClick={() => handleUpdateCompStatus(comp.id, 'active')}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-green-400 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition"
+                >
+                  Go Live
+                </button>
+              )}
+              {comp.status === 'active' && (
+                <button
+                  onClick={() => handleUpdateCompStatus(comp.id, 'completed')}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-[#6B7280] hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                >
+                  End Competition
+                </button>
+              )}
+              <button
+                onClick={() => handleDeleteCompetition(comp.id)}
+                className="text-xs px-3 py-1.5 rounded-lg border border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition ml-auto"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
         {/* ── CASHOUTS TAB ──────────────────────────────────────────────────── */}
         {activeTab === 'cashouts' && (
           <div className="space-y-3">
