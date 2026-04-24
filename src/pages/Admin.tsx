@@ -613,21 +613,90 @@ export function Admin() {
                 </div>
                 <textarea className={inputClass} placeholder="Description" rows={3} value={editingBook.description || ''} onChange={(e) => setEditingBook({ ...editingBook, description: e.target.value })} />
                 <GenrePicker selected={editingBook.genres} onChange={(genres) => setEditingBook({ ...editingBook, genres })} selectClass={selectClass} />
-                <div className="space-y-4">
-                  <h3 className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8] text-sm">Questions</h3>
-                  {editingQuestions.map((q, i) => (
-                    <div key={q.id} className="border border-[#e8e0d5] dark:border-gray-700 rounded-lg p-4 space-y-3">
-                      <p className="text-[#1B2A4A] dark:text-[#F5F0E8] text-sm font-medium">Question {i + 1}</p>
-                      <input className={inputClass} placeholder="Question" value={q.question_text} onChange={(e) => { const u = [...editingQuestions]; u[i] = { ...u[i], question_text: e.target.value }; setEditingQuestions(u); }} />
-                      <input className={correctInputClass} placeholder="Correct Answer" value={q.correct_answer} onChange={(e) => { const u = [...editingQuestions]; u[i] = { ...u[i], correct_answer: e.target.value }; setEditingQuestions(u); }} />
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        {(['wrong_answer_1', 'wrong_answer_2', 'wrong_answer_3'] as const).map((field) => (
-                          <input key={field} className={inputClass} placeholder={`Wrong ${field.slice(-1)}`} value={q[field]} onChange={(e) => { const u = [...editingQuestions]; u[i] = { ...u[i], [field]: e.target.value }; setEditingQuestions(u); }} />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+<div className="space-y-4">
+  <div className="flex items-center justify-between">
+    <h3 className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8] text-sm">
+      Questions ({editingQuestions.length})
+    </h3>
+    <button
+      onClick={() =>
+        setEditingQuestions([
+          ...editingQuestions,
+          {
+            id: `new-${Date.now()}`,
+            book_id: editingBook!.id,
+            question_text: '',
+            correct_answer: '',
+            wrong_answer_1: '',
+            wrong_answer_2: '',
+            wrong_answer_3: '',
+          },
+        ])
+      }
+      className="flex items-center gap-1 text-xs px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg font-medium hover:bg-[#c49a3a]"
+    >
+      <Plus size={13} /> Add Question
+    </button>
+  </div>
+
+  {editingQuestions.map((q, i) => (
+    <div
+      key={q.id}
+      className="border border-[#e8e0d5] dark:border-gray-700 rounded-lg p-4 space-y-3"
+    >
+      <div className="flex items-center justify-between">
+        <p className="text-[#1B2A4A] dark:text-[#F5F0E8] text-sm font-medium">
+          Question {i + 1}
+        </p>
+        {editingQuestions.length > 1 && (
+          <button
+            onClick={() =>
+              setEditingQuestions(editingQuestions.filter((_, idx) => idx !== i))
+            }
+            className="text-red-400 hover:text-red-600"
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
+      </div>
+      <input
+        className={inputClass}
+        placeholder="Question"
+        value={q.question_text}
+        onChange={(e) => {
+          const u = [...editingQuestions];
+          u[i] = { ...u[i], question_text: e.target.value };
+          setEditingQuestions(u);
+        }}
+      />
+      <input
+        className={correctInputClass}
+        placeholder="Correct Answer"
+        value={q.correct_answer}
+        onChange={(e) => {
+          const u = [...editingQuestions];
+          u[i] = { ...u[i], correct_answer: e.target.value };
+          setEditingQuestions(u);
+        }}
+      />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {(['wrong_answer_1', 'wrong_answer_2', 'wrong_answer_3'] as const).map((field) => (
+          <input
+            key={field}
+            className={inputClass}
+            placeholder={`Wrong ${field.slice(-1)}`}
+            value={q[field]}
+            onChange={(e) => {
+              const u = [...editingQuestions];
+              u[i] = { ...u[i], [field]: e.target.value };
+              setEditingQuestions(u);
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  ))}
+</div>
                 <div className="flex gap-3">
                   <button onClick={handleSaveEdit} disabled={saving} className="px-4 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-medium hover:bg-[#c49a3a] disabled:opacity-50">
                     {saving ? 'Saving...' : 'Save Changes'}
