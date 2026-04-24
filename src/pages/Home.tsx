@@ -432,7 +432,7 @@ export const Home = () => {
               return (
                 <div
                   key={book.id}
-                  onClick={() => navigateTo('book', { bookId: book.id })}
+                  onClick={() => navigateTo(`/book/${book.id}`)}
                   className="group cursor-pointer"
                 >
                   {/* Cover */}
