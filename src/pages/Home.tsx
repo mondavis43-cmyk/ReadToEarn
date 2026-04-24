@@ -328,6 +328,11 @@ export const Home = () => {
               title: 'Beta Reader Panels',
               body: 'Read a first chapter. Give feedback. Get recruited.',
             },
+      {
+        icon: <Trophy className="w-5 h-5" />,
+        title: 'Sensitivity Reader Panels',
+        body: 'Authors need readers with specific lived experiences. Get matched, review a sample chapter, and earn $10.',
+      },
           ].map(({ icon, title, body }) => (
             <div
               key={title}
