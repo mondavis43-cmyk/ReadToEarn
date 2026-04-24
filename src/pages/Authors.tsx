@@ -257,28 +257,6 @@ export const Authors = () => {
           </div>
         </div>
 
-        {/* How It Works */}
-        <div className="mb-16">
-          <h2 className={`font-serif text-3xl mb-8 text-center ${textPrimary}`}>How It Works</h2>
-          <div className="space-y-6">
-            {[
-              { step: '1', title: 'Submit your book', desc: 'Fill out the listing form with your book details and 10 quiz questions. Takes about 10 minutes.' },
-              { step: '2', title: 'We review and list it', desc: 'We check your submission and get your book live within a few days of payment confirmation.' },
-              { step: '3', title: 'Readers earn, you grow', desc: 'Readers discover your book, take the quiz, and earn rewards for finishing. You get verified reads and real engagement.' },
-            ].map((item) => (
-              <div key={item.step} className="flex items-start gap-5">
-                <div className="w-9 h-9 rounded-full bg-[#D4A843] text-[#1B2A4A] font-bold text-sm flex items-center justify-center shrink-0">
-                  {item.step}
-                </div>
-                <div>
-                  <h4 className={`font-medium mb-1 ${textPrimary}`}>{item.title}</h4>
-                  <p className={`text-sm ${textMuted}`}>{item.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Testimonial */}
         <div className={`rounded-xl border p-6 mb-16 transition-colors ${cardBg}`}>
           <Star className="text-[#D4A843] mb-3" size={20} />
