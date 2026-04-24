@@ -21,13 +21,13 @@ export const Refer = () => {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('referral_code, is_paid')
+      .select('referral_code, is_upgraded')
       .eq('id', user.id)
       .single();
 
     if (!profile) { setLoading(false); return; }
 
-    setIsPaidSubscriber(!!profile.is_paid);
+    setIsPaidSubscriber(!!profile.is_upgraded);
 
     if (profile.referral_code) {
       setReferralCode(profile.referral_code);
@@ -37,7 +37,7 @@ export const Refer = () => {
         .from('profiles')
         .select('id', { count: 'exact' })
         .eq('referred_by', profile.referral_code)
-        .eq('is_paid', true);
+        .eq('is_upgraded', true);
 
       setActiveReferrals(count ?? 0);
     }
