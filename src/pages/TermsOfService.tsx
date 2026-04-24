@@ -84,7 +84,7 @@ Referral codes are generated only for active paid subscribers. Referral earnings
       title: '9. Affiliate & Ambassador Programs',
       body: `Reader Affiliate Program: Available to paid subscribers only. Earn $0.50/month for each friend who subscribes using your referral link and remains an active paid subscriber. A 30-day fraud protection hold applies before the first credit is issued. Earnings stop when the referred user cancels. There is no cap on referrals.
 
-Author Ambassador Program: Authors earn 5% of a referred author's first listing purchase. Credits are applied after the referred author completes their first purchase.
+Author Ambassador Program: Authors earn 25% of a referred author's first listing purchase. Credits are applied after the referred author completes their first purchase.
 
 Referral earnings obtained through fraudulent means (e.g., self-referral, fake accounts) will be forfeited and may result in account termination.`,
     },
