@@ -71,10 +71,10 @@ export const Authors = () => {
           <div className="space-y-3">
             {[
               { label: 'Single', price: '$7', desc: '1 book listing' },
-              { label: 'Trilogy', price: '$18', desc: 'Up to 3 books' },
-              { label: 'Series', price: '$30', desc: 'Up to 6 books' },
-              { label: 'Catalog', price: '$50', desc: 'Up to 12 books' },
-              { label: 'Imprint', price: '$100', desc: 'Unlimited books' },
+              { label: 'Trilogy', price: '$18', desc: '3 books' },
+              { label: 'Series', price: '$30', desc: '5 books' },
+              { label: 'Catalog', price: '$50', desc: '10 books' },
+              { label: 'Imprint', price: '$100', desc: '25 books' },
             ].map(({ label, price, desc }) => (
               <div
                 key={label}
