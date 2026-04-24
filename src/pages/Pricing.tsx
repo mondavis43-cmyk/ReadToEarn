@@ -18,7 +18,7 @@ export function Pricing() {
       {/* Hero */}
       <section className="pt-24 pb-16 px-4 text-center">
         <h1 className={`text-4xl md:text-6xl font-serif font-bold ${textPrimary} mb-6`}>
-          Choose Your Path.
+          Membership Plans
         </h1>
         <p className={`text-lg ${textMuted} max-w-2xl mx-auto leading-relaxed`}>
           Whether you’re a casual trivia fan or a competitive reader, 
