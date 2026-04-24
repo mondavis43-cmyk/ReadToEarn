@@ -51,11 +51,11 @@ const sections: FAQSection[] = [
           <span>
             There are three formats:
             <br /><br />
-            <strong>Sprint</strong> — Single quiz on one book. Score + speed determine rank. Fast and focused.
+            <strong>Sprint</strong> — One book. One quiz. The clock is running. Score the most, finish fastest.
             <br /><br />
-            <strong>Read-A-Thon</strong> — Multi-book event. Readers earn points across any eligible books on the platform. More books read = more points = higher rank.
+            <strong>Read-A-Thon</strong> — Read every book you can within the time window and pass their quizzes. Most pages read wins.
             <br /><br />
-            <strong>Elimination Bracket</strong> — Multi-round tournament. Readers advance by passing each round's quiz. Final round is a Master Quiz. Last reader standing wins.
+            <strong>Elimination Bracket</strong> — Multi-round tournament. Readers advance by not only passsing each round's quiz, but by scoring high enough to survive. 1st place takes the top prize. 2nd & 3rd place prizes are also rewarded.
           </span>
         ),
       },
