@@ -15,7 +15,8 @@ import { Refer } from '../pages/Refer';
 import { Authors } from '../pages/Authors';
 import { AuthorSubmit } from '../pages/AuthorSubmit';
 import { AuthorBounty } from '../pages/AuthorBounty';
-import { AuthorBounty } from '../pages/AuthorCompetition';
+import { AuthorCompetition } from '../pages/AuthorCompetition';
+import { AuthorQuickTasks } from '../pages/AuthorQuickTasks';
 import { FAQ } from '../pages/FAQ';
 import { Pricing } from '../pages/Pricing';
 import { NavBar } from '../components/NavBar';
@@ -94,6 +95,7 @@ export const Router = () => {
         '/author-submit',
         '/author-bounty',
         '/author-competition',
+        '/author-quick-tasks',
         '/bulletin-board',
         '/bulletin-submit'
       ].includes(route) &&
