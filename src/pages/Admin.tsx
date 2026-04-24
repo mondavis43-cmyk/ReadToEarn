@@ -17,6 +17,8 @@ export const GENRES = [
   'Spy', 'Suspense', 'Thriller', 'True Crime', 'War & Military', 'Western', "Women's Fiction", 'Young Adult',
 ];
 
+const BOUNTY_POOL_OPTIONS = [25, 50, 100, 200, 500];
+
 const COMPETITION_TYPES = ['Sprint', 'Read-A-Thon', 'Elimination Bracket'] as const;
 type CompetitionType = typeof COMPETITION_TYPES[number];
 
