@@ -17,7 +17,7 @@ export const TermsOfService = () => {
     },
     {
       title: '2. Eligibility',
-      body: `You must be at least 13 years old to use ReadToEarn. Users aged 13–17 must provide verifiable parental or guardian consent at signup, including a verified parent or guardian phone number and a logged consent timestamp. Users under 13 are not permitted on the Platform and any such accounts will be terminated immediately upon discovery.
+      body: `You must be at least 13 years old to use ReadToEarn. Users aged 13–17 must provide verifiable parental or guardian consent at signup, including a verified parent or guardian phone number. Users under 13 are not permitted on the Platform and any such accounts will be terminated immediately upon discovery.
 
 By creating an account, you represent that you meet these age requirements and that all information you provide is accurate. We reserve the right to terminate accounts that do not comply.`,
     },
