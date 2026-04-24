@@ -9,13 +9,11 @@ const supabase = createClient(
 );
 
 const BUNDLES = [
-  { books: 1, perBook: 7.0, total: 7.0, label: '1 Book', savings: null },
-  { books: 3, perBook: 6.6, total: 19.8, label: '3 Books', savings: 'Save $1.20' },
-  { books: 5, perBook: 6.5, total: 32.5, label: '5 Books', savings: 'Save $2.50' },
-  { books: 10, perBook: 6.0, total: 60.0, label: '10 Books', savings: 'Save $10' },
-  { books: 20, perBook: 5.5, total: 110.0, label: '20 Books', savings: 'Save $30' },
-  { books: 50, perBook: 5.0, total: 250.0, label: '50 Books', savings: 'Save $100' },
-  { books: 100, perBook: 4.5, total: 450.0, label: '100 Books', savings: 'Save $250' },
+  { books: 1, perBook: 7.0, total: 7.0, label: 'Single', savings: null },
+  { books: 3, perBook: 6.0, total: 18.0, label: 'Trilogy', savings: 'Save $3' },
+  { books: 5, perBook: 6.0, total: 30.0, label: 'Series', savings: 'Save $5' },
+  { books: 10, perBook: 5.0, total: 50.0, label: 'Catalog', savings: 'Save $20' },
+  { books: 25, perBook: 4.0, total: 100.0, label: 'Imprint', savings: 'Save $75' },
 ];
 
 const GENRES = [
