@@ -18,14 +18,18 @@ export const GENRES = [
 ];
 
 const BOUNTY_POOL_OPTIONS = [25, 50, 100, 200, 500];
+const COMPETITION_TYPES = ['Sprint', 'Read-A-Thon', 'Elimination Bracket'];
 
-const LISTING_PACKAGES = [
-  { label: 'Single (1 book)', price: 7, count: 1 },
-  { label: 'Trilogy (3 books)', price: 18, count: 3 },
-  { label: 'Series (5 books)', price: 30, count: 5 },
-  { label: 'Catalog (10 books)', price: 50, count: 10 },
-  { label: 'Imprint (25 books)', price: 100, count: 25 },
-];
+const emptyBounty = { book_id: '', pool_size: 25, per_pass_amount: 0.50 };
+const emptyCompetition = {
+  type: 'Sprint',
+  title: '',
+  book_ids: [] as string[],
+  start_date: '',
+  end_date: '',
+  entry_fee: '',
+  prize_pool: '',
+};
 
 const COMPETITION_TYPES = ['Sprint', 'Read-A-Thon', 'Elimination Bracket'] as const;
 type CompetitionType = typeof COMPETITION_TYPES[number];
