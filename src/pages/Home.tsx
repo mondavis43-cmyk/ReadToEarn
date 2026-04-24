@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../contexts/ThemeContext';
-import { useNavigate } from 'react-router-dom';
 import {
   Zap, BookOpen, Trophy, DollarSign,
   ClipboardList, MessageSquare, Star, Users,
@@ -20,7 +19,7 @@ type Competition = {
   status: string;
 };
 
-// ── Ticker data (replace with DB query when winners table exists) ──────────
+// ── Ticker data ────────────────────────────────────────────────────────────
 const TICKER_ITEMS = [
   '🏅 October Sprint Winner: @readfast_jenna',
   '📚 Read-A-Thon Champion: @pages4days',
@@ -34,6 +33,12 @@ const COMPETITION_TYPE_LABELS: Record<string, string> = {
   sprint: 'Sprint',
   read_a_thon: 'Read-A-Thon',
   elimination: 'Elimination Bracket',
+};
+
+// ── Navigate helper ────────────────────────────────────────────────────────
+const navigateTo = (path: string) => {
+  window.history.pushState({}, '', path);
+  window.dispatchEvent(new PopStateEvent('popstate'));
 };
 
 // ── Scrolling Ticker ───────────────────────────────────────────────────────
@@ -66,7 +71,6 @@ const Ticker = ({ isDark }: { isDark: boolean }) => {
 // ── Main Component ─────────────────────────────────────────────────────────
 export const Home = () => {
   const { isDark } = useTheme();
-  const navigate = useNavigate();
   const howItWorksRef = useRef<HTMLDivElement>(null);
 
   const [upcomingCompetitions, setUpcomingCompetitions] = useState<Competition[]>([]);
@@ -132,7 +136,7 @@ export const Home = () => {
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
           <button
-            onClick={() => navigate('/signup')}
+            onClick={() => navigateTo('/signup')}
             className="px-8 py-3.5 rounded-lg font-semibold text-sm transition flex items-center justify-center gap-2"
             style={{ backgroundColor: navy, color: '#F5F0E8' }}
           >
@@ -215,7 +219,7 @@ export const Home = () => {
 
         <div className="text-center">
           <button
-            onClick={() => navigate('/competitions')}
+            onClick={() => navigateTo('/competitions')}
             className="px-6 py-3 rounded-lg text-sm font-semibold transition"
             style={{ backgroundColor: gold, color: navy }}
           >
@@ -279,7 +283,7 @@ export const Home = () => {
 
           <div className="text-center">
             <button
-              onClick={() => navigate('/competitions')}
+              onClick={() => navigateTo('/competitions')}
               className="px-6 py-3 rounded-lg text-sm font-semibold border transition"
               style={{ borderColor: navy, color: textPrimary, backgroundColor: 'transparent' }}
             >
@@ -302,7 +306,7 @@ export const Home = () => {
             {
               icon: <DollarSign className="w-5 h-5" />,
               title: 'Author Bounties',
-              body: 'Authors pay you directly to read and pass their book\'s quiz. No competition needed.',
+              body: "Authors pay you directly to read and pass their book's quiz. No competition needed.",
             },
             {
               icon: <ClipboardList className="w-5 h-5" />,
@@ -363,11 +367,11 @@ export const Home = () => {
             style={{ backgroundColor: cardBg, borderColor: cardBorder }}
           >
             {[
-              { days: 'Days 1–3',   label: 'Flash Sprint',          detail: '$5 entry',              color: gold },
-              { days: 'Days 4–7',   label: 'Break',                 detail: 'Bounties · Surveys · Quick Tasks · Author AMA', color: textMuted },
-              { days: 'Days 8–15',  label: 'Read-A-Thon',           detail: '$7 entry',              color: '#60a5fa' },
-              { days: 'Days 16–18', label: 'Break',                 detail: 'Bounties · Surveys · Quick Tasks · Author AMA', color: textMuted },
-              { days: 'Days 19–31', label: 'Elimination Bracket',   detail: '$10 entry · multi-round', color: '#a78bfa' },
+              { days: 'Days 1–3',   label: 'Flash Sprint',        detail: '$5 entry',                              color: gold },
+              { days: 'Days 4–7',   label: 'Break',               detail: 'Bounties · Surveys · Quick Tasks · Author AMA', color: textMuted },
+              { days: 'Days 8–15',  label: 'Read-A-Thon',         detail: '$7 entry',                              color: '#60a5fa' },
+              { days: 'Days 16–18', label: 'Break',               detail: 'Bounties · Surveys · Quick Tasks · Author AMA', color: textMuted },
+              { days: 'Days 19–31', label: 'Elimination Bracket', detail: '$10 entry · multi-round',               color: '#a78bfa' },
             ].map(({ days, label, detail, color }, i, arr) => (
               <div
                 key={days}
@@ -376,19 +380,11 @@ export const Home = () => {
                   borderBottom: i < arr.length - 1 ? `1px solid ${cardBorder}` : 'none',
                 }}
               >
-                <span
-                  className="text-xs font-mono w-20 flex-shrink-0"
-                  style={{ color: textMuted }}
-                >
+                <span className="text-xs font-mono w-20 flex-shrink-0" style={{ color: textMuted }}>
                   {days}
                 </span>
-                <div
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: color }}
-                />
-                <span className="font-medium text-sm flex-1" style={{ color: textPrimary }}>
-                  {label}
-                </span>
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                <span className="font-medium text-sm flex-1" style={{ color: textPrimary }}>{label}</span>
                 <span className="text-xs" style={{ color: textMuted }}>{detail}</span>
               </div>
             ))}
@@ -415,7 +411,7 @@ export const Home = () => {
                 key={comp.id}
                 className="rounded-lg border p-5 cursor-pointer hover:border-[#D4A843] transition"
                 style={{ backgroundColor: cardBg, borderColor: cardBorder }}
-                onClick={() => navigate('/competitions')}
+                onClick={() => navigateTo('/competitions')}
               >
                 <span
                   className="text-xs font-medium px-2 py-0.5 rounded-full"
@@ -423,19 +419,12 @@ export const Home = () => {
                 >
                   {COMPETITION_TYPE_LABELS[comp.type] ?? comp.type}
                 </span>
-                <h3
-                  className="font-semibold mt-3 mb-1 text-sm"
-                  style={{ color: textPrimary }}
-                >
+                <h3 className="font-semibold mt-3 mb-1 text-sm" style={{ color: textPrimary }}>
                   {comp.title}
                 </h3>
                 <div className="flex items-center justify-between mt-3">
-                  <span className="text-xs" style={{ color: textMuted }}>
-                    Entry: ${comp.entry_fee}
-                  </span>
-                  <span className="text-xs font-semibold" style={{ color: gold }}>
-                    ${comp.prize_pool} pool
-                  </span>
+                  <span className="text-xs" style={{ color: textMuted }}>Entry: ${comp.entry_fee}</span>
+                  <span className="text-xs font-semibold" style={{ color: gold }}>${comp.prize_pool} pool</span>
                 </div>
               </div>
             ))}
@@ -443,7 +432,7 @@ export const Home = () => {
 
           <div className="text-center">
             <button
-              onClick={() => navigate('/competitions')}
+              onClick={() => navigateTo('/competitions')}
               className="px-6 py-3 rounded-lg text-sm font-semibold transition"
               style={{ backgroundColor: gold, color: navy }}
             >
@@ -466,7 +455,7 @@ export const Home = () => {
             Join ReadToEarn and start getting paid for what you already do.
           </p>
           <button
-            onClick={() => navigate('/signup')}
+            onClick={() => navigateTo('/signup')}
             className="px-10 py-4 rounded-lg font-semibold text-sm transition flex items-center gap-2 mx-auto"
             style={{ backgroundColor: navy, color: '#F5F0E8' }}
           >
