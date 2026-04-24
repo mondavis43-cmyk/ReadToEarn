@@ -269,7 +269,7 @@ export const AuthorSubmit = () => {
             <p className="text-gray-500 text-sm mb-6">
               Buy slots in advance and use them whenever you're ready. Unused slots never expire.
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3"
               {BUNDLES.map((bundle) => {
                 const isSelected = selectedBundle.books === bundle.books;
                 return (
