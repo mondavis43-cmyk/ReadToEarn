@@ -753,7 +753,7 @@ export function Admin() {
                     <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Book</label>
                     <select className={selectClass} value={newBounty.book_id} onChange={(e) => setNewBounty({ ...newBounty, book_id: e.target.value })}>
                       <option value="">Select a book...</option>
-                      {books.filter((b) => b.book_type === 'standard').map((b) => (
+                      {books.map((book) => (
                         <option key={b.id} value={b.id}>{b.title} — {b.author}</option>
                       ))}
                     </select>
