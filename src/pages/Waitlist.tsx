@@ -74,7 +74,7 @@ export const Waitlist = () => {
             </div>
             <h3 className="text-[#1B2A4A] dark:text-[#F5F0E8] font-semibold mb-2">1. Pick a book</h3>
             <p className="text-[#2C2C2C]/60 dark:text-gray-400 text-sm">
-              Browse our library of classic literature, popular new releases and indie titles. Every book shows its payout upfront — no surprises.
+              Browse our library of popular releases, indie titles, classic literature, and more. Books with active bounties or competitions show their payout upfront.
             </p>
           </div>
           <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-6 border border-[#e8e0d5] dark:border-gray-800">
@@ -92,7 +92,7 @@ export const Waitlist = () => {
             </div>
             <h3 className="text-[#1B2A4A] dark:text-[#F5F0E8] font-semibold mb-2">3. Cash out</h3>
             <p className="text-[#2C2C2C]/60 dark:text-gray-400 text-sm">
-              Once you hit $10, redeem via PayPal, Venmo, or gift cards from your favorite brands. No subscriptions required to start earning.
+              Once you hit $10, redeem via PayPal, Venmo, Wise (international), or gift cards. No subscription required to start earning.
             </p>
           </div>
         </div>
