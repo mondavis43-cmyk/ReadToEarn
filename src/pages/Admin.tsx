@@ -413,7 +413,6 @@ export function Admin() {
   setSaving(false);
   loadData();
 }
-  }
 
   async function handleDeleteBook(id: string) {
     if (!confirm('Delete this book and all its questions?')) return;
