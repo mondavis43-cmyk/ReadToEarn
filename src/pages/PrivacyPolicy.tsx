@@ -31,8 +31,8 @@ We also collect usage data automatically, including quiz activity, reading histo
 
 • Operate and improve the Platform
 • Verify your identity and prevent fraud, including multi-account detection via phone and email
-• Determine payout eligibility based on your country (Wise-supported countries only)
-• Process earnings and cashout requests via PayPal, Venmo, Wise, or Giftogram gift cards
+• Determine payout eligibility based on your country
+• Process earnings and cashout requests via PayPal, Venmo, Wise, or gift cards
 • Enforce the 8-minute quiz timer and other anti-cheating measures
 • Comply with legal obligations, including IRS 1099 tax reporting for users earning $600 or more in a calendar year
 • Communicate with you about your account, earnings, competitions, and platform updates
@@ -65,7 +65,7 @@ Additional fraud prevention measures include:
       body: `Earnings are subject to the following rules:
 
 • Minimum cashout threshold: $10 for all users
-• Payment methods: PayPal and Venmo (US, 18+), Wise (international, 18+), Giftogram gift cards (all ages)
+• Payment methods: PayPal and Venmo (US, 18+), Wise (international, 18+), gift cards (all ages)
 • Earnings from bounties represent 80% of the author's pool; the platform retains 20%
 • Competition prize pools are funded by reader entry fees (75% to winners, 25% to platform) or by author sponsorship fees
 • Affiliate earnings ($0.50/month per referred subscriber) are available to paid subscribers only and begin after the referred user has been active for 30 days
@@ -92,7 +92,7 @@ We do not share your reading history, quiz results, or survey responses with aut
       title: '7. Country Eligibility & Geographic Restrictions',
       body: `Payout eligibility is limited to countries supported by Wise for international transfers. Your country of residence is collected at signup and determines whether you are eligible to earn and withdraw funds. Users in unsupported countries may browse the Platform but cannot participate in paid activities (bounties, competitions, surveys, quick tasks, beta reading, sensitivity reading, or affiliate programs).
 
-A full list of supported countries is available at signup and on our FAQ page.`,
+A full list of supported countries is available at signup.`,
     },
     {
       title: '8. Subscriptions & Referrals',
