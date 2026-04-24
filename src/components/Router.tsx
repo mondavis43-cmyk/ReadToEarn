@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Home } from '../pages/Home';
+import { Library } from '../pages/Library';
 import { Login } from '../pages/Login';
 import { Signup } from '../pages/Signup';
 import { Quiz } from '../pages/Quiz';
