@@ -91,6 +91,7 @@ export const Router = () => {
         '/authors', 
         '/faq', 
         '/author-submit',
+        '/author-bounty',
         '/bulletin-board',
         '/bulletin-submit'
       ].includes(route) &&
