@@ -4,7 +4,7 @@ import { BookOpen, User, Gift, BookMarked, Pin, PenLine, HelpCircle, Tag, Menu, 
 import { useState } from 'react';
 
 const navLinks = [
-  { label: 'Library', icon: BookOpen, page: '/' },
+  { label: 'Library', icon: BookOpen, page: 'library' },
   { label: 'Pricing', icon: Tag, page: 'pricing' },
   { label: 'Profile', icon: User, page: 'profile' },
   { label: 'Bulletin Board', page: 'bulletin-board', icon: Pin },
