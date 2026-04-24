@@ -18,6 +18,7 @@ import { AuthorBounty } from '../pages/AuthorBounty';
 import { AuthorCompetition } from '../pages/AuthorCompetition';
 import { AuthorQuickTasks } from '../pages/AuthorQuickTasks';
 import { AuthorSurvey } from '../pages/AuthorSurvey';
+import { AuthorBetaReaders } from '../pages/AuthorBetaReaders';
 import { FAQ } from '../pages/FAQ';
 import { Pricing } from '../pages/Pricing';
 import { NavBar } from '../components/NavBar';
@@ -98,6 +99,8 @@ export const Router = () => {
         '/author-competition',
         '/author-quick-tasks',
         '/author-survey',
+        '/author-beta-readers',
+        '/author-sensitivity-readers',
         '/bulletin-board',
         '/bulletin-submit'
       ].includes(route) &&
