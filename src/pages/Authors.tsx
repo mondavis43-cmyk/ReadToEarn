@@ -1,4 +1,4 @@
-import { BookOpen, Users, Star, ArrowRight, ShieldCheck, Zap, Trophy, ClipboardList, MessageSquare, Eye } from 'lucide-react';
+import { BookOpen, Users, Star, ArrowRight, ShieldCheck, Zap, Trophy, ClipboardList, MessageSquare, Eye, HelpCircle, Pin, Gift } from 'lucide-react';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -43,76 +43,62 @@ export const Authors = () => {
             Get Your Book Read.<br />Really Read.
           </h1>
           <p className={`text-lg max-w-xl mx-auto transition-colors ${textMuted}`}>
-            Read to Earn pays readers to finish books and prove it. For indie and small press authors, that means real engagement — not just downloads.
+            Real readers. Verified completions. No bots, no fake reviews — just people who actually finished your book.
           </p>
         </div>
 
         {/* Value Props */}
-        <div className="grid md:grid-cols-2 gap-6 mb-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-16">
           <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
-            <BookOpen className="text-[#D4A843] mb-3" size={24} />
-            <h3 className={`font-serif text-xl mb-2 ${textPrimary}`}>Proven Readership</h3>
-            <p className={`text-sm ${textMuted}`}>
-              Readers must pass a quiz to earn their reward. That means every completion is verified — no skimming, no skipping.
-            </p>
+            <Users className="text-[#D4A843] mb-3" size={22} />
+            <h3 className={`font-serif text-lg mb-1 ${textPrimary}`}>Proven Readership</h3>
+            <p className={`text-sm ${textMuted}`}>Every reader passes a quiz to prove they finished. You get verified reads, not page clicks.</p>
           </div>
           <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
-            <Users className="text-[#D4A843] mb-3" size={24} />
-            <h3 className={`font-serif text-xl mb-2 ${textPrimary}`}>Built-in Audience</h3>
-            <p className={`text-sm ${textMuted}`}>
-              Our readers are here specifically to discover and read books. Your listing puts you in front of motivated readers from day one.
-            </p>
+            <BookOpen className="text-[#D4A843] mb-3" size={22} />
+            <h3 className={`font-serif text-lg mb-1 ${textPrimary}`}>Built-in Audience</h3>
+            <p className={`text-sm ${textMuted}`}>Our readers are here to read. They're motivated, engaged, and looking for their next book.</p>
           </div>
         </div>
 
-        {/* Standard Listings Pricing */}
+        {/* List Your Book */}
         <div className="mb-16">
           <h2 className={`font-serif text-3xl mb-2 ${textPrimary}`}>List Your Book</h2>
           <p className={`text-sm mb-8 ${textMuted}`}>
-            A permanent home on the platform. Competition eligible, community visible, and discoverable by readers every day.
+            Get your book in front of readers who are actively looking for something to read and earn from.
           </p>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
+          <div className="space-y-3">
             {[
-              { label: 'Single', books: 1, price: 7, savings: null },
-              { label: 'Trilogy', books: 3, price: 18, savings: 'Save $3' },
-              { label: 'Series', books: 5, price: 30, savings: 'Save $5' },
-              { label: 'Catalog', books: 10, price: 50, savings: 'Save $20' },
-              { label: 'Imprint', books: 25, price: 100, savings: 'Save $75' },
-            ].map((pkg) => (
+              { label: 'Single', price: '$7', desc: '1 book listing' },
+              { label: 'Trilogy', price: '$18', desc: 'Up to 3 books' },
+              { label: 'Series', price: '$30', desc: 'Up to 6 books' },
+              { label: 'Catalog', price: '$50', desc: 'Up to 12 books' },
+              { label: 'Imprint', price: '$100', desc: 'Unlimited books' },
+            ].map(({ label, price, desc }) => (
               <div
-                key={pkg.label}
-                className={`rounded-lg border p-4 transition-colors ${cardBg}`}
+                key={label}
+                className={`rounded-xl border p-5 flex items-center justify-between transition-colors ${cardBg}`}
               >
-                <p className={`font-semibold text-sm mb-1 ${textPrimary}`}>{pkg.label}</p>
-                <p className="text-[#D4A843] text-xl font-bold">${pkg.price}</p>
-                <p className={`text-xs mt-0.5 ${textMuted}`}>{pkg.books} book{pkg.books > 1 ? 's' : ''}</p>
-                {pkg.savings && (
-                  <p className="text-green-500 text-xs mt-1 font-medium">{pkg.savings}</p>
-                )}
+                <div>
+                  <span className={`font-semibold ${textPrimary}`}>{label}</span>
+                  <span className={`text-sm ml-2 ${textMuted}`}>{desc}</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="text-[#D4A843] font-semibold">{price}</span>
+                  <button
+                    onClick={() => navigateTo('/author-submit')}
+                    className="inline-flex items-center gap-1 text-sm text-[#D4A843] hover:underline"
+                  >
+                    Submit <ArrowRight size={13} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
-
-          <div className={`rounded-xl border p-5 text-sm mb-6 ${cardBg}`}>
-            <p className={`font-medium mb-2 ${textPrimary}`}>What's included:</p>
-            <ul className={`space-y-1 ${textMuted}`}>
-              <li>› Dedicated book page with cover, description, and buy link</li>
-              <li>› Quiz setup (you provide 10 questions, we handle the rest)</li>
-              <li>› Eligible for all platform competitions and reader tournaments</li>
-              <li>› Visible to the full Read to Earn reader community</li>
-            </ul>
-          </div>
-
-          <button
-            onClick={() => navigateTo('/author-submit')}
-            className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-3 rounded-xl hover:bg-[#c49a3a] transition-colors flex items-center justify-center gap-2"
-          >
-            Submit a Listing <ArrowRight size={18} />
-          </button>
         </div>
 
-        {/* Other Author Services */}
+        {/* More Ways to Grow */}
         <div className="mb-16">
           <h2 className={`font-serif text-3xl mb-2 ${textPrimary}`}>More Ways to Grow</h2>
           <p className={`text-sm mb-8 ${textMuted}`}>
@@ -131,10 +117,7 @@ export const Authors = () => {
                     Set a reader pool ($25–$500+) and guarantee a wave of verified readers right now. You only pay when readers pass the quiz. Platform keeps 20%, readers earn 80%.
                   </p>
                   <p className="text-xs mt-2 font-medium text-[#D4A843]">From $25 — pay per verified read</p>
-                  <button
-                    onClick={() => navigateTo('/author-bounty')}
-                    className={`mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline`}
-                  >
+                  <button onClick={() => navigateTo('/author-bounty')} className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline">
                     Set up a bounty <ArrowRight size={14} />
                   </button>
                 </div>
@@ -151,10 +134,7 @@ export const Authors = () => {
                     Fund a reading competition around your book. Readers compete, you get visibility. Platform keeps 25%, the rest goes to the prize pool.
                   </p>
                   <p className="text-xs mt-2 font-medium text-[#D4A843]">Spark $60 · Boost $120 · Spotlight $250 · Grand $500+</p>
-                  <button
-                    onClick={() => navigateTo('/author-competition')}
-                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
-                  >
+                  <button onClick={() => navigateTo('/author-competition')} className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline">
                     Sponsor a competition <ArrowRight size={14} />
                   </button>
                 </div>
@@ -171,10 +151,7 @@ export const Authors = () => {
                     Cover voting, title testing, blurb testing. Get real reader opinions before you launch. Fast turnaround, honest feedback.
                   </p>
                   <p className="text-xs mt-2 font-medium text-[#D4A843]">Sample $14 (25 readers) · Standard $24 (50) · Wide $42 (100)</p>
-                  <button
-                    onClick={() => navigateTo('/author-quick-tasks')}
-                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
-                  >
+                  <button onClick={() => navigateTo('/author-quick-tasks')} className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline">
                     Submit a quick task <ArrowRight size={14} />
                   </button>
                 </div>
@@ -191,10 +168,7 @@ export const Authors = () => {
                     Collect detailed reader feedback on your manuscript or published work. Great for understanding what's landing and what isn't.
                   </p>
                   <p className="text-xs mt-2 font-medium text-[#D4A843]">10 readers $18 · 25 readers $40 · 50 readers $70 · 100 readers $125</p>
-                  <button
-                    onClick={() => navigateTo('/author-survey')}
-                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
-                  >
+                  <button onClick={() => navigateTo('/author-survey')} className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline">
                     Request a survey <ArrowRight size={14} />
                   </button>
                 </div>
@@ -211,10 +185,7 @@ export const Authors = () => {
                     Get early readers for your first chapter. A panel of motivated readers gives you pre-launch feedback before you commit to a full release.
                   </p>
                   <p className="text-xs mt-2 font-medium text-[#D4A843]">Starter $28 (10) · Standard $60 (25) · Extended $110 (50) · Pro $200 (100)</p>
-                  <button
-                    onClick={() => navigateTo('/author-beta-readers')}
-                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
-                  >
+                  <button onClick={() => navigateTo('/author-beta-readers')} className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline">
                     Find beta readers <ArrowRight size={14} />
                   </button>
                 </div>
@@ -231,12 +202,81 @@ export const Authors = () => {
                     Professional sensitivity reading for diverse representation. Single, dual, or triple reader packages available.
                   </p>
                   <p className="text-xs mt-2 font-medium text-[#D4A843]">Single $50 · Dual $100 · Triple $150</p>
-                  <button
-                    onClick={() => navigateTo('/author-sensitivity-readers')}
-                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
-                  >
+                  <button onClick={() => navigateTo('/author-sensitivity-readers')} className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline">
                     Request sensitivity readers <ArrowRight size={14} />
                   </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        {/* FREE AUTHOR TOOLS */}
+        <div className="mb-16">
+          <h2 className={`font-serif text-3xl mb-2 ${textPrimary}`}>Free Author Tools</h2>
+          <p className={`text-sm mb-8 ${textMuted}`}>
+            No payment required. These tools are available to every author on the platform.
+          </p>
+
+          <div className="space-y-4">
+
+            {/* Author AMA */}
+            <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
+              <div className="flex items-start gap-4">
+                <HelpCircle className="text-[#D4A843] mt-0.5 shrink-0" size={22} />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className={`font-serif text-lg ${textPrimary}`}>Author AMA</h3>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#D4A843]/15 text-[#D4A843] border border-[#D4A843]/30">
+                      Free
+                    </span>
+                  </div>
+                  <p className={`text-sm ${textMuted}`}>
+                    Host a Reddit-style Q&A directly on the platform. Readers submit questions, you answer. Free promotion, direct access to your audience, no social media drama.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Bulletin Board */}
+            <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
+              <div className="flex items-start gap-4">
+                <Pin className="text-[#D4A843] mt-0.5 shrink-0" size={22} />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className={`font-serif text-lg ${textPrimary}`}>Bulletin Board</h3>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#D4A843]/15 text-[#D4A843] border border-[#D4A843]/30">
+                      Free
+                    </span>
+                  </div>
+                  <p className={`text-sm ${textMuted}`}>
+                    Post your new release or upcoming book on our reader bulletin board. Includes cover, one-line blurb, genre, release date, and your link.
+                  </p>
+                  <button
+                    onClick={() => navigateTo('/bulletin-submit')}
+                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
+                  >
+                    Post to bulletin board <ArrowRight size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Author Ambassador */}
+            <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
+              <div className="flex items-start gap-4">
+                <Gift className="text-[#D4A843] mt-0.5 shrink-0" size={22} />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className={`font-serif text-lg ${textPrimary}`}>Author Ambassador Program</h3>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#D4A843]/15 text-[#D4A843] border border-[#D4A843]/30">
+                      Free
+                    </span>
+                  </div>
+                  <p className={`text-sm ${textMuted}`}>
+                    Refer another author who buys a listing and earn 25% of their first listing fee. Share your referral link, they sign up and pay, you get credited automatically.
+                  </p>
                 </div>
               </div>
             </div>
