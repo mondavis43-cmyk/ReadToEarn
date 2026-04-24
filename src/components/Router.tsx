@@ -19,6 +19,7 @@ import { AuthorCompetition } from '../pages/AuthorCompetition';
 import { AuthorQuickTasks } from '../pages/AuthorQuickTasks';
 import { AuthorSurvey } from '../pages/AuthorSurvey';
 import { AuthorBetaReaders } from '../pages/AuthorBetaReaders';
+import { AuthorSensitivityReaders } from '../pages/AuthorSensitivityReaders';
 import { FAQ } from '../pages/FAQ';
 import { Pricing } from '../pages/Pricing';
 import { NavBar } from '../components/NavBar';
