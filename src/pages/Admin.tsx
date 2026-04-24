@@ -1094,7 +1094,7 @@ export function Admin() {
                 Books ({newComp.book_ids.length} selected)
               </label>
               <div className="max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg divide-y divide-gray-100 dark:divide-gray-700">
-                {books.map((book) => {
+                {books.filter((book) => book.book_type !== 'bulletin_board').map((book) => {
                   const selected = newComp.book_ids.includes(book.id);
                   return (
                     <label
