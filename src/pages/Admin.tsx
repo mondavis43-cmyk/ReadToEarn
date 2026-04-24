@@ -852,13 +852,16 @@ export function Admin() {
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Create Bounty</h3>
-          <button onClick={() => { setShowAddBountyForm(false); setNewBounty(emptyBounty); }} className="text-[#6B7280]">
+          <button
+            onClick={() => { setShowAddBountyForm(false); setNewBounty(emptyBounty); }}
+            className="text-[#6B7280]"
+          >
             <X size={18} />
           </button>
         </div>
 
         <div className="space-y-4">
-          {/* Book selector */}
+          {/* Book selector — no bulletin board books */}
           <div>
             <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Book</label>
             <select
@@ -867,9 +870,13 @@ export function Admin() {
               onChange={(e) => setNewBounty({ ...newBounty, book_id: e.target.value })}
             >
               <option value="">Select a book...</option>
-              {books.map((book) => (
-                <option key={book.id} value={book.id}>{book.title} — {book.author}</option>
-              ))}
+              {(books ?? [])
+                .filter((book) => book.book_type !== 'bulletin_board')
+                .map((book) => (
+                  <option key={book.id} value={book.id}>
+                    {book.title} — {book.author}
+                  </option>
+                ))}
             </select>
           </div>
 
@@ -909,7 +916,10 @@ export function Admin() {
               placeholder="e.g. 0.50"
             />
             <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-1">
-              Estimated passes: {newBounty.per_pass_amount > 0 ? Math.floor((newBounty.pool_size * 0.8) / newBounty.per_pass_amount) : '—'}
+              Estimated passes:{' '}
+              {newBounty.per_pass_amount > 0
+                ? Math.floor((newBounty.pool_size * 0.8) / newBounty.per_pass_amount)
+                : '—'}
             </p>
           </div>
         </div>
@@ -934,14 +944,15 @@ export function Admin() {
     )}
 
     {/* Bounties List */}
-    {bounties.length === 0 ? (
+    {!(bounties ?? []).length ? (
       <p className="text-sm text-[#6B7280] dark:text-gray-400">No bounties yet.</p>
     ) : (
       <div className="space-y-3">
-        {bounties.map((bounty) => {
-          const passesTotal = bounty.per_pass_amount > 0
-            ? Math.floor(bounty.reader_pool / bounty.per_pass_amount)
-            : 0;
+        {(bounties ?? []).map((bounty) => {
+          const passesTotal =
+            bounty.per_pass_amount > 0
+              ? Math.floor(bounty.reader_pool / bounty.per_pass_amount)
+              : 0;
           return (
             <div
               key={bounty.id}
@@ -950,10 +961,10 @@ export function Admin() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <p className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8]">
-                    {books.find((b) => b.id === bounty.book_id)?.title ?? 'Unknown Book'}
+                    {(books ?? []).find((b) => b.id === bounty.book_id)?.title ?? 'Unknown Book'}
                   </p>
                   <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-0.5">
-                    {books.find((b) => b.id === bounty.book_id)?.author ?? ''}
+                    {(books ?? []).find((b) => b.id === bounty.book_id)?.author ?? ''}
                   </p>
                   <div className="flex flex-wrap gap-4 mt-2 text-sm">
                     <span className="text-[#1B2A4A] dark:text-[#F5F0E8]">
@@ -971,19 +982,19 @@ export function Admin() {
                   </div>
                 </div>
 
-                {/* Status badge */}
-                <span className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 ${
-                  bounty.status === 'active'
-                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                    : bounty.status === 'paused'
-                    ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                    : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-                }`}>
+                <span
+                  className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 ${
+                    bounty.status === 'active'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : bounty.status === 'paused'
+                      ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                  }`}
+                >
                   {bounty.status}
                 </span>
               </div>
 
-              {/* Actions */}
               <div className="flex gap-2 mt-3 flex-wrap">
                 {bounty.status === 'active' && (
                   <button
