@@ -213,7 +213,7 @@ function GenrePicker({
 
 // ─── Main Admin Component ─────────────────────────────────────────────────────
 
-export default function Admin() {
+export function Admin() {
   const { user } = useAuth();
   const { navigate } = useNavigate();
   const { theme, toggleTheme } = useTheme();
