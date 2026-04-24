@@ -253,7 +253,7 @@ function FAQAccordion({ item }: { item: FAQItem }) {
   );
 }
 
-export default function FAQ() {
+export function FAQ() {
   const [activeSection, setActiveSection] = useState('General');
 
   return (
