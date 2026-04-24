@@ -9,7 +9,6 @@ export const Authors = () => {
   const textPrimary = isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]';
   const textMuted = isDark ? 'text-[#F5F0E8]/70' : 'text-[#1B2A4A]/70';
   const cardBg = isDark ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20' : 'bg-white border-[#D4A843]/30';
-  const divider = isDark ? 'border-[#1B2A4A]' : 'border-[#D4A843]/30';
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]'}`}>
@@ -95,7 +94,7 @@ export const Authors = () => {
             ))}
           </div>
 
-          <div className={`rounded-xl border p-5 text-sm ${cardBg}`}>
+          <div className={`rounded-xl border p-5 text-sm mb-6 ${cardBg}`}>
             <p className={`font-medium mb-2 ${textPrimary}`}>What's included:</p>
             <ul className={`space-y-1 ${textMuted}`}>
               <li>› Dedicated book page with cover, description, and buy link</li>
@@ -104,6 +103,13 @@ export const Authors = () => {
               <li>› Visible to the full Read to Earn reader community</li>
             </ul>
           </div>
+
+          <button
+            onClick={() => navigateTo('/author-submit')}
+            className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-3 rounded-xl hover:bg-[#c49a3a] transition-colors flex items-center justify-center gap-2"
+          >
+            Submit a Listing <ArrowRight size={18} />
+          </button>
         </div>
 
         {/* Other Author Services */}
@@ -117,16 +123,20 @@ export const Authors = () => {
 
             {/* Bounties */}
             <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-4">
-                  <Zap className="text-[#D4A843] mt-0.5 shrink-0" size={22} />
-                  <div>
-                    <h3 className={`font-serif text-lg mb-1 ${textPrimary}`}>Author Bounties</h3>
-                    <p className={`text-sm ${textMuted}`}>
-                      Set a reader pool ($25–$500+) and guarantee a wave of verified readers right now. You only pay when readers pass the quiz. Platform keeps 20%, readers earn 80%.
-                    </p>
-                    <p className={`text-xs mt-2 font-medium text-[#D4A843]`}>From $25 — pay per verified read</p>
-                  </div>
+              <div className="flex items-start gap-4">
+                <Zap className="text-[#D4A843] mt-0.5 shrink-0" size={22} />
+                <div className="flex-1">
+                  <h3 className={`font-serif text-lg mb-1 ${textPrimary}`}>Author Bounties</h3>
+                  <p className={`text-sm ${textMuted}`}>
+                    Set a reader pool ($25–$500+) and guarantee a wave of verified readers right now. You only pay when readers pass the quiz. Platform keeps 20%, readers earn 80%.
+                  </p>
+                  <p className="text-xs mt-2 font-medium text-[#D4A843]">From $25 — pay per verified read</p>
+                  <button
+                    onClick={() => navigateTo('/author-bounty')}
+                    className={`mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline`}
+                  >
+                    Set up a bounty <ArrowRight size={14} />
+                  </button>
                 </div>
               </div>
             </div>
@@ -135,12 +145,18 @@ export const Authors = () => {
             <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
               <div className="flex items-start gap-4">
                 <Trophy className="text-[#D4A843] mt-0.5 shrink-0" size={22} />
-                <div>
+                <div className="flex-1">
                   <h3 className={`font-serif text-lg mb-1 ${textPrimary}`}>Sponsor a Competition</h3>
                   <p className={`text-sm ${textMuted}`}>
                     Fund a reading competition around your book. Readers compete, you get visibility. Platform keeps 25%, the rest goes to the prize pool.
                   </p>
-                  <p className={`text-xs mt-2 font-medium text-[#D4A843]`}>Spark $60 · Boost $120 · Spotlight $250 · Grand $500+</p>
+                  <p className="text-xs mt-2 font-medium text-[#D4A843]">Spark $60 · Boost $120 · Spotlight $250 · Grand $500+</p>
+                  <button
+                    onClick={() => navigateTo('/author-competition')}
+                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
+                  >
+                    Sponsor a competition <ArrowRight size={14} />
+                  </button>
                 </div>
               </div>
             </div>
@@ -149,12 +165,18 @@ export const Authors = () => {
             <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
               <div className="flex items-start gap-4">
                 <ClipboardList className="text-[#D4A843] mt-0.5 shrink-0" size={22} />
-                <div>
+                <div className="flex-1">
                   <h3 className={`font-serif text-lg mb-1 ${textPrimary}`}>Quick Tasks</h3>
                   <p className={`text-sm ${textMuted}`}>
                     Cover voting, title testing, blurb testing. Get real reader opinions before you launch. Fast turnaround, honest feedback.
                   </p>
-                  <p className={`text-xs mt-2 font-medium text-[#D4A843]`}>Sample $14 (25 readers) · Standard $24 (50) · Wide $42 (100)</p>
+                  <p className="text-xs mt-2 font-medium text-[#D4A843]">Sample $14 (25 readers) · Standard $24 (50) · Wide $42 (100)</p>
+                  <button
+                    onClick={() => navigateTo('/author-quick-tasks')}
+                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
+                  >
+                    Submit a quick task <ArrowRight size={14} />
+                  </button>
                 </div>
               </div>
             </div>
@@ -163,12 +185,18 @@ export const Authors = () => {
             <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
               <div className="flex items-start gap-4">
                 <MessageSquare className="text-[#D4A843] mt-0.5 shrink-0" size={22} />
-                <div>
+                <div className="flex-1">
                   <h3 className={`font-serif text-lg mb-1 ${textPrimary}`}>Reader Feedback Surveys</h3>
                   <p className={`text-sm ${textMuted}`}>
                     Collect detailed reader feedback on your manuscript or published work. Great for understanding what's landing and what isn't.
                   </p>
-                  <p className={`text-xs mt-2 font-medium text-[#D4A843]`}>10 readers $18 · 25 readers $40 · 50 readers $70 · 100 readers $125</p>
+                  <p className="text-xs mt-2 font-medium text-[#D4A843]">10 readers $18 · 25 readers $40 · 50 readers $70 · 100 readers $125</p>
+                  <button
+                    onClick={() => navigateTo('/author-survey')}
+                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
+                  >
+                    Request a survey <ArrowRight size={14} />
+                  </button>
                 </div>
               </div>
             </div>
@@ -177,12 +205,18 @@ export const Authors = () => {
             <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
               <div className="flex items-start gap-4">
                 <BookOpen className="text-[#D4A843] mt-0.5 shrink-0" size={22} />
-                <div>
+                <div className="flex-1">
                   <h3 className={`font-serif text-lg mb-1 ${textPrimary}`}>Beta Reader Acquisition</h3>
                   <p className={`text-sm ${textMuted}`}>
                     Get early readers for your first chapter. A panel of motivated readers gives you pre-launch feedback before you commit to a full release.
                   </p>
-                  <p className={`text-xs mt-2 font-medium text-[#D4A843]`}>Starter $28 (10) · Standard $60 (25) · Extended $110 (50) · Pro $200 (100)</p>
+                  <p className="text-xs mt-2 font-medium text-[#D4A843]">Starter $28 (10) · Standard $60 (25) · Extended $110 (50) · Pro $200 (100)</p>
+                  <button
+                    onClick={() => navigateTo('/author-beta-readers')}
+                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
+                  >
+                    Find beta readers <ArrowRight size={14} />
+                  </button>
                 </div>
               </div>
             </div>
@@ -191,22 +225,23 @@ export const Authors = () => {
             <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
               <div className="flex items-start gap-4">
                 <Eye className="text-[#D4A843] mt-0.5 shrink-0" size={22} />
-                <div>
+                <div className="flex-1">
                   <h3 className={`font-serif text-lg mb-1 ${textPrimary}`}>Sensitivity Readers</h3>
                   <p className={`text-sm ${textMuted}`}>
                     Professional sensitivity reading for diverse representation. Single, dual, or triple reader packages available.
                   </p>
-                  <p className={`text-xs mt-2 font-medium text-[#D4A843]`}>Single $50 · Dual $100 · Triple $150</p>
+                  <p className="text-xs mt-2 font-medium text-[#D4A843]">Single $50 · Dual $100 · Triple $150</p>
+                  <button
+                    onClick={() => navigateTo('/author-sensitivity-readers')}
+                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
+                  >
+                    Request sensitivity readers <ArrowRight size={14} />
+                  </button>
                 </div>
               </div>
             </div>
 
           </div>
-
-          <p className={`text-xs mt-6 text-center ${textMuted}`}>
-            Interested in bounties, competitions, or feedback services? Email us at{' '}
-            <span className="text-[#D4A843]">authors@readtoearn.com</span> to get started — dedicated submission pages coming soon.
-          </p>
         </div>
 
         {/* Approval Guarantee */}
