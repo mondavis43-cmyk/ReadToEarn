@@ -344,31 +344,75 @@ export function Admin() {
   }
 
   async function handleSaveEdit() {
-    if (!editingBook) return;
-    setSaving(true);
-    await supabase.from('books').update({
-      title: editingBook.title,
-      author: editingBook.author,
-      cover_url: editingBook.cover_url,
-      page_count: editingBook.page_count,
-      description: editingBook.description,
-      geniuslink_url: editingBook.geniuslink_url,
-      book_type: editingBook.book_type,
-      genres: editingBook.genres,
-    }).eq('id', editingBook.id);
-    for (const q of editingQuestions) {
-      await supabase.from('questions').update({
+  if (!editingBook) return;
+  setSaving(true);
+
+  // Update book details
+  await supabase.from('books').update({
+    title: editingBook.title,
+    author: editingBook.author,
+    cover_url: editingBook.cover_url,
+    page_count: editingBook.page_count,
+    description: editingBook.description,
+    geniuslink_url: editingBook.geniuslink_url,
+    book_type: editingBook.book_type,
+    genres: editingBook.genres,
+  }).eq('id', editingBook.id);
+
+  // Split into existing (have a real UUID) vs new (id starts with 'new-')
+  const existingQuestions = editingQuestions.filter((q) => !q.id.startsWith('new-'));
+  const newQuestions = editingQuestions.filter((q) => q.id.startsWith('new-'));
+
+  // Update existing questions
+  for (const q of existingQuestions) {
+    await supabase.from('questions').update({
+      question_text: q.question_text,
+      correct_answer: q.correct_answer,
+      wrong_answer_1: q.wrong_answer_1,
+      wrong_answer_2: q.wrong_answer_2,
+      wrong_answer_3: q.wrong_answer_3,
+    }).eq('id', q.id);
+  }
+
+  // Insert new questions
+  if (newQuestions.length > 0) {
+    await supabase.from('questions').insert(
+      newQuestions.map((q) => ({
+        book_id: editingBook.id,
         question_text: q.question_text,
         correct_answer: q.correct_answer,
         wrong_answer_1: q.wrong_answer_1,
         wrong_answer_2: q.wrong_answer_2,
         wrong_answer_3: q.wrong_answer_3,
-      }).eq('id', q.id);
-    }
-    setSuccess('Book updated!');
-    setEditingBook(null);
-    setSaving(false);
-    loadData();
+      }))
+    );
+  }
+
+  // Handle deletions — questions removed from the list that existed in DB
+  const removedIds = editingQuestions
+    .filter((q) => q.id.startsWith('new-'))
+    .map((q) => q.id); // these were never in DB, nothing to delete
+
+  // Get original question IDs from DB and delete any that are no longer in the list
+  const currentIds = existingQuestions.map((q) => q.id);
+  const { data: dbQuestions } = await supabase
+    .from('questions')
+    .select('id')
+    .eq('book_id', editingBook.id);
+
+  const toDelete = (dbQuestions || [])
+    .map((q) => q.id)
+    .filter((id) => !currentIds.includes(id));
+
+  if (toDelete.length > 0) {
+    await supabase.from('questions').delete().in('id', toDelete);
+  }
+
+  setSuccess('Book updated!');
+  setEditingBook(null);
+  setSaving(false);
+  loadData();
+}
   }
 
   async function handleDeleteBook(id: string) {
