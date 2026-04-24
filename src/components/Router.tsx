@@ -69,6 +69,8 @@ export const Router = () => {
   if (!user) return <Login />;
 
   const KNOWN_ROUTES = [
+    '/home',
+    '/library',
     '/pricing',
     '/profile',
     '/cashout',
@@ -95,6 +97,8 @@ export const Router = () => {
   return (
     <>
       <NavBar />
+      {route === '/home' && <Home />}
+      {route === '/library' && <Library />}
       {route === '/pricing' && <Pricing />}
       {route === '/profile' && <Profile />}
       {route === '/cashout' && <Cashout />}
