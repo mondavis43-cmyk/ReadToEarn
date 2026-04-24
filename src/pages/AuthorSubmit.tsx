@@ -264,43 +264,43 @@ export const AuthorSubmit = () => {
             </p>
           </div>
         ) : (
-          <div className="mb-12">
-            <h2 className="font-serif text-2xl text-white mb-2">Choose a Bundle</h2>
-            <p className="text-gray-500 text-sm mb-6">
-              Buy slots in advance and use them whenever you're ready. Unused slots never expire.
-            </p>
-            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3"
-              {BUNDLES.map((bundle) => {
-                const isSelected = selectedBundle.books === bundle.books;
-                return (
-                  <button
-                    key={bundle.books}
-                    onClick={() => setSelectedBundle(bundle)}
-                    className={`relative rounded-lg p-4 border text-left transition ${
-                      isSelected
-                        ? 'bg-white text-black border-white'
-                        : 'bg-[#1a1a1a] text-white border-gray-700 hover:border-gray-500'
-                    }`}
-                  >
-                    <p className="font-semibold text-sm mb-1">{bundle.label}</p>
-                    <p className={`text-lg font-bold ${isSelected ? 'text-black' : 'text-white'}`}>
-                      ${bundle.total.toFixed(2)}
-                    </p>
-                    <p className={`text-xs mt-0.5 ${isSelected ? 'text-gray-600' : 'text-gray-500'}`}>
-                      ${bundle.perBook.toFixed(2)}/book
-                    </p>
-                    {bundle.savings && (
-                      <span className={`text-xs font-medium mt-1 block ${
-                        isSelected ? 'text-green-700' : 'text-green-400'
-                      }`}>
-                        {bundle.savings}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+<div className="mb-12">
+  <h2 className="font-serif text-2xl text-white mb-2">Choose a Bundle</h2>
+  <p className="text-gray-500 text-sm mb-6">
+    Buy slots in advance and use them whenever you're ready. Unused slots never expire.
+  </p>
+  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+    {BUNDLES.map((bundle) => {
+      const isSelected = selectedBundle.books === bundle.books;
+      return (
+        <button
+          key={bundle.books}
+          onClick={() => setSelectedBundle(bundle)}
+          className={`relative rounded-lg p-4 border text-left transition ${
+            isSelected
+              ? 'bg-white text-black border-white'
+              : 'bg-[#1a1a1a] text-white border-gray-700 hover:border-gray-500'
+          }`}
+        >
+          <p className="font-semibold text-sm mb-1">{bundle.label}</p>
+          <p className={`text-lg font-bold ${isSelected ? 'text-black' : 'text-white'}`}>
+            ${bundle.total.toFixed(2)}
+          </p>
+          <p className={`text-xs mt-0.5 ${isSelected ? 'text-gray-600' : 'text-gray-500'}`}>
+            ${bundle.perBook.toFixed(2)}/book
+          </p>
+          {bundle.savings && (
+            <span className={`text-xs font-medium mt-1 block ${
+              isSelected ? 'text-green-700' : 'text-green-400'
+            }`}>
+              {bundle.savings}
+            </span>
+          )}
+        </button>
+      );
+    })}
+  </div>
+</div>
         )}
 
         {/* Book Info */}
