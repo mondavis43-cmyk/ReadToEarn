@@ -41,7 +41,6 @@ export const Router = () => {
   }, []);
 
   useEffect(() => {
-    // Added bulletin routes to the "allowed" list for unauthenticated/reset checks if needed
     if (!loading && !user && route !== '/login' && route !== '/signup' && route !== '/admin' && route !== '/reset-password') {
       if (!WAITLIST_MODE) {
         window.history.pushState({}, '', '/login');
@@ -68,6 +67,30 @@ export const Router = () => {
   if (!user && route === '/signup') return <Signup />;
   if (!user) return <Login />;
 
+  const KNOWN_ROUTES = [
+    '/pricing',
+    '/profile',
+    '/cashout',
+    '/refer',
+    '/request-book',
+    '/authors',
+    '/author-submit',
+    '/author-bounty',
+    '/author-competition',
+    '/author-quick-tasks',
+    '/author-survey',
+    '/author-beta-readers',
+    '/author-sensitivity-readers',
+    '/bulletin-board',
+    '/bulletin-submit',
+    '/faq',
+  ];
+
+  const isKnownRoute =
+    KNOWN_ROUTES.includes(route) ||
+    route.startsWith('/quiz/') ||
+    route.startsWith('/book/');
+
   return (
     <>
       <NavBar />
@@ -76,37 +99,20 @@ export const Router = () => {
       {route === '/cashout' && <Cashout />}
       {route === '/refer' && <Refer />}
       {route === '/request-book' && <RequestBook />}
+      {route === '/faq' && <FAQ />}
       {route === '/authors' && <Authors />}
       {route === '/author-submit' && <AuthorSubmit />}
+      {route === '/author-bounty' && <AuthorBounty />}
+      {route === '/author-competition' && <AuthorCompetition />}
+      {route === '/author-quick-tasks' && <AuthorQuickTasks />}
+      {route === '/author-survey' && <AuthorSurvey />}
+      {route === '/author-beta-readers' && <AuthorBetaReaders />}
+      {route === '/author-sensitivity-readers' && <AuthorSensitivityReaders />}
       {route === '/bulletin-board' && <BulletinBoard />}
       {route === '/bulletin-submit' && <BulletinSubmit />}
-      {route === '/faq' && <FAQ />}
       {route.startsWith('/quiz/') && <Quiz bookId={route.split('/')[2]} />}
       {route.startsWith('/book/') && <BookPage />}
-      
-      {/* Updated the exclusion list to include bulletin routes. 
-          If the route doesn't match any of these, show Home.
-      */}
-      {![ 
-        '/pricing', 
-        '/profile', 
-        '/cashout', 
-        '/refer', 
-        '/request-book', 
-        '/authors', 
-        '/faq', 
-        '/author-submit',
-        '/author-bounty',
-        '/author-competition',
-        '/author-quick-tasks',
-        '/author-survey',
-        '/author-beta-readers',
-        '/author-sensitivity-readers',
-        '/bulletin-board',
-        '/bulletin-submit'
-      ].includes(route) &&
-      !route.startsWith('/quiz/') &&
-      !route.startsWith('/book/') && <Home />}
+      {!isKnownRoute && <Home />}
     </>
   );
 };
