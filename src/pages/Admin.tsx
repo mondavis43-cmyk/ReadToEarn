@@ -17,20 +17,6 @@ export const GENRES = [
   'Spy', 'Suspense', 'Thriller', 'True Crime', 'War & Military', 'Western', "Women's Fiction", 'Young Adult',
 ];
 
-const BOUNTY_POOL_OPTIONS = [25, 50, 100, 200, 500];
-const COMPETITION_TYPES = ['Sprint', 'Read-A-Thon', 'Elimination Bracket'];
-
-const emptyBounty = { book_id: '', pool_size: 25, per_pass_amount: 0.50 };
-const emptyCompetition = {
-  type: 'Sprint',
-  title: '',
-  book_ids: [] as string[],
-  start_date: '',
-  end_date: '',
-  entry_fee: '',
-  prize_pool: '',
-};
-
 const COMPETITION_TYPES = ['Sprint', 'Read-A-Thon', 'Elimination Bracket'] as const;
 type CompetitionType = typeof COMPETITION_TYPES[number];
 
