@@ -46,7 +46,7 @@ const SORT_LABELS: Record<SortOption, string> = {
   pages_desc: 'Longest',
 };
 
-export const Home = () => {
+export const Library = () => {
   const { user } = useAuth();
   const { navigateTo } = useNavigate();
   const { theme, toggleTheme } = useTheme();
