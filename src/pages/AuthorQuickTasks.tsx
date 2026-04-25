@@ -1,13 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
-import { CheckCircle, ClipboardList } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+import { ClipboardList } from 'lucide-react';
 
 const TASK_TYPES = [
   {
@@ -28,17 +22,15 @@ const TASK_TYPES = [
 ];
 
 const PACKAGES = [
-  { label: 'Sample', completions: 25, price: 14 },
-  { label: 'Standard', completions: 50, price: 24 },
-  { label: 'Wide', completions: 100, price: 42 },
+  { label: 'Sample', completions: 25, price: 14, cents: 1400 },
+  { label: 'Standard', completions: 50, price: 24, cents: 2400 },
+  { label: 'Wide', completions: 100, price: 42, cents: 4200 },
 ];
 
 export const AuthorQuickTasks = () => {
   const { navigateTo } = useNavigate();
   const { isDark, toggleTheme } = useTheme();
 
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const [authorName, setAuthorName] = useState('');
@@ -60,17 +52,27 @@ export const AuthorQuickTasks = () => {
 
   const isFormValid = () => authorName && email && bookTitle && taskContent;
 
-  const handleSubmit = async () => {
+  const handleCheckout = () => {
     if (!isFormValid()) {
       setError('Please fill out all required fields.');
       return;
     }
-    setLoading(true);
     setError('');
 
-    const { error: insertError } = await supabase
-      .from('author_quick_task_submissions')
-      .insert({
+    (window as any).__checkoutItem = {
+      type: 'quick_task',
+      label: `${selectedType.label} — ${selectedPackage.label} (${selectedPackage.completions} readers) for "${bookTitle}"`,
+      amount: selectedPackage.cents,
+      metadata: {
+        task_type: selectedType.label,
+        package: selectedPackage.label,
+        completions: selectedPackage.completions,
+      },
+    };
+
+    (window as any).__pendingSubmission = {
+      table: 'author_quick_task_submissions',
+      data: {
         author_name: authorName,
         email,
         book_title: bookTitle,
@@ -79,75 +81,14 @@ export const AuthorQuickTasks = () => {
         completions: selectedPackage.completions,
         price: selectedPackage.price,
         task_content: taskContent,
-        notes,
-        status: 'pending_payment',
-      });
+        notes: notes || null,
+        status: 'active',
+      },
+    };
 
-    if (insertError) {
-      setError('Something went wrong. Please try again.');
-      setLoading(false);
-      return;
-    }
-
-    setSubmitted(true);
-    setLoading(false);
+    window.history.pushState({}, '', '/checkout');
+    window.dispatchEvent(new PopStateEvent('popstate'));
   };
-
-  if (submitted) {
-    return (
-      <div className={`min-h-screen flex items-center justify-center px-4 transition-colors ${isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]'}`}>
-        <div className="max-w-md w-full text-center">
-          <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
-          <h1 className={`font-serif text-3xl mb-3 ${textPrimary}`}>Task Submitted!</h1>
-          <p className={`mb-2 ${textMuted}`}>
-            We've received your{' '}
-            <span className={`font-medium ${textPrimary}`}>{selectedType.label}</span> request for{' '}
-            <span className={`font-medium ${textPrimary}`}>{bookTitle}</span>.
-          </p>
-          <p className={`text-sm mb-8 ${textMuted}`}>
-            We'll email <span className={textPrimary}>{email}</span> with payment instructions. Results are delivered once your task is complete.
-          </p>
-          <div className={`rounded-xl border p-4 mb-8 text-left ${cardBg}`}>
-            <div className="flex justify-between text-sm mb-2">
-              <span className={textMuted}>Task type</span>
-              <span className={`font-medium ${textPrimary}`}>{selectedType.label}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-2">
-              <span className={textMuted}>Package</span>
-              <span className={`font-medium ${textPrimary}`}>{selectedPackage.label}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-2">
-              <span className={textMuted}>Completions</span>
-              <span className={`font-medium ${textPrimary}`}>{selectedPackage.completions} readers</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className={textMuted}>Total</span>
-              <span className="text-[#D4A843] font-bold">${selectedPackage.price}</span>
-            </div>
-          </div>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => {
-                setSubmitted(false);
-                setAuthorName(''); setEmail(''); setBookTitle('');
-                setSelectedType(TASK_TYPES[0]); setSelectedPackage(PACKAGES[0]);
-                setTaskContent(''); setNotes('');
-              }}
-              className="bg-[#D4A843] text-[#1B2A4A] font-medium px-6 py-3 rounded-lg hover:bg-[#c49a3a] transition"
-            >
-              Submit Another
-            </button>
-            <button
-              onClick={() => navigateTo('/authors')}
-              className={`font-medium px-6 py-3 rounded-lg transition border ${cardBg} ${textPrimary}`}
-            >
-              Back to Authors
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]'}`}>
@@ -257,7 +198,7 @@ export const AuthorQuickTasks = () => {
                   }`}
                 >
                   <p className="font-bold text-lg">${pkg.price}</p>
-                  <p className={`text-sm font-medium mt-0.5`}>{pkg.label}</p>
+                  <p className="text-sm font-medium mt-0.5">{pkg.label}</p>
                   <p className={`text-xs mt-1 ${isSelected ? 'text-[#1B2A4A]/70' : textMuted}`}>
                     {pkg.completions} readers
                   </p>
@@ -306,7 +247,7 @@ export const AuthorQuickTasks = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className={inputClass}
-                  placeholder="Results and invoice sent here"
+                  placeholder="Results and receipt sent here"
                 />
               </div>
             </div>
@@ -344,14 +285,13 @@ export const AuthorQuickTasks = () => {
         )}
 
         <button
-          onClick={handleSubmit}
-          disabled={loading}
-          className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-4 rounded-xl hover:bg-[#c49a3a] transition disabled:opacity-50 disabled:cursor-not-allowed text-lg"
+          onClick={handleCheckout}
+          className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-4 rounded-xl hover:bg-[#c49a3a] transition text-lg"
         >
-          {loading ? 'Submitting...' : `Submit Task — $${selectedPackage.price} due after review`}
+          {`Submit Task — Pay $${selectedPackage.price}`}
         </button>
         <p className={`text-xs text-center mt-3 ${textMuted}`}>
-          No payment required now. We'll email you with next steps.
+          You'll be taken to secure checkout. Results are delivered within a few days of payment.
         </p>
 
       </div>
