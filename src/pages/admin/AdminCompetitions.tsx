@@ -6,6 +6,7 @@ interface Book {
   id: string;
   title: string;
   author: string;
+  book_type: string;
 }
 
 interface Competition {
@@ -58,7 +59,7 @@ export function AdminCompetitions() {
 
   async function loadData() {
     const [{ data: booksData }, { data: compsData }] = await Promise.all([
-      supabase.from('books').select('id, title, author').order('title'),
+      supabase.from('books').select('id, title, author, book_type').order('title'),
       supabase
         .from('competitions')
         .select('*, books(title, author)')
@@ -168,9 +169,9 @@ export function AdminCompetitions() {
             <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Book</label>
             <select className={selectClass} value={newComp.book_id} onChange={(e) => setNewComp({ ...newComp, book_id: e.target.value })}>
               <option value="">Select a book...</option>
-              {books.map((b) => (
-                <option key={b.id} value={b.id}>{b.title} — {b.author}</option>
-              ))}
+              {books.filter((b) => b.book_type !== 'bulletin_board').map((b) => (
+  <option key={b.id} value={b.id}>{b.title} — {b.author}</option>
+))}
             </select>
           </div>
 
