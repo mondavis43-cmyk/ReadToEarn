@@ -7,8 +7,8 @@ import { supabase } from '../lib/supabase';
 type Bounty = {
   id: string;
   book_id: string;
-  pool_amount: number;
-  payout_per_reader: number;
+  pool_size: number;
+  per_pass_amount: number;
   status: string;
   books?: { title: string; author: string; cover_url: string };
 };
