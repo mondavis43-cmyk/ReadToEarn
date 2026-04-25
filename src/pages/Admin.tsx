@@ -53,6 +53,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'earning', label: 'Earning Tasks' },
   { key: 'waitlist', label: 'Waitlist' },
   { key: 'tropes', label: 'Tropes' },
+  { key: 'ama', label: 'AMA' },
 ];
 
 export function Admin() {
