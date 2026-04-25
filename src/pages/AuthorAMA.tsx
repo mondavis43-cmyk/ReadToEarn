@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import { MessageSquare, Clock, BookOpen, ChevronRight, Calendar } from 'lucide-react';
+import { useNavigate } from '../hooks/useNavigate';
+import { MessageSquare, Clock, BookOpen, ChevronRight, Calendar, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 type AMASession = {
@@ -19,9 +20,12 @@ type Tab = 'upcoming' | 'live' | 'past';
 
 export const AuthorAMA = () => {
   const { isDark } = useTheme();
+  const { navigateTo } = useNavigate();
 
   const textPrimary = isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]';
   const textMuted = isDark ? 'text-[#F5F0E8]/70' : 'text-[#1B2A4A]/70';
+  const dividerColor = isDark ? 'border-gray-800' : 'border-gray-200';
+  const subColor = isDark ? 'text-[#F5F0E8]/50' : 'text-[#1B2A4A]/50';
   const cardBg = isDark
     ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20'
     : 'bg-white border-[#D4A843]/30';
@@ -77,19 +81,26 @@ export const AuthorAMA = () => {
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-[#0F1923]' : 'bg-[#FAF8F5]'}`}>
-      <div className="max-w-3xl mx-auto px-4 py-12">
 
-        {/* Header */}
-        <div className="mb-10 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D4A843]/10 border border-[#D4A843]/30 mb-4">
-            <MessageSquare size={14} className="text-[#D4A843]" />
-            <span className="text-xs font-medium text-[#D4A843]">Author AMAs</span>
-          </div>
-          <h1 className={`text-3xl font-bold ${textPrimary} mb-3`}>Ask the Author</h1>
-          <p className={`${textMuted} max-w-xl mx-auto`}>
-            Submit questions, get answers straight from the author. Live sessions, real conversations.
-          </p>
+      {/* Header — matches Profile/other pages */}
+      <div className={`border-b ${dividerColor} px-4 py-4 mb-8`}>
+        <div className="max-w-3xl mx-auto flex items-center gap-3">
+          <button
+            onClick={() => navigateTo('/')}
+            className={`${subColor} hover:text-[#D4A843] transition-colors`}
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h1 className={`font-serif text-3xl ${textPrimary}`}>Ask the Author</h1>
         </div>
+      </div>
+
+      <div className="max-w-3xl mx-auto px-4 pb-12">
+
+        {/* Intro */}
+        <p className={`${textMuted} mb-8`}>
+          Submit questions, get answers straight from the author. Live sessions, real conversations.
+        </p>
 
         {/* Tabs */}
         <div className="flex gap-1 p-1 rounded-xl bg-[#e8e0d5]/50 dark:bg-[#1B2A4A]/40 mb-8">
@@ -137,7 +148,7 @@ export const AuthorAMA = () => {
               return (
                 <button
                   key={session.id}
-                  onClick={() => window.location.href = `/ama/${session.id}`}
+                  onClick={() => navigateTo(`ama/${session.id}`)}
                   className={`w-full text-left rounded-2xl border ${cardBg} p-5 hover:border-[#D4A843]/60 transition-all group`}
                 >
                   <div className="flex items-start justify-between gap-4">
