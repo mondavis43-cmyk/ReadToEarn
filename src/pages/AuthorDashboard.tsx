@@ -1,12 +1,26 @@
-import { useEffect, useState, useRef } from "react";
-import { supabase } from "../lib/supabaseClient";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, useRef } from 'react';
+import { supabase } from '../lib/supabase';
+import { useNavigate } from '../hooks/useNavigate';
+import { useTheme } from '../contexts/ThemeContext';
+import {
+  BookOpen, Users, DollarSign, ArrowLeft, Edit2, Pin, PinOff,
+  MessageSquare, Trophy, ChevronDown, ChevronUp, Upload, Check,
+  AlertCircle, Search, X
+} from 'lucide-react';
 
-const BOUNTY_RATE = 0.0085;
-const BOUNTY_CAP = 5.0;
+// ── Types ──────────────────────────────────────────────────────────────────
 
-function calcBounty(pageCount: number): number {
-  return Math.min(pageCount * BOUNTY_RATE, BOUNTY_CAP);
+interface BookListing {
+  id: string;
+  title: string;
+  author: string;
+  cover_url: string | null;
+  page_count: number;
+  book_type: 'standard' | 'bulletin_board';
+  description: string | null;
+  total_completions: number;
+  pass_count: number;
+  total_paid_out: number;
 }
 
 interface Question {
@@ -18,20 +32,31 @@ interface Question {
   wrong_answer_3: string;
 }
 
-interface BookListing {
+interface AMASessionRow {
   id: string;
   title: string;
-  author: string;
-  cover_url: string | null;
-  bounty_amount: number;
-  page_count: number;
-  description: string | null;
-  is_platform_book: boolean;
-  created_at: string;
-  total_completions: number;
-  pass_count: number;
-  total_paid_out: number;
-  on_bulletin?: boolean; // New property for the bulletin board status
+  status: 'open' | 'answering' | 'closed';
+  ama_starts_at: string;
+  questions_close_at: string;
+  books?: { title: string } | null;
+}
+
+interface BountyRow {
+  id: string;
+  title: string;
+  payout_per_reader: number;
+  pool_amount: number;
+  is_active: boolean;
+  books?: { title: string } | null;
+}
+
+interface CompetitionRow {
+  id: string;
+  title: string;
+  format: string;
+  starts_at: string;
+  ends_at: string;
+  book_title: string;
 }
 
 interface ClaimableBook {
@@ -42,31 +67,52 @@ interface ClaimableBook {
   page_count: number;
 }
 
-type EditTab = "details" | "quiz";
+type EditTab = 'details' | 'quiz';
+type DashTab = 'books' | 'ama' | 'bounties' | 'competitions';
 
-export default function AuthorDashboard() {
-  const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+// ── Component ──────────────────────────────────────────────────────────────
 
-  // Main state
-  const [books, setBooks] = useState<BookListing[]>([]);
+export const AuthorDashboard = () => {
+  const { isDark } = useTheme();
+  const { navigateTo } = useNavigate();
+
+  // Theme
+  const bg = isDark ? 'bg-[#0F1923]' : 'bg-[#FAF8F5]';
+  const textPrimary = isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]';
+  const textMuted = isDark ? 'text-[#F5F0E8]/60' : 'text-[#1B2A4A]/60';
+  const cardBg = isDark ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20' : 'bg-white border-[#D4A843]/30';
+  const inputClass = `w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A843]/40`;
+  const dividerColor = isDark ? 'border-gray-800' : 'border-gray-200';
+  const subColor = isDark ? 'text-[#F5F0E8]/50' : 'text-[#1B2A4A]/50';
+
+  // Auth
+  const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
 
-  // Bulletin Board state
-  const [bulletinModalBook, setBulletinModalBook] = useState<BookListing | null>(null);
-  const [bulletinSubmitting, setBulletinSubmitting] = useState(false);
+  // Dashboard tab
+  const [dashTab, setDashTab] = useState<DashTab>('books');
 
-  // Edit modal state
+  // Books
+  const [books, setBooks] = useState<BookListing[]>([]);
+
+  // AMA
+  const [amaSessions, setAmaSessions] = useState<AMASessionRow[]>([]);
+
+  // Bounties
+  const [bounties, setBounties] = useState<BountyRow[]>([]);
+
+  // Competitions
+  const [competitions, setCompetitions] = useState<CompetitionRow[]>([]);
+
+  // Stats
+  const [totalReaders, setTotalReaders] = useState(0);
+  const [totalPaidOut, setTotalPaidOut] = useState(0);
+
+  // Edit modal
   const [editingBook, setEditingBook] = useState<BookListing | null>(null);
-  const [activeTab, setActiveTab] = useState<EditTab>("details");
-  const [editForm, setEditForm] = useState({
-    title: "",
-    author: "",
-    description: "",
-    page_count: 0,
-  });
+  const [editTab, setEditTab] = useState<EditTab>('details');
+  const [editForm, setEditForm] = useState({ title: '', author: '', description: '', page_count: 0 });
   const [questions, setQuestions] = useState<Question[]>([]);
   const [questionsLoading, setQuestionsLoading] = useState(false);
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -74,136 +120,144 @@ export default function AuthorDashboard() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Claim modal state
+  // Claim modal
   const [showClaimModal, setShowClaimModal] = useState(false);
-  const [claimSearch, setClaimSearch] = useState("");
+  const [claimSearch, setClaimSearch] = useState('');
   const [claimResults, setClaimResults] = useState<ClaimableBook[]>([]);
   const [claimSearching, setClaimSearching] = useState(false);
   const [claiming, setClaiming] = useState<string | null>(null);
   const [claimSuccess, setClaimSuccess] = useState<string | null>(null);
 
-  useEffect(() => {
-    init();
-  }, []);
+  // Bulletin confirm
+  const [bulletinModalBook, setBulletinModalBook] = useState<BookListing | null>(null);
+  const [bulletinSubmitting, setBulletinSubmitting] = useState(false);
+
+  // ── Init ────────────────────────────────────────────────────────────────
+
+  useEffect(() => { init(); }, []);
 
   async function init() {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      navigate("/login");
-      return;
-    }
-    setUserId(user.id);
-    await fetchAuthorBooks(user.id);
-  }
-
-  async function fetchAuthorBooks(uid: string) {
     setLoading(true);
-    setError(null);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { navigateTo('/'); return; }
 
-    const { data, error: fetchError } = await supabase
-      .from("books")
-      .select(`
-        id,
-        title,
-        author,
-        cover_url,
-        bounty_amount,
-        page_count,
-        description,
-        is_platform_book,
-        on_bulletin,
-        created_at,
-        completed_books (
-          id,
-          passed
-        )
-      `)
-      .eq("author_id", uid)
-      .order("created_at", { ascending: false });
+    // Check role
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
 
-    if (fetchError) {
-      setError("Failed to load your listings. Please try again.");
-      setLoading(false);
+    if (profile?.role !== 'author' && profile?.role !== 'admin') {
+      navigateTo('/');
       return;
     }
 
-    const shaped: BookListing[] = (data || []).map((book: any) => {
-      const completions = book.completed_books || [];
-      const passCount = completions.filter((c: any) => c.passed === true).length;
-      const totalCompletions = completions.length;
-      return {
-        id: book.id,
-        title: book.title,
-        author: book.author,
-        cover_url: book.cover_url,
-        bounty_amount: book.bounty_amount,
-        page_count: book.page_count,
-        description: book.description,
-        is_platform_book: book.is_platform_book,
-        on_bulletin: book.on_bulletin,
-        created_at: book.created_at,
-        total_completions: totalCompletions,
-        pass_count: passCount,
-        total_paid_out: passCount * book.bounty_amount,
-      };
-    });
-
-    setBooks(shaped);
+    setUserId(user.id);
+    await Promise.all([
+      fetchBooks(user.id),
+      fetchAMA(user.id),
+      fetchBounties(user.id),
+      fetchCompetitions(user.id),
+    ]);
     setLoading(false);
   }
 
-  const handlePostToBulletin = async (book: BookListing) => {
-    setBulletinSubmitting(true);
-    const { error } = await supabase
+  async function fetchBooks(uid: string) {
+    const { data } = await supabase
       .from('books')
-      .update({ on_bulletin: true })
+      .select('id, title, author, cover_url, page_count, book_type, description, total_completions, pass_count, total_paid_out')
+      .eq('author_id', uid)
+      .order('created_at', { ascending: false });
+
+    const list = data || [];
+    setBooks(list);
+    setTotalReaders(list.reduce((s, b) => s + (b.total_completions || 0), 0));
+    setTotalPaidOut(list.reduce((s, b) => s + (b.total_paid_out || 0), 0));
+  }
+
+  async function fetchAMA(uid: string) {
+    const { data } = await supabase
+      .from('ama_sessions')
+      .select('id, title, status, ama_starts_at, questions_close_at, books(title)')
+      .eq('author_id', uid)
+      .order('ama_starts_at', { ascending: false });
+    setAmaSessions(data || []);
+  }
+
+  async function fetchBounties(uid: string) {
+    const { data } = await supabase
+      .from('bounties')
+      .select('id, title, payout_per_reader, pool_amount, is_active, books(title)')
+      .eq('author_id', uid)
+      .order('created_at', { ascending: false });
+    setBounties(data || []);
+  }
+
+  async function fetchCompetitions(uid: string) {
+    const { data } = await supabase
+      .from('competitions')
+      .select('id, title, format, starts_at, ends_at, book_title')
+      .eq('author_id', uid)
+      .order('starts_at', { ascending: false });
+    setCompetitions(data || []);
+  }
+
+  // ── Bulletin Board ──────────────────────────────────────────────────────
+
+  async function handlePostToBulletin(book: BookListing) {
+    setBulletinSubmitting(true);
+    await supabase
+      .from('books')
+      .update({ book_type: 'bulletin_board' })
       .eq('id', book.id);
-
-    if (!error) {
-      setBooks(prev => prev.map(b => b.id === book.id ? { ...b, on_bulletin: true } : b));
-    } else {
-      setError("Could not post to bulletin board. Please check your connection.");
-    }
-    setBulletinSubmitting(false);
     setBulletinModalBook(null);
-  };
+    setBulletinSubmitting(false);
+    if (userId) fetchBooks(userId);
+  }
 
-  // ─── Edit modal ───────────────────────────────────────────────
+  async function handleRemoveFromBulletin(book: BookListing) {
+    await supabase
+      .from('books')
+      .update({ book_type: 'standard' })
+      .eq('id', book.id);
+    if (userId) fetchBooks(userId);
+  }
 
-  async function openEdit(book: BookListing) {
+  // ── Edit Modal ──────────────────────────────────────────────────────────
+
+  function openEdit(book: BookListing) {
     setEditingBook(book);
-    setActiveTab("details");
+    setEditTab('details');
     setEditForm({
       title: book.title,
       author: book.author,
-      description: book.description || "",
+      description: book.description || '',
       page_count: book.page_count,
     });
     setCoverFile(null);
     setCoverPreview(null);
     setSaveSuccess(false);
-    setError(null);
-    await loadQuestions(book.id);
+    loadQuestions(book.id);
   }
 
   function closeEdit() {
     setEditingBook(null);
+    setQuestions([]);
     setCoverFile(null);
     setCoverPreview(null);
-    setSaveSuccess(false);
   }
 
   async function loadQuestions(bookId: string) {
     setQuestionsLoading(true);
-    const { data, error: qErr } = await supabase
-      .from("questions")
-      .select("id, question_text, correct_answer, wrong_answer_1, wrong_answer_2, wrong_answer_3")
-      .eq("book_id", bookId);
-
-    if (!qErr && data) {
-      setQuestions(data as Question[]);
-    }
+    const { data } = await supabase
+      .from('questions')
+      .select('*')
+      .eq('book_id', bookId)
+      .order('created_at', { ascending: true });
+    setQuestions(data || []);
     setQuestionsLoading(false);
   }
 
@@ -217,453 +271,493 @@ export default function AuthorDashboard() {
   async function uploadCover(bookId: string): Promise<string | null> {
     if (!coverFile) return null;
     setUploadingCover(true);
-    const ext = coverFile.name.split(".").pop();
-    const path = `covers/${bookId}-${Date.now()}.${ext}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("book-covers")
-      .upload(path, coverFile, { upsert: true });
-
-    if (uploadError) {
-      setError("Cover upload failed. Other changes were saved.");
-      setUploadingCover(false);
-      return null;
-    }
-
-    const { data: urlData } = supabase.storage
-      .from("book-covers")
-      .getPublicUrl(path);
-
+    const ext = coverFile.name.split('.').pop();
+    const path = `covers/${bookId}.${ext}`;
+    const { error } = await supabase.storage.from('book-covers').upload(path, coverFile, { upsert: true });
     setUploadingCover(false);
-    return urlData.publicUrl;
+    if (error) return null;
+    const { data } = supabase.storage.from('book-covers').getPublicUrl(path);
+    return data.publicUrl;
   }
 
   async function handleSaveDetails() {
     if (!editingBook) return;
     setSaving(true);
-    setSaveSuccess(false);
-
-    const newBounty = calcBounty(editForm.page_count);
-    let newCoverUrl = editingBook.cover_url;
-
+    let cover_url = editingBook.cover_url;
     if (coverFile) {
       const uploaded = await uploadCover(editingBook.id);
-      if (uploaded) newCoverUrl = uploaded;
+      if (uploaded) cover_url = uploaded;
     }
-
-    const { error: updateError } = await supabase
-      .from("books")
-      .update({
-        title: editForm.title.trim(),
-        author: editForm.author.trim(),
-        description: editForm.description.trim(),
-        page_count: Number(editForm.page_count),
-        bounty_amount: newBounty,
-        cover_url: newCoverUrl,
-      })
-      .eq("id", editingBook.id);
-
+    await supabase.from('books').update({
+      title: editForm.title,
+      author: editForm.author,
+      description: editForm.description,
+      page_count: editForm.page_count,
+      cover_url,
+    }).eq('id', editingBook.id);
     setSaving(false);
-
-    if (updateError) {
-      setError("Failed to save changes. Please try again.");
-      return;
-    }
-
     setSaveSuccess(true);
-    await fetchAuthorBooks(userId!);
-    setTimeout(() => setSaveSuccess(false), 2000);
+    if (userId) fetchBooks(userId);
+    setTimeout(() => setSaveSuccess(false), 3000);
   }
 
   function updateQuestion(index: number, field: keyof Question, value: string) {
-    setQuestions((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      return updated;
-    });
+    setQuestions((prev) => prev.map((q, i) => i === index ? { ...q, [field]: value } : q));
   }
 
   async function handleSaveQuestions() {
     if (!editingBook) return;
     setSaving(true);
-    setSaveSuccess(false);
-
-    const upsertData = questions.map((q) => ({
-      id: q.id,
-      book_id: editingBook.id,
-      question_text: q.question_text,
-      correct_answer: q.correct_answer,
-      wrong_answer_1: q.wrong_answer_1,
-      wrong_answer_2: q.wrong_answer_2,
-      wrong_answer_3: q.wrong_answer_3,
-    }));
-
-    const { error: upsertError } = await supabase
-      .from("questions")
-      .upsert(upsertData, { onConflict: "id" });
-
+    await supabase.from('questions').upsert(
+      questions.map((q) => ({ ...q, book_id: editingBook.id })),
+      { onConflict: 'id' }
+    );
     setSaving(false);
-
-    if (upsertError) {
-      setError("Failed to save quiz questions. Please try again.");
-      return;
-    }
-
     setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2000);
+    setTimeout(() => setSaveSuccess(false), 3000);
   }
 
-  // ─── Claim modal ──────────────────────────────────────────────
+  // ── Claim Modal ─────────────────────────────────────────────────────────
 
   async function searchClaimableBooks() {
-    if (!claimSearch.trim()) return;
     setClaimSearching(true);
-    setClaimResults([]);
-
-    const { data, error: searchError } = await supabase
-      .from("books")
-      .select("id, title, author, cover_url, page_count")
-      .eq("is_platform_book", true)
-      .is("author_id", null)
-      .ilike("title", `%${claimSearch.trim()}%`)
+    const { data } = await supabase
+      .from('books')
+      .select('id, title, author, cover_url, page_count')
+      .is('author_id', null)
+      .ilike('title', `%${claimSearch}%`)
       .limit(10);
-
-    if (!searchError && data) {
-      setClaimResults(data as ClaimableBook[]);
-    }
+    setClaimResults(data || []);
     setClaimSearching(false);
   }
 
   async function claimBook(book: ClaimableBook) {
     if (!userId) return;
     setClaiming(book.id);
-
-    const { error: claimError } = await supabase
-      .from("books")
-      .update({
-        author_id: userId,
-        is_platform_book: false,
-      })
-      .eq("id", book.id)
-      .is("author_id", null);
-
-    if (claimError) {
-      setError("Failed to claim this book. It may have already been claimed.");
-      setClaiming(null);
-      return;
-    }
-
-    setClaiming(null);
+    await supabase.from('books').update({ author_id: userId }).eq('id', book.id);
     setClaimSuccess(book.title);
     setClaimResults((prev) => prev.filter((b) => b.id !== book.id));
-    await fetchAuthorBooks(userId);
-    setTimeout(() => setClaimSuccess(null), 3000);
+    setClaiming(null);
+    fetchBooks(userId);
   }
 
-  const totalReaders = books.reduce((sum, b) => sum + b.total_completions, 0);
-  const totalPaidOut = books.reduce((sum, b) => sum + b.total_paid_out, 0);
+  // ── Helpers ─────────────────────────────────────────────────────────────
+
+  const statusBadge = (status: AMASessionRow['status']) => {
+    const map = {
+      open: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+      answering: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+      closed: 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400',
+    };
+    const labels = { open: 'Taking Questions', answering: 'Live', closed: 'Closed' };
+    return (
+      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${map[status]}`}>
+        {labels[status]}
+      </span>
+    );
+  };
+
+  // ── Render ──────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500 text-sm">Loading your dashboard...</p>
+      <div className={`min-h-screen ${bg} flex items-center justify-center`}>
+        <div className="w-8 h-8 border-2 border-[#D4A843] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-10 px-4">
-      <div className="max-w-4xl mx-auto">
+  if (error) {
+    return (
+      <div className={`min-h-screen ${bg} flex items-center justify-center`}>
+        <p className="text-red-500">{error}</p>
+      </div>
+    );
+  }
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Author Dashboard</h1>
-            <p className="text-sm text-gray-500 mt-1">Manage your book listings and track performance</p>
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => { setShowClaimModal(true); setClaimSearch(""); setClaimResults([]); setClaimSuccess(null); }}
-              className="border border-indigo-600 text-indigo-600 text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-50 transition"
-            >
-              Claim a Book
-            </button>
-            <button
-              onClick={() => navigate("/author-submit")}
-              className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
-            >
-              + Add New Listing
-            </button>
-          </div>
+  const dashTabs: { key: DashTab; label: string; icon: any }[] = [
+    { key: 'books', label: 'My Books', icon: BookOpen },
+    { key: 'ama', label: 'AMAs', icon: MessageSquare },
+    { key: 'bounties', label: 'Bounties', icon: DollarSign },
+    { key: 'competitions', label: 'Competitions', icon: Trophy },
+  ];
+
+  return (
+    <div className={`min-h-screen ${bg}`}>
+
+      {/* Header */}
+      <div className={`border-b ${dividerColor} px-4 py-4 mb-8`}>
+        <div className="max-w-4xl mx-auto flex items-center gap-3">
+          <button onClick={() => navigateTo('/')} className={`${subColor} hover:text-[#D4A843] transition-colors`}>
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h1 className={`font-serif text-3xl ${textPrimary}`}>Author Dashboard</h1>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-4 pb-16">
+
+        {/* Stats row */}
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          {[
+            { label: 'Books Listed', value: books.length, icon: BookOpen },
+            { label: 'Total Readers', value: totalReaders, icon: Users },
+            { label: 'Total Paid Out', value: `$${totalPaidOut.toFixed(2)}`, icon: DollarSign },
+          ].map(({ label, value, icon: Icon }) => (
+            <div key={label} className={`rounded-2xl border ${cardBg} p-4 flex items-center gap-3`}>
+              <div className="w-9 h-9 rounded-full bg-[#D4A843]/10 flex items-center justify-center">
+                <Icon size={16} className="text-[#D4A843]" />
+              </div>
+              <div>
+                <p className={`text-xs ${textMuted}`}>{label}</p>
+                <p className={`font-bold text-lg ${textPrimary}`}>{value}</p>
+              </div>
+            </div>
+          ))}
         </div>
 
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg flex justify-between items-center">
-            <span>{error}</span>
-            <button onClick={() => setError(null)} className="ml-4 text-red-400 hover:text-red-600">✕</button>
+        {/* Dash tabs */}
+        <div className="flex gap-1 p-1 rounded-xl bg-[#e8e0d5]/50 dark:bg-[#1B2A4A]/40 mb-6">
+          {dashTabs.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setDashTab(key)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${
+                dashTab === key
+                  ? 'bg-white dark:bg-[#1B2A4A] text-[#1B2A4A] dark:text-[#F5F0E8] shadow-sm'
+                  : `${textMuted} hover:text-[#1B2A4A] dark:hover:text-[#F5F0E8]`
+              }`}
+            >
+              <Icon size={14} />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── BOOKS TAB ── */}
+        {dashTab === 'books' && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className={`font-semibold ${textPrimary}`}>My Books</h2>
+              <button
+                onClick={() => setShowClaimModal(true)}
+                className="px-3 py-1.5 text-xs font-medium border border-[#D4A843] text-[#D4A843] rounded-lg hover:bg-[#D4A843]/10 transition"
+              >
+                + Claim a Book
+              </button>
+            </div>
+
+            {books.length === 0 ? (
+              <div className="text-center py-16">
+                <BookOpen size={36} className="mx-auto text-[#D4A843]/30 mb-3" />
+                <p className={`text-sm ${textMuted}`}>No books listed yet. Claim a book to get started.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {books.map((book) => (
+                  <div key={book.id} className={`rounded-2xl border ${cardBg} p-4 flex gap-4`}>
+                    {/* Cover */}
+                    <div className="w-14 h-20 rounded-lg overflow-hidden bg-[#D4A843]/10 shrink-0">
+                      {book.cover_url
+                        ? <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full flex items-center justify-center"><BookOpen size={20} className="text-[#D4A843]/40" /></div>
+                      }
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <div>
+                          <h3 className={`font-semibold text-sm ${textPrimary} truncate`}>{book.title}</h3>
+                          <p className={`text-xs ${textMuted}`}>{book.author}</p>
+                        </div>
+                        <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${
+                          book.book_type === 'bulletin_board'
+                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                            : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                        }`}>
+                          {book.book_type === 'bulletin_board' ? 'Bulletin Board' : 'Standard'}
+                        </span>
+                      </div>
+
+                      {/* Stats */}
+                      <div className={`flex gap-4 text-xs ${textMuted} mb-3`}>
+                        <span>{book.page_count} pages</span>
+                        <span>{book.total_completions || 0} readers</span>
+                        <span>{book.pass_count || 0} passes</span>
+                        <span>${(book.total_paid_out || 0).toFixed(2)} paid</span>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => openEdit(book)}
+                          className="flex items-center gap-1 px-2.5 py-1 text-xs border border-[#D4A843]/40 text-[#D4A843] rounded-lg hover:bg-[#D4A843]/10 transition"
+                        >
+                          <Edit2 size={11} /> Edit
+                        </button>
+                        {book.book_type === 'bulletin_board' ? (
+                          <button
+                            onClick={() => handleRemoveFromBulletin(book)}
+                            className="flex items-center gap-1 px-2.5 py-1 text-xs border border-gray-300 dark:border-gray-600 text-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                          >
+                            <PinOff size={11} /> Remove from Bulletin
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setBulletinModalBook(book)}
+                            className="flex items-center gap-1 px-2.5 py-1 text-xs border border-gray-300 dark:border-gray-600 text-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                          >
+                            <Pin size={11} /> Post to Bulletin
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Listings</p>
-            <p className="text-3xl font-bold text-gray-900">{books.length}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Readers</p>
-            <p className="text-3xl font-bold text-gray-900">{totalReaders}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Paid Out</p>
-            <p className="text-3xl font-bold text-gray-900">${totalPaidOut.toFixed(2)}</p>
-          </div>
-        </div>
-
-        {books.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
-            <p className="text-gray-500 text-sm mb-4">You haven't submitted any book listings yet.</p>
-            <div className="flex gap-3 justify-center">
-              <button
-                onClick={() => { setShowClaimModal(true); setClaimSearch(""); setClaimResults([]); }}
-                className="border border-indigo-600 text-indigo-600 text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-50 transition"
-              >
-                Claim a Book
-              </button>
-              <button
-                onClick={() => navigate("/author-submit")}
-                className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
-              >
-                Submit Your First Book
-              </button>
+        {/* ── AMA TAB ── */}
+        {dashTab === 'ama' && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className={`font-semibold ${textPrimary}`}>My AMAs</h2>
+              <p className={`text-xs ${textMuted}`}>New sessions are created by the admin team.</p>
             </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {books.map((book) => (
-              <div key={book.id} className="bg-white rounded-xl border border-gray-200 p-5 flex gap-4 items-start">
-                <div className="flex-shrink-0 w-16 h-20 bg-gray-100 rounded-lg overflow-hidden">
-                  {book.cover_url ? (
-                    <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs text-center px-1">No cover</div>
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h2 className="text-base font-semibold text-gray-900 truncate">{book.title}</h2>
-                      <p className="text-sm text-gray-500">{book.author}</p>
-                    </div>
-                    {book.is_platform_book && (
-                      <span className="text-xs font-medium px-2 py-1 rounded-full bg-blue-100 text-blue-700 flex-shrink-0">
-                        Platform Book
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap gap-4 text-sm text-gray-600">
-                    <span><span className="font-medium text-gray-900">{book.page_count}</span> pages</span>
-                    <span><span className="font-medium text-gray-900">${book.bounty_amount.toFixed(2)}</span> bounty</span>
-                    <span><span className="font-medium text-gray-900">{book.total_completions}</span> attempts</span>
-                    <span><span className="font-medium text-gray-900">{book.pass_count}</span> passed</span>
-                    <span><span className="font-medium text-gray-900">${book.total_paid_out.toFixed(2)}</span> paid out</span>
-                  </div>
-
-                  <div className="mt-3 flex items-center gap-3">
-                    <button
-                      onClick={() => openEdit(book)}
-                      className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
-                    >
-                      Edit listing
-                    </button>
-
-                    <span className="text-gray-300">|</span>
-
-                    {/* Bulletin Board Action */}
-                    {!book.on_bulletin ? (
-                      <button
-                        onClick={() => setBulletinModalBook(book)}
-                        className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
-                      >
-                        📌 Post to Bulletin Board
-                      </button>
-                    ) : (
-                      <span className="text-sm font-medium text-green-600 flex items-center gap-1">
-                        ✓ On Bulletin Board
-                      </span>
-                    )}
-                  </div>
-                </div>
+            {amaSessions.length === 0 ? (
+              <div className="text-center py-16">
+                <MessageSquare size={36} className="mx-auto text-[#D4A843]/30 mb-3" />
+                <p className={`text-sm ${textMuted}`}>No AMA sessions yet.</p>
               </div>
-            ))}
+            ) : (
+              <div className="space-y-3">
+                {amaSessions.map((session) => (
+                  <button
+                    key={session.id}
+                    onClick={() => navigateTo(`ama/${session.id}`)}
+                    className={`w-full text-left rounded-2xl border ${cardBg} p-4 hover:border-[#D4A843]/60 transition`}
+                  >
+                    <div className="flex items-center justify-between gap-3 mb-1">
+                      <h3 className={`font-semibold text-sm ${textPrimary}`}>{session.title}</h3>
+                      {statusBadge(session.status)}
+                    </div>
+                    {session.books && (
+                      <p className={`text-xs text-[#D4A843] mb-1`}>{session.books.title}</p>
+                    )}
+                    <p className={`text-xs ${textMuted}`}>
+                      AMA: {new Date(session.ama_starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── BOUNTIES TAB ── */}
+        {dashTab === 'bounties' && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className={`font-semibold ${textPrimary}`}>My Bounties</h2>
+              <p className={`text-xs ${textMuted}`}>Managed by the admin team.</p>
+            </div>
+            {bounties.length === 0 ? (
+              <div className="text-center py-16">
+                <DollarSign size={36} className="mx-auto text-[#D4A843]/30 mb-3" />
+                <p className={`text-sm ${textMuted}`}>No bounties set up yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {bounties.map((bounty) => (
+                  <div key={bounty.id} className={`rounded-2xl border ${cardBg} p-4`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className={`font-semibold text-sm ${textPrimary}`}>{bounty.title}</h3>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        bounty.is_active
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                      }`}>
+                        {bounty.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    {bounty.books && (
+                      <p className={`text-xs text-[#D4A843] mb-2`}>{bounty.books.title}</p>
+                    )}
+                    <div className={`flex gap-4 text-xs ${textMuted}`}>
+                      <span>${bounty.payout_per_reader.toFixed(2)} per reader</span>
+                      <span>${bounty.pool_amount.toFixed(2)} pool</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── COMPETITIONS TAB ── */}
+        {dashTab === 'competitions' && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className={`font-semibold ${textPrimary}`}>My Competitions</h2>
+              <p className={`text-xs ${textMuted}`}>Managed by the admin team.</p>
+            </div>
+            {competitions.length === 0 ? (
+              <div className="text-center py-16">
+                <Trophy size={36} className="mx-auto text-[#D4A843]/30 mb-3" />
+                <p className={`text-sm ${textMuted}`}>No competitions yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {competitions.map((comp) => (
+                  <div key={comp.id} className={`rounded-2xl border ${cardBg} p-4`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className={`font-semibold text-sm ${textPrimary}`}>{comp.title}</h3>
+                      <span className={`text-xs px-2 py-0.5 rounded-full bg-[#D4A843]/10 text-[#D4A843]`}>
+                        {comp.format}
+                      </span>
+                    </div>
+                    <p className={`text-xs text-[#D4A843] mb-2`}>{comp.book_title}</p>
+                    <p className={`text-xs ${textMuted}`}>
+                      {new Date(comp.starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –{' '}
+                      {new Date(comp.ends_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* ─── Edit Modal ─────────────────────────────────────────── */}
+      {/* ── EDIT MODAL ── */}
       {editingBook && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-8 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl">
-            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900">Edit Listing</h2>
-              <button onClick={closeEdit} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className={`w-full max-w-lg rounded-2xl border ${cardBg} overflow-hidden`}>
+            {/* Modal header */}
+            <div className={`flex items-center justify-between px-5 py-4 border-b ${dividerColor}`}>
+              <h2 className={`font-semibold ${textPrimary}`}>Edit Book</h2>
+              <button onClick={closeEdit} className={`${textMuted} hover:text-[#D4A843]`}><X size={18} /></button>
             </div>
 
-            <div className="flex border-b border-gray-100 px-6">
-              {(["details", "quiz"] as EditTab[]).map((tab) => (
+            {/* Modal tabs */}
+            <div className={`flex border-b ${dividerColor}`}>
+              {(['details', 'quiz'] as EditTab[]).map((t) => (
                 <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`py-3 px-4 text-sm font-medium border-b-2 transition -mb-px ${
-                    activeTab === tab
-                      ? "border-indigo-600 text-indigo-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  key={t}
+                  onClick={() => setEditTab(t)}
+                  className={`flex-1 py-2.5 text-sm font-medium transition ${
+                    editTab === t
+                      ? 'border-b-2 border-[#D4A843] text-[#D4A843]'
+                      : textMuted
                   }`}
                 >
-                  {tab === "details" ? "Book Details" : "Quiz Questions"}
+                  {t === 'details' ? 'Details' : 'Quiz Questions'}
                 </button>
               ))}
             </div>
 
-            <div className="px-6 py-5">
-              {activeTab === "details" && (
-                <div className="space-y-5">
+            <div className="p-5 max-h-[60vh] overflow-y-auto">
+              {editTab === 'details' ? (
+                <div className="space-y-4">
+                  {/* Cover */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Cover Image</label>
-                    <div className="flex items-center gap-4">
-                      <div className="w-20 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                        {coverPreview ? (
-                          <img src={coverPreview} alt="Preview" className="w-full h-full object-cover" />
-                        ) : editingBook.cover_url ? (
-                          <img src={editingBook.cover_url} alt="Current cover" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs text-center px-1">No cover</div>
-                        )}
-                      </div>
-                      <div>
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleCoverSelect}
-                          className="hidden"
-                        />
-                        <button
-                          onClick={() => fileInputRef.current?.click()}
-                          className="text-sm border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition"
-                        >
-                          {editingBook.cover_url ? "Replace cover" : "Upload cover"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Book Title</label>
-                    <input
-                      type="text"
-                      value={editForm.title}
-                      onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Author Name</label>
-                    <input
-                      type="text"
-                      value={editForm.author}
-                      onChange={(e) => setEditForm({ ...editForm, author: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea
-                      value={editForm.description}
-                      onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                      rows={4}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Page Count</label>
+                    <label className={`block text-xs font-medium ${textMuted} mb-1`}>Cover Image</label>
                     <div className="flex items-center gap-3">
-                      <input
-                        type="number"
-                        min="1"
-                        value={editForm.page_count}
-                        onChange={(e) => setEditForm({ ...editForm, page_count: parseInt(e.target.value) || 0 })}
-                        className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                      <span className="text-sm text-gray-500">→ bounty: <strong>${calcBounty(editForm.page_count).toFixed(2)}</strong></span>
-                    </div>
-                  </div>
-
-                  {saveSuccess && <p className="text-sm text-green-600 font-medium">Changes saved!</p>}
-
-                  <div className="flex justify-end gap-3 pt-2">
-                    <button onClick={closeEdit} className="text-sm text-gray-500 hover:text-gray-700 font-medium px-4 py-2">Cancel</button>
-                    <button
-                      onClick={handleSaveDetails}
-                      disabled={saving || uploadingCover}
-                      className="bg-indigo-600 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition"
-                    >
-                      {uploadingCover ? "Uploading cover..." : saving ? "Saving..." : "Save Changes"}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "quiz" && (
-                <div>
-                  {questionsLoading ? (
-                    <p className="text-sm text-gray-400 py-4">Loading questions...</p>
-                  ) : (
-                    <div className="space-y-6">
-                      {questions.map((q, i) => (
-                        <div key={q.id} className="border border-gray-200 rounded-xl p-4">
-                          <p className="text-xs font-semibold text-gray-400 mb-3">QUESTION {i + 1}</p>
-                          <div className="space-y-3">
-                            <textarea
-                              value={q.question_text}
-                              onChange={(e) => updateQuestion(i, "question_text", e.target.value)}
-                              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            />
-                            <input
-                              type="text"
-                              value={q.correct_answer}
-                              onChange={(e) => updateQuestion(i, "correct_answer", e.target.value)}
-                              placeholder="Correct answer"
-                              className="w-full border border-green-300 rounded-lg px-3 py-2 text-sm"
-                            />
-                            {["wrong_answer_1", "wrong_answer_2", "wrong_answer_3"].map((field) => (
-                              <input
-                                key={field}
-                                type="text"
-                                value={(q as any)[field]}
-                                onChange={(e) => updateQuestion(i, field as keyof Question, e.target.value)}
-                                placeholder="Wrong answer"
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                      <div className="flex justify-end gap-3 pt-2">
-                        <button onClick={closeEdit} className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2">Cancel</button>
-                        <button
-                          onClick={handleSaveQuestions}
-                          disabled={saving}
-                          className="bg-indigo-600 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-indigo-700 transition"
-                        >
-                          {saving ? "Saving..." : "Save Questions"}
-                        </button>
+                      <div className="w-16 h-22 rounded-lg overflow-hidden bg-[#D4A843]/10">
+                        {(coverPreview || editingBook.cover_url)
+                          ? <img src={coverPreview || editingBook.cover_url!} alt="" className="w-full h-full object-cover" />
+                          : <div className="w-full h-full flex items-center justify-center"><BookOpen size={20} className="text-[#D4A843]/40" /></div>
+                        }
                       </div>
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-[#D4A843]/40 text-[#D4A843] rounded-lg hover:bg-[#D4A843]/10 transition"
+                      >
+                        <Upload size={12} /> {uploadingCover ? 'Uploading...' : 'Upload'}
+                      </button>
+                      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverSelect} />
                     </div>
+                  </div>
+
+                  {[
+                    { label: 'Title', key: 'title', type: 'text' },
+                    { label: 'Author', key: 'author', type: 'text' },
+                    { label: 'Page Count', key: 'page_count', type: 'number' },
+                  ].map(({ label, key, type }) => (
+                    <div key={key}>
+                      <label className={`block text-xs font-medium ${textMuted} mb-1`}>{label}</label>
+                      <input
+                        type={type}
+                        value={(editForm as any)[key]}
+                        onChange={(e) => setEditForm((f) => ({ ...f, [key]: type === 'number' ? +e.target.value : e.target.value }))}
+                        className={inputClass}
+                      />
+                    </div>
+                  ))}
+
+                  <div>
+                    <label className={`block text-xs font-medium ${textMuted} mb-1`}>Description</label>
+                    <textarea
+                      rows={3}
+                      value={editForm.description}
+                      onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+                      className={`${inputClass} resize-none`}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleSaveDetails}
+                    disabled={saving}
+                    className="w-full py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-semibold hover:bg-[#c49a3a] disabled:opacity-50 transition flex items-center justify-center gap-2"
+                  >
+                    {saving ? 'Saving...' : saveSuccess ? <><Check size={14} /> Saved!</> : 'Save Details'}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {questionsLoading ? (
+                    <p className={`text-sm ${textMuted}`}>Loading questions...</p>
+                  ) : questions.length === 0 ? (
+                    <p className={`text-sm ${textMuted}`}>No questions found for this book.</p>
+                  ) : (
+                    questions.map((q, i) => (
+                      <div key={q.id} className={`rounded-xl border ${isDark ? 'border-gray-700' : 'border-gray-200'} p-4`}>
+                        <p className={`text-xs font-medium ${textMuted} mb-2`}>Question {i + 1}</p>
+                        <input
+                          className={`${inputClass} mb-2`}
+                          placeholder="Question"
+                          value={q.question_text}
+                          onChange={(e) => updateQuestion(i, 'question_text', e.target.value)}
+                        />
+                        <input
+                          className={`${inputClass} mb-2 border-green-400/50`}
+                          placeholder="Correct answer"
+                          value={q.correct_answer}
+                          onChange={(e) => updateQuestion(i, 'correct_answer', e.target.value)}
+                        />
+                        {(['wrong_answer_1', 'wrong_answer_2', 'wrong_answer_3'] as const).map((field, wi) => (
+                          <input
+                            key={field}
+                            className={`${inputClass} mb-2`}
+                            placeholder={`Wrong answer ${wi + 1}`}
+                            value={q[field]}
+                            onChange={(e) => updateQuestion(i, field, e.target.value)}
+                          />
+                        ))}
+                      </div>
+                    ))
+                  )}
+                  {questions.length > 0 && (
+                    <button
+                      onClick={handleSaveQuestions}
+                      disabled={saving}
+                      className="w-full py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-semibold hover:bg-[#c49a3a] disabled:opacity-50 transition flex items-center justify-center gap-2"
+                    >
+                      {saving ? 'Saving...' : saveSuccess ? <><Check size={14} /> Saved!</> : 'Save Questions'}
+                    </button>
                   )}
                 </div>
               )}
@@ -672,67 +766,90 @@ export default function AuthorDashboard() {
         </div>
       )}
 
-      {/* ─── Claim Modal ─────────────────────────────────────────── */}
-      {showClaimModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Claim a Platform Book</h2>
-              <button onClick={() => setShowClaimModal(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
-            </div>
-            <div className="flex gap-2 mb-4">
-              <input
-                type="text"
-                placeholder="Search..."
-                value={claimSearch}
-                onChange={(e) => setClaimSearch(e.target.value)}
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
-              />
-              <button onClick={searchClaimableBooks} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">Search</button>
-            </div>
-            <div className="space-y-3 max-h-72 overflow-y-auto">
-              {claimResults.map((book) => (
-                <div key={book.id} className="flex items-center gap-3 border p-3 rounded-xl">
-                  <div className="flex-1 min-w-0"><p className="text-sm font-medium truncate">{book.title}</p></div>
-                  <button onClick={() => claimBook(book)} className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg">Claim</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── Bulletin Board Modal ─────────────────────────────────── */}
+      {/* ── BULLETIN CONFIRM MODAL ── */}
       {bulletinModalBook && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-          <div className="w-full max-w-sm rounded-xl border p-6 bg-white border-gray-200 shadow-2xl">
-            <h3 className="text-lg font-bold mb-2 text-gray-900">
-              Post to Bulletin Board?
-            </h3>
-            <p className="text-sm mb-4 text-gray-600">
-              <strong className="text-gray-900">{bulletinModalBook.title}</strong> will appear on the public bulletin board immediately. Readers can discover it for free.
-            </p>
-            <p className="text-xs mb-5 p-3 rounded-lg bg-indigo-50 text-gray-500">
-              💡 Since this book is already listed on ReadToEarn, it will automatically show the "Available on ReadToEarn" badge on the board.
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className={`w-full max-w-sm rounded-2xl border ${cardBg} p-6`}>
+            <h3 className={`font-semibold ${textPrimary} mb-2`}>Post to Bulletin Board?</h3>
+            <p className={`text-sm ${textMuted} mb-5`}>
+              <span className="font-medium text-[#D4A843]">{bulletinModalBook.title}</span> will be listed on the public Bulletin Board. You can remove it at any time.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setBulletinModalBook(null)}
-                className="flex-1 py-2 rounded-lg text-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+                className={`flex-1 py-2 rounded-lg text-sm border ${isDark ? 'border-gray-600 text-gray-400' : 'border-gray-300 text-gray-500'} hover:bg-gray-100 dark:hover:bg-gray-700 transition`}
               >
                 Cancel
               </button>
               <button
                 onClick={() => handlePostToBulletin(bulletinModalBook)}
                 disabled={bulletinSubmitting}
-                className="flex-1 py-2 rounded-lg text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition disabled:opacity-50"
+                className="flex-1 py-2 rounded-lg text-sm bg-[#D4A843] text-[#1B2A4A] font-semibold hover:bg-[#c49a3a] disabled:opacity-50 transition"
               >
-                {bulletinSubmitting ? 'Posting...' : '📌 Post It'}
+                {bulletinSubmitting ? 'Posting...' : 'Post It'}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* ── CLAIM MODAL ── */}
+      {showClaimModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className={`w-full max-w-md rounded-2xl border ${cardBg} overflow-hidden`}>
+            <div className={`flex items-center justify-between px-5 py-4 border-b ${dividerColor}`}>
+              <h2 className={`font-semibold ${textPrimary}`}>Claim a Book</h2>
+              <button onClick={() => { setShowClaimModal(false); setClaimResults([]); setClaimSearch(''); setClaimSuccess(null); }} className={`${textMuted} hover:text-[#D4A843]`}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5">
+              {claimSuccess && (
+                <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm mb-4">
+                  <Check size={14} /> "{claimSuccess}" claimed successfully.
+                </div>
+              )}
+              <div className="flex gap-2 mb-4">
+                <input
+                  className={`${inputClass} flex-1`}
+                  placeholder="Search by title..."
+                  value={claimSearch}
+                  onChange={(e) => setClaimSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && searchClaimableBooks()}
+                />
+                <button
+                  onClick={searchClaimableBooks}
+                  disabled={claimSearching}
+                  className="px-3 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-semibold hover:bg-[#c49a3a] disabled:opacity-50 transition"
+                >
+                  <Search size={14} />
+                </button>
+              </div>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {claimResults.length === 0 && !claimSearching && (
+                  <p className={`text-sm ${textMuted} text-center py-4`}>Search for a book to claim it.</p>
+                )}
+                {claimResults.map((book) => (
+                  <div key={book.id} className={`flex items-center justify-between gap-3 p-3 rounded-xl border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+                    <div>
+                      <p className={`text-sm font-medium ${textPrimary}`}>{book.title}</p>
+                      <p className={`text-xs ${textMuted}`}>{book.author} · {book.page_count} pages</p>
+                    </div>
+                    <button
+                      onClick={() => claimBook(book)}
+                      disabled={claiming === book.id}
+                      className="px-3 py-1 text-xs bg-[#D4A843] text-[#1B2A4A] rounded-lg font-semibold hover:bg-[#c49a3a] disabled:opacity-50 transition"
+                    >
+                      {claiming === book.id ? 'Claiming...' : 'Claim'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
-}
+};
