@@ -31,6 +31,8 @@ import { BulletinSubmit } from '../pages/BulletinSubmit';
 import { HowItWorks } from '../pages/HowItWorks';
 import { Competitions } from '../pages/Competitions';
 import { Earn } from '../pages/Earn';
+import { AuthorAMA } from './pages/AuthorAMA';
+import { AMASession } from './pages/AMASession';
 
 const WAITLIST_MODE = true;
 
@@ -62,14 +64,20 @@ export const Router = () => {
   }
 
   if (route === '/admin') return <Admin />;
-  if (route === '/reset-password') return <ResetPassword />;
-  if (route === '/terms') return <TermsOfService />;
-  if (route === '/privacy') return <PrivacyPolicy />;
+if (route === '/reset-password') return <ResetPassword />;
+if (route === '/terms') return <TermsOfService />;
+if (route === '/privacy') return <PrivacyPolicy />;
 
-  if (WAITLIST_MODE && !user) return <Waitlist />;
+if (route === '/ama') return <AuthorAMA />;
+if (route.startsWith('/ama/')) {
+  const sessionId = route.replace('/ama/', '');
+  return <AMASession sessionId={sessionId} />;
+}
 
-  if (!user && route === '/signup') return <Signup />;
-  if (!user) return <Login />;
+if (WAITLIST_MODE && !user) return <Waitlist />;
+
+if (!user && route === '/signup') return <Signup />;
+if (!user) return <Login />;
 
   const KNOWN_ROUTES = [
     '/',
