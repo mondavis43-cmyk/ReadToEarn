@@ -224,19 +224,21 @@ function CheckoutForm({ item }: { item: CheckoutItem }) {
 
   // After payments insert, check for pending submission
 const pending = (window as any).__pendingSubmission;
-if (pending && item.type === 'listing') {
-  await supabase.from('author_submissions').insert(pending);
-  delete (window as any).__pendingSubmission;
-}
-        setSuccess(true);
-        setTimeout(() => goTo(REDIRECT_MAP[item.type] ?? "/profile"), 2500);
+      if (pending && item.type === "listing") {
+        await supabase.from("author_submissions").insert(pending);
+        delete (window as any).__pendingSubmission;
       }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
-    } finally {
-      setLoading(false);
+
+      // 3. Show success + redirect
+      setSuccess(true);
+      setTimeout(() => goTo(REDIRECT_MAP[item.type] ?? "/profile"), 2500);
     }
-  };
+  } catch (err: unknown) {
+    setError(err instanceof Error ? err.message : "Something went wrong.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   if (success) {
     return (
