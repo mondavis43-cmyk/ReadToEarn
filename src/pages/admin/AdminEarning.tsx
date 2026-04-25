@@ -1,2 +1,3 @@
 export function AdminEarning() {
-  return <div>Books coming soon</div>;
+  return <div>Earning tasks coming soon</div>;
+}
