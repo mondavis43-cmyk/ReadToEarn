@@ -11,44 +11,51 @@ interface Book {
 
 interface Competition {
   id: string;
-  type: string;
+  format: string;
   title: string;
-  book_ids: string[];
+  book_title: string | null;
+  book_author: string | null;
   entry_fee: number;
   prize_pool: number;
-  platform_cut: number;
-  start_date: string | null;
-  end_date: string | null;
-  status: 'upcoming' | 'active' | 'completed';
+  is_sponsored: boolean;
+  starts_at: string | null;
+  ends_at: string | null;
+  status: 'upcoming' | 'active' | 'completed' | 'canceled';
   created_at: string;
 }
 
 interface NewCompetition {
-  type: string;
+  format: string;
   title: string;
-  book_ids: string[];
-  start_date: string;
-  end_date: string;
+  book_id: string;
+  starts_at: string;
+  ends_at: string;
   entry_fee: string;
   prize_pool: string;
+  is_sponsored: boolean;
 }
 
-const COMPETITION_TYPES = ['Sprint', 'Read-A-Thon', 'Elimination Bracket'];
+const COMPETITION_FORMATS = [
+  { value: 'sprint', label: 'Sprint' },
+  { value: 'readathon', label: 'Read-A-Thon' },
+  { value: 'elimination', label: 'Elimination Bracket' },
+];
 
-const emptyCompetition: NewCompetition = {
-  type: 'Sprint',
+const emptyComp: NewCompetition = {
+  format: 'sprint',
   title: '',
-  book_ids: [],
-  start_date: '',
-  end_date: '',
+  book_id: '',
+  starts_at: '',
+  ends_at: '',
   entry_fee: '',
   prize_pool: '',
+  is_sponsored: false,
 };
 
 export function AdminCompetitions() {
   const [books, setBooks] = useState<Book[]>([]);
   const [competitions, setCompetitions] = useState<Competition[]>([]);
-  const [newComp, setNewComp] = useState<NewCompetition>(emptyCompetition);
+  const [newComp, setNewComp] = useState<NewCompetition>(emptyComp);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -69,51 +76,43 @@ export function AdminCompetitions() {
     setCompetitions(compsData || []);
   }
 
-  function toggleBook(id: string) {
-    setNewComp((prev) => ({
-      ...prev,
-      book_ids: prev.book_ids.includes(id)
-        ? prev.book_ids.filter((b) => b !== id)
-        : [...prev.book_ids, id],
-    }));
-  }
-
   async function handleSave() {
-    if (!newComp.title || !newComp.start_date || !newComp.end_date || !newComp.entry_fee) {
+    if (!newComp.title || !newComp.starts_at || !newComp.ends_at || !newComp.entry_fee) {
       setError('Title, dates, and entry fee are required.');
-      return;
-    }
-    if (
-      (newComp.type === 'Sprint' || newComp.type === 'Elimination Bracket') &&
-      newComp.book_ids.length === 0
-    ) {
-      setError('Select at least one book for this competition type.');
       return;
     }
     setSaving(true);
     setError('');
-    const entryFee = parseFloat(newComp.entry_fee);
-    const prizePool = parseFloat(newComp.prize_pool) || 0;
+
+    // Look up book title/author to store flat (what the page reads)
+    const selectedBook = books.find((b) => b.id === newComp.book_id);
+
     const { error: err } = await supabase.from('competitions').insert({
-      type: newComp.type,
+      format: newComp.format,
       title: newComp.title,
-      entry_fee: entryFee,
-      prize_pool: prizePool,
-      platform_cut: Math.round(prizePool * 0.25 * 100) / 100,
-      start_date: newComp.start_date,
-      end_date: newComp.end_date,
+      book_title: selectedBook?.title ?? null,
+      book_author: selectedBook?.author ?? null,
+      entry_fee: parseFloat(newComp.entry_fee),
+      prize_pool: parseFloat(newComp.prize_pool) || 0,
+      is_sponsored: newComp.is_sponsored,
+      starts_at: newComp.starts_at,
+      ends_at: newComp.ends_at,
       status: 'upcoming',
-      book_ids: newComp.type === 'Read-A-Thon' ? [] : newComp.book_ids,
+      pre_registration_count: 0,
     });
-    if (err) { setError('Failed to save competition.'); setSaving(false); return; }
+
+    if (err) { setError('Failed to save: ' + err.message); setSaving(false); return; }
     setSuccess('Competition created!');
-    setNewComp(emptyCompetition);
+    setNewComp(emptyComp);
     setShowForm(false);
     setSaving(false);
     loadData();
   }
 
-  async function handleUpdateStatus(id: string, status: 'upcoming' | 'active' | 'completed') {
+  async function handleUpdateStatus(
+    id: string,
+    status: 'upcoming' | 'active' | 'completed' | 'canceled'
+  ) {
     await supabase.from('competitions').update({ status }).eq('id', id);
     loadData();
   }
@@ -127,10 +126,11 @@ export function AdminCompetitions() {
   const statusColor = (status: Competition['status']) => {
     if (status === 'active') return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
     if (status === 'upcoming') return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+    if (status === 'canceled') return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
     return 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400';
   };
 
-  const standardBooks = (books ?? []).filter((b) => b.book_type !== 'bulletin_board');
+  const standardBooks = books.filter((b) => b.book_type !== 'bulletin_board');
 
   return (
     <div className="space-y-4">
@@ -165,21 +165,21 @@ export function AdminCompetitions() {
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Create Competition</h3>
-            <button onClick={() => { setShowForm(false); setNewComp(emptyCompetition); }} className="text-[#6B7280]">
+            <button onClick={() => { setShowForm(false); setNewComp(emptyComp); }} className="text-[#6B7280]">
               <X size={18} />
             </button>
           </div>
 
-          {/* Type */}
+          {/* Format */}
           <div>
-            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Type</label>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Format</label>
             <select
               className={selectClass}
-              value={newComp.type}
-              onChange={(e) => setNewComp({ ...newComp, type: e.target.value, book_ids: [] })}
+              value={newComp.format}
+              onChange={(e) => setNewComp({ ...newComp, format: e.target.value })}
             >
-              {COMPETITION_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
+              {COMPETITION_FORMATS.map((f) => (
+                <option key={f.value} value={f.value}>{f.label}</option>
               ))}
             </select>
           </div>
@@ -195,27 +195,22 @@ export function AdminCompetitions() {
             />
           </div>
 
-          {/* Books (not for Read-A-Thon) */}
-          {newComp.type !== 'Read-A-Thon' && (
-            <div>
-              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Books</label>
-              <div className="space-y-1 max-h-48 overflow-y-auto border border-[#e8e0d5] dark:border-gray-700 rounded-lg p-2">
-                {standardBooks.map((b) => (
-                  <label key={b.id} className="flex items-center gap-2 cursor-pointer px-2 py-1 rounded hover:bg-[#f5f0e8] dark:hover:bg-gray-700">
-                    <input
-                      type="checkbox"
-                      checked={newComp.book_ids.includes(b.id)}
-                      onChange={() => toggleBook(b.id)}
-                      className="accent-[#D4A843]"
-                    />
-                    <span className="text-sm text-[#1B2A4A] dark:text-[#F5F0E8]">
-                      {b.title} <span className="text-[#6B7280]">— {b.author}</span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Book (optional for Read-A-Thon) */}
+          <div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
+              Book {newComp.format === 'readathon' ? '(optional for Read-A-Thon)' : ''}
+            </label>
+            <select
+              className={selectClass}
+              value={newComp.book_id}
+              onChange={(e) => setNewComp({ ...newComp, book_id: e.target.value })}
+            >
+              <option value="">Select a book...</option>
+              {standardBooks.map((b) => (
+                <option key={b.id} value={b.id}>{b.title} — {b.author}</option>
+              ))}
+            </select>
+          </div>
 
           {/* Entry fee + Prize pool */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -242,23 +237,42 @@ export function AdminCompetitions() {
                 value={newComp.prize_pool}
                 onChange={(e) => setNewComp({ ...newComp, prize_pool: e.target.value })}
               />
-              {newComp.prize_pool && (
-                <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-1">
-                  Platform cut (25%): ${(parseFloat(newComp.prize_pool) * 0.25).toFixed(2)}
-                </p>
-              )}
             </div>
+          </div>
+
+          {/* Sponsored toggle */}
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="is_sponsored"
+              checked={newComp.is_sponsored}
+              onChange={(e) => setNewComp({ ...newComp, is_sponsored: e.target.checked })}
+              className="accent-[#D4A843] w-4 h-4"
+            />
+            <label htmlFor="is_sponsored" className="text-sm text-[#1B2A4A] dark:text-[#F5F0E8]">
+              Author-sponsored (free to readers)
+            </label>
           </div>
 
           {/* Dates */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Start Date</label>
-              <input type="date" className={inputClass} value={newComp.start_date} onChange={(e) => setNewComp({ ...newComp, start_date: e.target.value })} />
+              <input
+                type="date"
+                className={inputClass}
+                value={newComp.starts_at}
+                onChange={(e) => setNewComp({ ...newComp, starts_at: e.target.value })}
+              />
             </div>
             <div>
               <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">End Date</label>
-              <input type="date" className={inputClass} value={newComp.end_date} onChange={(e) => setNewComp({ ...newComp, end_date: e.target.value })} />
+              <input
+                type="date"
+                className={inputClass}
+                value={newComp.ends_at}
+                onChange={(e) => setNewComp({ ...newComp, ends_at: e.target.value })}
+              />
             </div>
           </div>
 
@@ -271,7 +285,7 @@ export function AdminCompetitions() {
               {saving ? 'Saving...' : 'Create Competition'}
             </button>
             <button
-              onClick={() => { setShowForm(false); setNewComp(emptyCompetition); }}
+              onClick={() => { setShowForm(false); setNewComp(emptyComp); }}
               className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-[#6B7280] hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               Cancel
@@ -290,7 +304,10 @@ export function AdminCompetitions() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <p className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8]">{comp.title}</p>
-                  <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-0.5">{comp.type}</p>
+                  <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-0.5">
+                    {comp.format}{comp.book_title ? ` · ${comp.book_title}` : ''}
+                    {comp.is_sponsored ? ' · Sponsored' : ''}
+                  </p>
                   <div className="flex flex-wrap gap-4 mt-2 text-sm">
                     <span className="text-[#1B2A4A] dark:text-[#F5F0E8]">
                       Entry: <strong>${comp.entry_fee}</strong>
@@ -298,10 +315,10 @@ export function AdminCompetitions() {
                     <span className="text-[#D4A843] font-medium">
                       Prize pool: ${comp.prize_pool}
                     </span>
-                    {comp.start_date && (
+                    {comp.starts_at && (
                       <span className="text-[#6B7280] dark:text-gray-400">
-                        {new Date(comp.start_date).toLocaleDateString()} –{' '}
-                        {comp.end_date ? new Date(comp.end_date).toLocaleDateString() : 'TBD'}
+                        {new Date(comp.starts_at).toLocaleDateString()} –{' '}
+                        {comp.ends_at ? new Date(comp.ends_at).toLocaleDateString() : 'TBD'}
                       </span>
                     )}
                   </div>
@@ -313,16 +330,33 @@ export function AdminCompetitions() {
 
               <div className="flex gap-2 mt-3 flex-wrap">
                 {comp.status === 'upcoming' && (
-                  <button onClick={() => handleUpdateStatus(comp.id, 'active')} className="text-xs px-3 py-1.5 rounded-lg border border-green-400 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition">
+                  <button
+                    onClick={() => handleUpdateStatus(comp.id, 'active')}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-green-400 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition"
+                  >
                     Activate
                   </button>
                 )}
                 {comp.status === 'active' && (
-                  <button onClick={() => handleUpdateStatus(comp.id, 'completed')} className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-[#6B7280] hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                  <button
+                    onClick={() => handleUpdateStatus(comp.id, 'completed')}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-[#6B7280] hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                  >
                     Mark Completed
                   </button>
                 )}
-                <button onClick={() => handleDelete(comp.id)} className="text-xs px-3 py-1.5 rounded-lg border border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition ml-auto">
+                {(comp.status === 'upcoming' || comp.status === 'active') && (
+                  <button
+                    onClick={() => handleUpdateStatus(comp.id, 'canceled')}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button
+                  onClick={() => handleDelete(comp.id)}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition ml-auto"
+                >
                   Delete
                 </button>
               </div>
