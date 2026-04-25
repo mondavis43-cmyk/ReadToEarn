@@ -1,18 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
-import { CheckCircle, Trophy } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+import { Trophy } from 'lucide-react';
 
 const COMPETITION_TIERS = [
   {
     label: 'Spark',
     price: 60,
+    cents: 6000,
     platformFee: 15,
     prizePool: 45,
     platformPct: 25,
@@ -21,6 +16,7 @@ const COMPETITION_TIERS = [
   {
     label: 'Boost',
     price: 120,
+    cents: 12000,
     platformFee: 30,
     prizePool: 90,
     platformPct: 25,
@@ -29,6 +25,7 @@ const COMPETITION_TIERS = [
   {
     label: 'Spotlight',
     price: 250,
+    cents: 25000,
     platformFee: 50,
     prizePool: 200,
     platformPct: 20,
@@ -37,6 +34,7 @@ const COMPETITION_TIERS = [
   {
     label: 'Grand',
     price: 500,
+    cents: 50000,
     platformFee: 75,
     prizePool: 425,
     platformPct: 15,
@@ -50,8 +48,6 @@ export const AuthorCompetition = () => {
   const { navigateTo } = useNavigate();
   const { isDark, toggleTheme } = useTheme();
 
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const [authorName, setAuthorName] = useState('');
@@ -72,17 +68,27 @@ export const AuthorCompetition = () => {
 
   const isFormValid = () => authorName && email && bookTitles;
 
-  const handleSubmit = async () => {
+  const handleCheckout = () => {
     if (!isFormValid()) {
       setError('Please fill out all required fields.');
       return;
     }
-    setLoading(true);
     setError('');
 
-    const { error: insertError } = await supabase
-      .from('author_competition_submissions')
-      .insert({
+    (window as any).__checkoutItem = {
+      type: 'competition',
+      label: `Sponsored Competition — ${selectedTier.label} (${selectedType}) for "${bookTitles}"`,
+      amount: selectedTier.cents,
+      metadata: {
+        tier: selectedTier.label,
+        competition_type: selectedType,
+        prize_pool: selectedTier.prizePool,
+      },
+    };
+
+    (window as any).__pendingSubmission = {
+      table: 'author_competition_submissions',
+      data: {
         author_name: authorName,
         email,
         book_titles: bookTitles,
@@ -91,79 +97,14 @@ export const AuthorCompetition = () => {
         platform_fee: selectedTier.platformFee,
         prize_pool: selectedTier.prizePool,
         competition_type: selectedType,
-        notes,
-        status: 'pending_payment',
-      });
+        notes: notes || null,
+        status: 'active',
+      },
+    };
 
-    if (insertError) {
-      setError('Something went wrong. Please try again.');
-      setLoading(false);
-      return;
-    }
-
-    setSubmitted(true);
-    setLoading(false);
+    window.history.pushState({}, '', '/checkout');
+    window.dispatchEvent(new PopStateEvent('popstate'));
   };
-
-  if (submitted) {
-    return (
-      <div className={`min-h-screen flex items-center justify-center px-4 transition-colors ${isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]'}`}>
-        <div className="max-w-md w-full text-center">
-          <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
-          <h1 className={`font-serif text-3xl mb-3 ${textPrimary}`}>Competition Submitted!</h1>
-          <p className={`mb-2 ${textMuted}`}>
-            We've received your competition request for{' '}
-            <span className={`font-medium ${textPrimary}`}>{bookTitles}</span>.
-          </p>
-          <p className={`text-sm mb-8 ${textMuted}`}>
-            We'll email <span className={textPrimary}>{email}</span> with payment instructions and scheduling details. Your competition goes live once payment is confirmed.
-          </p>
-          <div className={`rounded-xl border p-4 mb-8 text-left ${cardBg}`}>
-            <div className="flex justify-between text-sm mb-2">
-              <span className={textMuted}>Tier</span>
-              <span className={`font-medium ${textPrimary}`}>{selectedTier.label}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-2">
-              <span className={textMuted}>Competition type</span>
-              <span className={`font-medium ${textPrimary}`}>{selectedType}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-2">
-              <span className={textMuted}>Total cost</span>
-              <span className={`font-medium ${textPrimary}`}>${selectedTier.price}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-2">
-              <span className={textMuted}>Platform fee</span>
-              <span className={`font-medium ${textPrimary}`}>${selectedTier.platformFee}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className={textMuted}>Prize pool</span>
-              <span className="text-green-500 font-medium">${selectedTier.prizePool}</span>
-            </div>
-          </div>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => {
-                setSubmitted(false);
-                setAuthorName(''); setEmail(''); setBookTitles('');
-                setSelectedTier(COMPETITION_TIERS[0]);
-                setSelectedType(COMPETITION_TYPES[0]);
-                setNotes('');
-              }}
-              className="bg-[#D4A843] text-[#1B2A4A] font-medium px-6 py-3 rounded-lg hover:bg-[#c49a3a] transition"
-            >
-              Submit Another
-            </button>
-            <button
-              onClick={() => navigateTo('/authors')}
-              className={`font-medium px-6 py-3 rounded-lg transition border ${cardBg} ${textPrimary}`}
-            >
-              Back to Authors
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]'}`}>
@@ -336,7 +277,7 @@ export const AuthorCompetition = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className={inputClass}
-                  placeholder="Payment instructions sent here"
+                  placeholder="Receipt and scheduling details sent here"
                 />
               </div>
             </div>
@@ -383,14 +324,13 @@ export const AuthorCompetition = () => {
         )}
 
         <button
-          onClick={handleSubmit}
-          disabled={loading}
-          className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-4 rounded-xl hover:bg-[#c49a3a] transition disabled:opacity-50 disabled:cursor-not-allowed text-lg"
+          onClick={handleCheckout}
+          className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-4 rounded-xl hover:bg-[#c49a3a] transition text-lg"
         >
-          {loading ? 'Submitting...' : `Sponsor Competition — $${selectedTier.price} due after review`}
+          {`Sponsor Competition — Pay $${selectedTier.price}`}
         </button>
         <p className={`text-xs text-center mt-3 ${textMuted}`}>
-          No payment required now. We'll email you with next steps.
+          You'll be taken to secure checkout. Your competition is scheduled immediately after payment.
         </p>
 
       </div>
