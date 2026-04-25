@@ -68,7 +68,35 @@ interface ClaimableBook {
 }
 
 type EditTab = 'details' | 'quiz';
-type DashTab = 'books' | 'ama' | 'bounties' | 'competitions';
+type DashTab = 'books' | 'ama' | 'bounties' | 'competitions' | 'ambassador';
+
+type ListingTier = 'single' | 'trilogy' | 'series' | 'catalog' | 'imprint';
+
+const LISTING_TIERS: Record<ListingTier, { label: string; fee: number; books: number }> = {
+  single:   { label: 'Single',   fee: 7,   books: 1  },
+  trilogy:  { label: 'Trilogy',  fee: 18,  books: 3  },
+  series:   { label: 'Series',   fee: 30,  books: 5  },
+  catalog:  { label: 'Catalog',  fee: 50,  books: 10 },
+  imprint:  { label: 'Imprint',  fee: 100, books: 25 },
+};
+
+const AMBASSADOR_PCT = 0.25;
+
+interface AmbassadorPayout {
+  id: string;
+  referred_id: string;
+  listing_tier: ListingTier | null;
+  listing_fee: number;
+  payout_amount: number;
+  status: 'pending' | 'paid';
+  created_at: string;
+  paid_at: string | null;
+  referred: { email: string } | null;
+}
+
+interface AuthorProfile {
+  author_referral_code: string | null;
+}
 
 // ── Component ──────────────────────────────────────────────────────────────
 
@@ -104,6 +132,12 @@ export const AuthorDashboard = () => {
 
   // Competitions
   const [competitions, setCompetitions] = useState<CompetitionRow[]>([]);
+
+  // Ambassador
+const [authorProfile, setAuthorProfile] = useState<AuthorProfile | null>(null);
+const [ambassadorPayouts, setAmbassadorPayouts] = useState<AmbassadorPayout[]>([]);
+const [codeCopied, setCodeCopied] = useState(false);
+const [linkCopied, setLinkCopied] = useState(false);
 
   // Stats
   const [totalReaders, setTotalReaders] = useState(0);
@@ -157,14 +191,13 @@ export const AuthorDashboard = () => {
 
     setUserId(user.id);
     await Promise.all([
-      fetchBooks(user.id),
-      fetchAMA(user.id),
-      fetchBounties(user.id),
-      fetchCompetitions(user.id),
-    ]);
-    setLoading(false);
-  }
-
+  fetchBooks(user.id),
+  fetchAMA(user.id),
+  fetchBounties(user.id),
+  fetchCompetitions(user.id),
+  fetchAmbassador(user.id),
+]);
+    
   async function fetchBooks(uid: string) {
     const { data } = await supabase
       .from('books')
@@ -205,6 +238,22 @@ export const AuthorDashboard = () => {
     setCompetitions(data || []);
   }
 
+  async function fetchAmbassador(uid: string) {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('author_referral_code')
+    .eq('id', uid)
+    .single();
+  setAuthorProfile(profile);
+
+  const { data: payouts } = await supabase
+    .from('author_ambassador_payouts')
+    .select('id, referred_id, listing_tier, listing_fee, payout_amount, status, created_at, paid_at, referred:profiles!referred_id(email)')
+    .eq('referrer_id', uid)
+    .order('created_at', { ascending: false });
+  setAmbassadorPayouts((payouts as any) || []);
+}
+  
   // ── Bulletin Board ──────────────────────────────────────────────────────
 
   async function handlePostToBulletin(book: BookListing) {
@@ -380,6 +429,7 @@ export const AuthorDashboard = () => {
     { key: 'ama', label: 'AMAs', icon: MessageSquare },
     { key: 'bounties', label: 'Bounties', icon: DollarSign },
     { key: 'competitions', label: 'Competitions', icon: Trophy },
+    { key: 'ambassador', label: 'Ambassador', icon: Star },
   ];
 
   return (
@@ -632,6 +682,156 @@ export const AuthorDashboard = () => {
         )}
       </div>
 
+      {/* ── AMBASSADOR TAB ── */}
+{dashTab === 'ambassador' && (
+  <div>
+    {/* Header */}
+    <div className="mb-6">
+      <h2 className={`font-semibold ${textPrimary} mb-1`}>Author Ambassador Program</h2>
+      <p className={`text-sm ${textMuted}`}>
+        Refer another author. When they buy their first listing, you earn 25% of the listing fee — automatically credited to your payout balance.
+      </p>
+    </div>
+
+    {/* Tier reference */}
+    <div className={`rounded-2xl border ${cardBg} p-4 mb-6`}>
+      <p className={`text-xs font-semibold ${textMuted} uppercase tracking-wide mb-3`}>Listing Tiers & Your Cut</p>
+      <div className="grid grid-cols-5 gap-2">
+        {(Object.entries(LISTING_TIERS) as [ListingTier, typeof LISTING_TIERS[ListingTier]][]).map(([key, tier]) => (
+          <div key={key} className="text-center">
+            <p className={`text-xs font-semibold ${textPrimary}`}>{tier.label}</p>
+            <p className={`text-xs ${textMuted}`}>{tier.books} {tier.books === 1 ? 'book' : 'books'}</p>
+            <p className="text-xs text-[#D4A843] font-bold mt-1">
+              +${(tier.fee * AMBASSADOR_PCT).toFixed(2)}
+            </p>
+            <p className={`text-xs ${textMuted}`}>(${tier.fee} fee)</p>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* Referral code + link */}
+    <div className={`rounded-2xl border ${cardBg} p-5 mb-6`}>
+      <p className={`text-xs font-semibold ${textMuted} uppercase tracking-wide mb-3`}>Your Referral Code</p>
+
+      {authorProfile?.author_referral_code ? (
+        <div className="space-y-3">
+          {/* Code */}
+          <div className="flex items-center gap-2">
+            <div className={`flex-1 px-4 py-2.5 rounded-xl font-mono text-lg font-bold tracking-widest text-[#D4A843] ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#D4A843]/5'} border border-[#D4A843]/30`}>
+              {authorProfile.author_referral_code}
+            </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(authorProfile.author_referral_code!);
+                setCodeCopied(true);
+                setTimeout(() => setCodeCopied(false), 2000);
+              }}
+              className="px-3 py-2.5 rounded-xl border border-[#D4A843]/40 text-[#D4A843] hover:bg-[#D4A843]/10 transition text-xs font-medium flex items-center gap-1.5"
+            >
+              {codeCopied ? <><Check size={12} /> Copied!</> : 'Copy Code'}
+            </button>
+          </div>
+
+          {/* Referral link */}
+          <div className="flex items-center gap-2">
+            <div className={`flex-1 px-3 py-2 rounded-xl text-xs ${textMuted} truncate ${isDark ? 'bg-[#1B2A4A]/60' : 'bg-gray-50'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+              {window.location.origin}/signup?author_ref={authorProfile.author_referral_code}
+            </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}/signup?author_ref=${authorProfile.author_referral_code}`);
+                setLinkCopied(true);
+                setTimeout(() => setLinkCopied(false), 2000);
+              }}
+              className="px-3 py-2 rounded-xl border border-[#D4A843]/40 text-[#D4A843] hover:bg-[#D4A843]/10 transition text-xs font-medium flex items-center gap-1.5 shrink-0"
+            >
+              {linkCopied ? <><Check size={12} /> Copied!</> : 'Copy Link'}
+            </button>
+          </div>
+
+          <p className={`text-xs ${textMuted}`}>
+            Share your code or link. When a referred author buys their first listing, your cut is credited automatically.
+          </p>
+        </div>
+      ) : (
+        <p className={`text-sm ${textMuted}`}>No referral code assigned yet. Contact support to get yours.</p>
+      )}
+    </div>
+
+    {/* Earnings summary */}
+    {ambassadorPayouts.length > 0 && (
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        {[
+          {
+            label: 'Total Referred',
+            value: ambassadorPayouts.length,
+          },
+          {
+            label: 'Pending',
+            value: `$${ambassadorPayouts
+              .filter((p) => p.status === 'pending')
+              .reduce((s, p) => s + p.payout_amount, 0)
+              .toFixed(2)}`,
+          },
+          {
+            label: 'Paid Out',
+            value: `$${ambassadorPayouts
+              .filter((p) => p.status === 'paid')
+              .reduce((s, p) => s + p.payout_amount, 0)
+              .toFixed(2)}`,
+          },
+        ].map(({ label, value }) => (
+          <div key={label} className={`rounded-xl border ${cardBg} p-3 text-center`}>
+            <p className={`text-xs ${textMuted} mb-1`}>{label}</p>
+            <p className={`font-bold ${textPrimary}`}>{value}</p>
+          </div>
+        ))}
+      </div>
+    )}
+
+    {/* Payouts table */}
+    <div>
+      <p className={`text-xs font-semibold ${textMuted} uppercase tracking-wide mb-3`}>Referral History</p>
+      {ambassadorPayouts.length === 0 ? (
+        <div className="text-center py-12">
+          <Star size={36} className="mx-auto text-[#D4A843]/30 mb-3" />
+          <p className={`text-sm ${textMuted}`}>No referrals yet. Share your code to start earning.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {ambassadorPayouts.map((payout) => (
+            <div key={payout.id} className={`rounded-xl border ${cardBg} p-4 flex items-center justify-between gap-3`}>
+              <div className="min-w-0">
+                <p className={`text-sm font-medium ${textPrimary} truncate`}>
+                  {payout.referred?.email ?? 'Author'}
+                </p>
+                <div className={`flex gap-3 text-xs ${textMuted} mt-0.5`}>
+                  {payout.listing_tier && (
+                    <span>{LISTING_TIERS[payout.listing_tier]?.label} listing</span>
+                  )}
+                  <span>${payout.listing_fee.toFixed(2)} fee</span>
+                  <span>{new Date(payout.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-sm font-bold text-[#D4A843]">+${payout.payout_amount.toFixed(2)}</p>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  payout.status === 'paid'
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                }`}>
+                  {payout.status === 'paid' ? 'Paid' : 'Pending'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+)}
+      
       {/* ── EDIT MODAL ── */}
       {editingBook && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
