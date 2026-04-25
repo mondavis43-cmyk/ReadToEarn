@@ -120,21 +120,42 @@ export const Quiz = ({ bookId }: QuizProps) => {
 
   const loadQuiz = async () => {
     if (!user) return;
-    const [bookResult, questionsResult, completedResult] = await Promise.all([
-      supabase.from('books').select('*').eq('id', bookId).single(),
-      supabase.from('questions').select('*').eq('book_id', bookId),
-      supabase.from('completed_books').select('id, passed').eq('user_id', user.id).eq('book_id', bookId).maybeSingle(),
-    ]);
+const [bookResult, questionsResult, completedResult] = await Promise.all([
+  supabase.from('books').select('*').eq('id', bookId).single(),
+  supabase.from('questions').select('*').eq('book_id', bookId),
+  supabase.from('completed_books').select('id, passed').eq('user_id', user.id).eq('book_id', bookId).maybeSingle(),
+]);
 
-    if (bookResult.data) setBook(bookResult.data);
-    if (questionsResult.data) {
-      const qs = questionsResult.data as Question[];
-      setQuestions(qs);
-      const opts: Record<string, string[]> = {};
-      qs.forEach((q) => {
-        opts[q.id] = seededShuffle([q.correct_answer, q.wrong_answer_1, q.wrong_answer_2, q.wrong_answer_3], q.id);
-      });
-      setShuffledOptions(opts);
+if (bookResult.data) setBook(bookResult.data);
+
+if (questionsResult.data) {
+  const allQuestions = questionsResult.data as Question[];
+  const isMasterQuiz = bookResult.data?.is_master_quiz === true;
+
+  const questionPool = isMasterQuiz
+    ? allQuestions
+    : (() => {
+        const seed = (user?.id ?? '') + bookId;
+        const seedNum = seed.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+        const shuffled = [...allQuestions].sort((a, b) => {
+          const hashA = (a.id + seed).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+          const hashB = (b.id + seed).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+          return (hashA % (seedNum || 7)) - (hashB % (seedNum || 7));
+        });
+        return shuffled.slice(0, 10);
+      })();
+
+  setQuestions(questionPool);
+
+  const opts: Record<string, string[]> = {};
+  questionPool.forEach((q) => {
+    opts[q.id] = seededShuffle(
+      [q.correct_answer, q.wrong_answer_1, q.wrong_answer_2, q.wrong_answer_3],
+      q.id
+    );
+  });
+  setShuffledOptions(opts);
+}
     }
     if (completedResult.data) setAlreadyCompleted(true);
     setLoading(false);
