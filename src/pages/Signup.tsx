@@ -43,6 +43,7 @@ const defaultVerifier = (): PhoneVerifierState => ({
 });
 
 export const Signup = () => {
+  const [role, setRole] = useState<'reader' | 'author'>('reader');
   const { isDark } = useTheme();
   const { navigateTo } = useNavigate();
 
@@ -219,7 +220,7 @@ export const Signup = () => {
         return;
       }
     }
-
+    
     // ── Create auth user ───────────────────────────────────────────────────
     const { data, error: signupError } = await supabase.auth.signUp({
       email,
@@ -257,6 +258,7 @@ export const Signup = () => {
       phone:           userPhone.phone.trim(),
       country,
       tos_accepted_at: new Date().toISOString(),
+      role,
     };
 
     if (referredBy) profilePayload.referred_by = referredBy;
@@ -418,6 +420,26 @@ export const Signup = () => {
 
         <form onSubmit={handleSignup} className="space-y-4">
 
+          {/* Role selector */}
+<div className="flex gap-2 mb-5">
+  {(['reader', 'author'] as const).map((r) => (
+    <button
+      key={r}
+      type="button"
+      onClick={() => setRole(r)}
+      className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition ${
+        role === r
+          ? 'bg-[#D4A843] text-[#1B2A4A] border-[#D4A843]'
+          : isDark
+          ? 'border-gray-600 text-gray-400 hover:border-[#D4A843]'
+          : 'border-gray-300 text-gray-500 hover:border-[#D4A843]'
+      }`}
+    >
+      {r === 'reader' ? "📖 I'm a Reader" : "✍️ I'm an Author"}
+    </button>
+  ))}
+</div>
+          
           {/* Email */}
           <div>
             <label className={labelClass}>Email</label>
