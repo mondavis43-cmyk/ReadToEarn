@@ -23,6 +23,7 @@ interface Book {
   bounty_amount: number;
   page_count: number;
   book_type: 'platform' | 'sponsored';
+  is_master_quiz: boolean;
 }
 
 interface QuizProps {
@@ -75,8 +76,7 @@ export const Quiz = ({ bookId }: QuizProps) => {
   const [earnedAmount, setEarnedAmount] = useState(0);
   const [isSpeeding, setIsSpeeding] = useState(false);
 
-  // Report state
-  const [reportOpen, setReportOpen] = useState<string | null>(null); // question id
+  const [reportOpen, setReportOpen] = useState<string | null>(null);
   const [reportReason, setReportReason] = useState('');
   const [reportSubmitted, setReportSubmitted] = useState<Set<string>>(new Set());
   const [reportLoading, setReportLoading] = useState(false);
@@ -106,7 +106,6 @@ export const Quiz = ({ bookId }: QuizProps) => {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [loading, submitted]);
 
-  // Close report popover on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (reportRef.current && !reportRef.current.contains(e.target as Node)) {
@@ -120,43 +119,44 @@ export const Quiz = ({ bookId }: QuizProps) => {
 
   const loadQuiz = async () => {
     if (!user) return;
-const [bookResult, questionsResult, completedResult] = await Promise.all([
-  supabase.from('books').select('*').eq('id', bookId).single(),
-  supabase.from('questions').select('*').eq('book_id', bookId),
-  supabase.from('completed_books').select('id, passed').eq('user_id', user.id).eq('book_id', bookId).maybeSingle(),
-]);
 
-if (bookResult.data) setBook(bookResult.data);
+    const [bookResult, questionsResult, completedResult] = await Promise.all([
+      supabase.from('books').select('*').eq('id', bookId).single(),
+      supabase.from('questions').select('*').eq('book_id', bookId),
+      supabase.from('completed_books').select('id, passed').eq('user_id', user.id).eq('book_id', bookId).maybeSingle(),
+    ]);
 
-if (questionsResult.data) {
-  const allQuestions = questionsResult.data as Question[];
-  const isMasterQuiz = bookResult.data?.is_master_quiz === true;
+    if (bookResult.data) setBook(bookResult.data);
 
-  const questionPool = isMasterQuiz
-    ? allQuestions
-    : (() => {
-        const seed = (user?.id ?? '') + bookId;
-        const seedNum = seed.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-        const shuffled = [...allQuestions].sort((a, b) => {
-          const hashA = (a.id + seed).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-          const hashB = (b.id + seed).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-          return (hashA % (seedNum || 7)) - (hashB % (seedNum || 7));
-        });
-        return shuffled.slice(0, 10);
-      })();
+    if (questionsResult.data) {
+      const allQuestions = questionsResult.data as Question[];
+      const isMasterQuiz = bookResult.data?.is_master_quiz === true;
 
-  setQuestions(questionPool);
+      const questionPool = isMasterQuiz
+        ? allQuestions
+        : (() => {
+            const seed = (user?.id ?? '') + bookId;
+            const seedNum = seed.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+            const shuffled = [...allQuestions].sort((a, b) => {
+              const hashA = (a.id + seed).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+              const hashB = (b.id + seed).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+              return (hashA % (seedNum || 7)) - (hashB % (seedNum || 7));
+            });
+            return shuffled.slice(0, 10);
+          })();
 
-  const opts: Record<string, string[]> = {};
-  questionPool.forEach((q) => {
-    opts[q.id] = seededShuffle(
-      [q.correct_answer, q.wrong_answer_1, q.wrong_answer_2, q.wrong_answer_3],
-      q.id
-    );
-  });
-  setShuffledOptions(opts);
-}
+      setQuestions(questionPool);
+
+      const opts: Record<string, string[]> = {};
+      questionPool.forEach((q) => {
+        opts[q.id] = seededShuffle(
+          [q.correct_answer, q.wrong_answer_1, q.wrong_answer_2, q.wrong_answer_3],
+          q.id
+        );
+      });
+      setShuffledOptions(opts);
     }
+
     if (completedResult.data) setAlreadyCompleted(true);
     setLoading(false);
   };
@@ -285,7 +285,7 @@ if (questionsResult.data) {
       <div className={`border-b ${dividerColor} px-4 py-4 sticky top-0 z-10 ${isDark ? 'bg-[#1B2A4A]' : 'bg-[#F5F0E8]'}`}>
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <button onClick={() => navigateTo('/books')} className={`${subColor} hover:text-[#D4A843] transition flex-shrink-0`}>
+            <button onClick={() => navigateTo('/library')} className={`${subColor} hover:text-[#D4A843] transition flex-shrink-0`}>
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div className="min-w-0">
@@ -339,7 +339,9 @@ if (questionsResult.data) {
               </>
             )}
             <div className="flex gap-3 mt-6">
-              <button onClick={() => navigateTo('/books')} className="bg-[#D4A843] text-[#1B2A4A] font-medium px-6 py-2.5 rounded-lg hover:bg-[#c49a38] transition">Back to Library</button>
+              <button onClick={() => navigateTo('/library')} className="bg-[#D4A843] text-[#1B2A4A] font-medium px-6 py-2.5 rounded-lg hover:bg-[#c49a38] transition">
+                Back to Library
+              </button>
               {!passed && (
                 <button
                   onClick={() => {
@@ -362,7 +364,6 @@ if (questionsResult.data) {
           <div className="space-y-6">
             {questions.map((q, idx) => (
               <div key={q.id} className={`${cardBg} rounded-lg p-6 border ${cardBorder}`}>
-                {/* Question header with report button */}
                 <div className="flex items-start justify-between gap-3 mb-4">
                   <p className={`font-medium ${headingColor}`}>
                     <span className="text-[#D4A843] mr-2">{idx + 1}.</span>{q.question_text}
@@ -386,8 +387,6 @@ if (questionsResult.data) {
                         <Flag className="w-3.5 h-3.5" />
                       </button>
                     )}
-
-                    {/* Report popover */}
                     {reportOpen === q.id && (
                       <div className={`absolute right-0 top-8 z-20 w-56 rounded-xl border shadow-xl p-3 ${popoverBg}`}>
                         <p className={`text-xs font-semibold mb-2 ${headingColor}`}>Report an issue</p>
@@ -418,7 +417,6 @@ if (questionsResult.data) {
                   </div>
                 </div>
 
-                {/* Answer options */}
                 <div className="space-y-3">
                   {(shuffledOptions[q.id] ?? []).map((opt, i) => (
                     <label key={i} className={`flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${
