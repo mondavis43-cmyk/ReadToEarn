@@ -17,6 +17,16 @@ import { AdminEarning } from './admin/AdminEarning';
 
 import { useState } from 'react';
 
+export const GENRES = [
+  'Action & Adventure', 'Biography & Memoir', 'Business', "Children's", 'Chick Lit',
+  'Comics / Graphic Novels / Manga', 'Cozy Mystery', 'Dark Romance', 'Dystopian', 'Erotica',
+  'Fantasy', 'Fiction', 'Gothic', 'Health & Wellness', 'Historical Fiction', 'History',
+  'Horror', 'LGBTQIA+', 'Literary Fiction', 'Magical Realism', 'Mystery', 'Noir',
+  'Non-Fiction', 'Paranormal', 'Poetry', 'Religious', 'Romance', 'Romantasy / Romantic Fantasy',
+  'Satire', 'Science Fiction', 'Self-Help', 'Short Stories', 'Space Opera', 'Sports',
+  'Spy', 'Suspense', 'Thriller', 'True Crime', 'War & Military', 'Western', "Women's Fiction", 'Young Adult',
+];
+
 const ADMIN_EMAIL = 'mondavis43@gmail.com';
 
 type Tab =
