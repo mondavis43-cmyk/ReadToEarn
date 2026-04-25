@@ -31,8 +31,8 @@ import { BulletinSubmit } from '../pages/BulletinSubmit';
 import { HowItWorks } from '../pages/HowItWorks';
 import { Competitions } from '../pages/Competitions';
 import { Earn } from '../pages/Earn';
-import { AuthorAMA } from './pages/AuthorAMA';
-import { AMASession } from './pages/AMASession';
+import { AuthorAMA } from '../pages/AuthorAMA';
+import { AMASession } from '../pages/AMASession';
 
 const WAITLIST_MODE = true;
 
