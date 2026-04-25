@@ -187,6 +187,18 @@ function CheckoutForm({ item }: { item: CheckoutItem }) {
           metadata: item.metadata ?? {},
           status: "succeeded",
         });
+        
+      if (paymentIntent?.status === "succeeded") {
+        // 4. Log to Supabase
+        await supabase.from("payments").insert({
+          user_id: user.id,
+          stripe_payment_intent_id: paymentIntent.id,
+          amount: item.amount,
+          type: item.type,
+          label: item.label,
+          metadata: item.metadata ?? {},
+          status: "succeeded",
+        });
 
         setSuccess(true);
         setTimeout(() => goTo(REDIRECT_MAP[item.type] ?? "/profile"), 2500);
@@ -210,6 +222,34 @@ function CheckoutForm({ item }: { item: CheckoutItem }) {
     );
   }
 
+  // After payments insert, check for pending submission
+const pending = (window as any).__pendingSubmission;
+if (pending && item.type === 'listing') {
+  await supabase.from('author_submissions').insert(pending);
+  delete (window as any).__pendingSubmission;
+}
+        setSuccess(true);
+        setTimeout(() => goTo(REDIRECT_MAP[item.type] ?? "/profile"), 2500);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (success) {
+    return (
+      <div className="text-center py-20">
+        <div className="text-6xl mb-4">🎉</div>
+        <h2 className="text-2xl font-bold text-green-600 mb-2">
+          Payment Successful!
+        </h2>
+        <p className="text-gray-500">Redirecting you now...</p>
+      </div>
+    );
+  }
+  
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Order Summary */}
