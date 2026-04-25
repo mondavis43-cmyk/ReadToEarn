@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
-import { ArrowLeft, PartyPopper, Timer, AlertCircle } from 'lucide-react';
+import { ArrowLeft, PartyPopper, Timer, AlertCircle, Flag } from 'lucide-react';
 import { calculatePayout, SubscriptionTier } from '../utils/calculatePayout';
 
 interface Question {
@@ -29,8 +29,16 @@ interface QuizProps {
   bookId: string;
 }
 
-const QUIZ_DURATION = 8 * 60; // 8 minutes countdown
-const MIN_QUIZ_TIME = 2 * 60 * 1000; // 2 minutes minimum requirement
+const QUIZ_DURATION = 8 * 60;
+const MIN_QUIZ_TIME = 2 * 60 * 1000;
+
+const REPORT_REASONS = [
+  'Answer seems incorrect',
+  'Question is confusing or unclear',
+  'Typo or formatting issue',
+  'Question contains a spoiler',
+  'Other',
+];
 
 const seededShuffle = <T,>(arr: T[], seed: string): T[] => {
   const hash = seed.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
@@ -67,8 +75,15 @@ export const Quiz = ({ bookId }: QuizProps) => {
   const [earnedAmount, setEarnedAmount] = useState(0);
   const [isSpeeding, setIsSpeeding] = useState(false);
 
+  // Report state
+  const [reportOpen, setReportOpen] = useState<string | null>(null); // question id
+  const [reportReason, setReportReason] = useState('');
+  const [reportSubmitted, setReportSubmitted] = useState<Set<string>>(new Set());
+  const [reportLoading, setReportLoading] = useState(false);
+
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(Date.now());
+  const reportRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     loadQuiz();
@@ -90,6 +105,18 @@ export const Quiz = ({ bookId }: QuizProps) => {
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [loading, submitted]);
+
+  // Close report popover on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (reportRef.current && !reportRef.current.contains(e.target as Node)) {
+        setReportOpen(null);
+        setReportReason('');
+      }
+    };
+    if (reportOpen) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [reportOpen]);
 
   const loadQuiz = async () => {
     if (!user) return;
@@ -114,7 +141,6 @@ export const Quiz = ({ bookId }: QuizProps) => {
   };
 
   const handleSubmit = async (fromTimer = false) => {
-    // 1. Anti-Speeding Check
     const timeSpent = Date.now() - startTimeRef.current;
     if (!fromTimer && timeSpent < MIN_QUIZ_TIME) {
       setIsSpeeding(true);
@@ -174,7 +200,6 @@ export const Quiz = ({ bookId }: QuizProps) => {
           const payout = calculatePayout(book.book_type, book.page_count, (profileData.subscription_tier ?? 'free') as SubscriptionTier);
           setEarnedAmount(payout);
 
-          // 2. 1099 Review Logic
           const projectedBalance = profileData.available_balance + payout + bonus;
           const shouldFlag = projectedBalance >= 500;
 
@@ -185,12 +210,11 @@ export const Quiz = ({ bookId }: QuizProps) => {
             requires_tax_review: profileData.requires_tax_review || shouldFlag,
           }).eq('id', user.id);
 
-          // Audit Log for the payout
           await supabase.from('payout_logs').insert({
             user_id: user.id,
             amount: payout + bonus,
             status: shouldFlag ? 'pending_review' : 'completed',
-            reason: shouldFlag ? '1099_threshold' : null
+            reason: shouldFlag ? '1099_threshold' : null,
           });
 
           if (profileData.referred_by) {
@@ -202,7 +226,21 @@ export const Quiz = ({ bookId }: QuizProps) => {
     }
   };
 
-  // Theme Tokens
+  const handleReport = async (questionId: string) => {
+    if (!user || !reportReason) return;
+    setReportLoading(true);
+    await supabase.from('question_reports').insert({
+      question_id: questionId,
+      user_id: user.id,
+      reason: reportReason,
+    });
+    setReportSubmitted(prev => new Set([...prev, questionId]));
+    setReportOpen(null);
+    setReportReason('');
+    setReportLoading(false);
+  };
+
+  // Theme tokens
   const bg = isDark ? 'bg-[#1B2A4A]' : 'bg-[#F5F0E8]';
   const cardBg = isDark ? 'bg-[#162238]' : 'bg-white';
   const cardBorder = isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10';
@@ -212,6 +250,7 @@ export const Quiz = ({ bookId }: QuizProps) => {
   const optionBg = isDark ? 'bg-[#1B2A4A]' : 'bg-[#F5F0E8]';
   const optionBorder = isDark ? 'border-[#F5F0E8]/15 hover:border-[#D4A843]/50' : 'border-[#1B2A4A]/15 hover:border-[#D4A843]/50';
   const optionText = isDark ? 'text-[#F5F0E8]/80' : 'text-[#1B2A4A]/80';
+  const popoverBg = isDark ? 'bg-[#0f1623] border-[#D4A843]/20' : 'bg-white border-[#1B2A4A]/15';
 
   if (loading) return (
     <div className={`min-h-screen ${bg} flex items-center justify-center transition-colors duration-300`}>
@@ -281,7 +320,20 @@ export const Quiz = ({ bookId }: QuizProps) => {
             <div className="flex gap-3 mt-6">
               <button onClick={() => navigateTo('/books')} className="bg-[#D4A843] text-[#1B2A4A] font-medium px-6 py-2.5 rounded-lg hover:bg-[#c49a38] transition">Back to Library</button>
               {!passed && (
-                <button onClick={() => { setSubmitted(false); setAnswers({}); setScore(0); setPassed(false); setTimedOut(false); setTimeLeft(QUIZ_DURATION); startTimeRef.current = Date.now(); }} className={`${isDark ? 'bg-[#F5F0E8]/10 text-[#F5F0E8]' : 'bg-[#1B2A4A]/10 text-[#1B2A4A]'} font-medium px-6 py-2.5 rounded-lg transition`}>Try Again</button>
+                <button
+                  onClick={() => {
+                    setSubmitted(false);
+                    setAnswers({});
+                    setScore(0);
+                    setPassed(false);
+                    setTimedOut(false);
+                    setTimeLeft(QUIZ_DURATION);
+                    startTimeRef.current = Date.now();
+                  }}
+                  className={`${isDark ? 'bg-[#F5F0E8]/10 text-[#F5F0E8]' : 'bg-[#1B2A4A]/10 text-[#1B2A4A]'} font-medium px-6 py-2.5 rounded-lg transition`}
+                >
+                  Try Again
+                </button>
               )}
             </div>
           </div>
@@ -289,22 +341,100 @@ export const Quiz = ({ bookId }: QuizProps) => {
           <div className="space-y-6">
             {questions.map((q, idx) => (
               <div key={q.id} className={`${cardBg} rounded-lg p-6 border ${cardBorder}`}>
-                <p className={`font-medium ${headingColor} mb-4`}><span className="text-[#D4A843] mr-2">{idx + 1}.</span>{q.question_text}</p>
+                {/* Question header with report button */}
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <p className={`font-medium ${headingColor}`}>
+                    <span className="text-[#D4A843] mr-2">{idx + 1}.</span>{q.question_text}
+                  </p>
+                  <div className="relative shrink-0" ref={reportOpen === q.id ? reportRef : null}>
+                    {reportSubmitted.has(q.id) ? (
+                      <span className={`text-xs ${subColor}`}>Reported</span>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setReportOpen(reportOpen === q.id ? null : q.id);
+                          setReportReason('');
+                        }}
+                        title="Report an issue with this question"
+                        className={`p-1.5 rounded-md transition-colors ${
+                          reportOpen === q.id
+                            ? 'text-[#D4A843] bg-[#D4A843]/10'
+                            : `${subColor} hover:text-[#D4A843] hover:bg-[#D4A843]/10`
+                        }`}
+                      >
+                        <Flag className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+
+                    {/* Report popover */}
+                    {reportOpen === q.id && (
+                      <div className={`absolute right-0 top-8 z-20 w-56 rounded-xl border shadow-xl p-3 ${popoverBg}`}>
+                        <p className={`text-xs font-semibold mb-2 ${headingColor}`}>Report an issue</p>
+                        <div className="space-y-1 mb-3">
+                          {REPORT_REASONS.map((reason) => (
+                            <button
+                              key={reason}
+                              onClick={() => setReportReason(reason)}
+                              className={`w-full text-left text-xs px-2.5 py-1.5 rounded-lg transition-colors ${
+                                reportReason === reason
+                                  ? 'bg-[#D4A843]/15 text-[#D4A843]'
+                                  : `${subColor} hover:bg-[#D4A843]/10 hover:text-[#D4A843]`
+                              }`}
+                            >
+                              {reason}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => handleReport(q.id)}
+                          disabled={!reportReason || reportLoading}
+                          className="w-full text-xs font-medium bg-[#D4A843] text-[#1B2A4A] py-1.5 rounded-lg hover:bg-[#c49a38] transition disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {reportLoading ? 'Submitting...' : 'Submit Report'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Answer options */}
                 <div className="space-y-3">
                   {(shuffledOptions[q.id] ?? []).map((opt, i) => (
-                    <label key={i} className={`flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${answers[q.id] === opt ? 'border-[#D4A843] bg-[#D4A843]/10' : `${optionBg} ${optionBorder}`}`}>
-                      <input type="radio" name={q.id} value={opt} checked={answers[q.id] === opt} onChange={() => setAnswers((prev) => ({ ...prev, [q.id]: opt }))} className="mt-0.5 accent-[#D4A843] flex-shrink-0" />
-                      <span className={`text-sm ${answers[q.id] === opt ? (isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]') : optionText}`}><span className="font-medium mr-2">{['A','B','C','D'][i]}.</span>{opt}</span>
+                    <label key={i} className={`flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${
+                      answers[q.id] === opt
+                        ? 'border-[#D4A843] bg-[#D4A843]/10'
+                        : `${optionBg} ${optionBorder}`
+                    }`}>
+                      <input
+                        type="radio"
+                        name={q.id}
+                        value={opt}
+                        checked={answers[q.id] === opt}
+                        onChange={() => setAnswers((prev) => ({ ...prev, [q.id]: opt }))}
+                        className="mt-0.5 accent-[#D4A843] flex-shrink-0"
+                      />
+                      <span className={`text-sm ${answers[q.id] === opt ? (isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]') : optionText}`}>
+                        <span className="font-medium mr-2">{['A', 'B', 'C', 'D'][i]}.</span>{opt}
+                      </span>
                     </label>
                   ))}
                 </div>
               </div>
             ))}
+
             <div className="flex flex-col items-end gap-2 pt-2 pb-8">
-              {isSpeeding && <p className="text-red-400 text-xs animate-pulse">Wait! We verify reading time. Please review your answers for a moment.</p>}
+              {isSpeeding && (
+                <p className="text-red-400 text-xs animate-pulse">Wait! We verify reading time. Please review your answers for a moment.</p>
+              )}
               <div className="flex items-center justify-between w-full">
                 <p className={`text-sm ${subColor}`}>{Object.keys(answers).length} of {questions.length} answered</p>
-                <button onClick={() => handleSubmit(false)} disabled={Object.keys(answers).length < questions.length || isSpeeding} className="bg-[#D4A843] text-[#1B2A4A] font-medium px-8 py-3 rounded-lg hover:bg-[#c49a38] transition disabled:opacity-40 disabled:cursor-not-allowed">Submit Quiz</button>
+                <button
+                  onClick={() => handleSubmit(false)}
+                  disabled={Object.keys(answers).length < questions.length || isSpeeding}
+                  className="bg-[#D4A843] text-[#1B2A4A] font-medium px-8 py-3 rounded-lg hover:bg-[#c49a38] transition disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Submit Quiz
+                </button>
               </div>
             </div>
           </div>
