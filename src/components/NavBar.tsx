@@ -1,6 +1,6 @@
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
-import { BookOpen, User, Gift, BookMarked, Pin, PenLine, HelpCircle, Tag, Menu, X, Trophy, DollarSign, Info } from 'lucide-react';
+import { BookOpen, User, Gift, BookMarked, Pin, PenLine, HelpCircle, Tag, Menu, X, Trophy, DollarSign, Info, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
 
 const navLinks = [
@@ -8,13 +8,14 @@ const navLinks = [
   { label: 'Competitions', icon: Trophy, page: 'competitions' },
   { label: 'Earn', icon: DollarSign, page: 'earn' },
   { label: 'Library', icon: BookOpen, page: 'library' },
+  { label: 'For Authors', icon: PenLine, page: 'authors' },
   { label: 'Pricing', icon: Tag, page: 'pricing' },
   { label: 'Profile', icon: User, page: 'profile' },
+  { label: 'FAQ', icon: HelpCircle, page: 'faq' },
+  { label: 'Ask the Author', icon: MessageSquare, page: 'ama' },
   { label: 'Bulletin Board', page: 'bulletin-board', icon: Pin },
   { label: 'Refer', icon: Gift, page: 'refer' },
   { label: 'Request a Book', icon: BookMarked, page: 'request-book' },
-  { label: 'For Authors', icon: PenLine, page: 'authors' },
-  { label: 'FAQ', icon: HelpCircle, page: 'faq' },
 ];
 
 export const NavBar = () => {
