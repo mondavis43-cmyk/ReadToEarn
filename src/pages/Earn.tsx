@@ -299,7 +299,7 @@ export const Earn = () => {
                     <p className={`text-xs ${textMuted}`}>{b.books?.author}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold text-[#D4A843]">${b.payout_per_reader.toFixed(2)}</p>
+                    <p className="text-sm font-semibold text-[#D4A843]">${b.per_pass_amount.toFixed(2)}</p>
                     <p className={`text-xs ${textMuted}`}>per pass</p>
                   </div>
                 </div>
