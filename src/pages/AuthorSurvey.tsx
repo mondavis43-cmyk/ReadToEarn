@@ -1,20 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
-import { CheckCircle, MessageSquare } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+import { MessageSquare } from 'lucide-react';
 
 const PACKAGES = [
-  { label: 'Starter', responses: 10, price: 18 },
-  { label: 'Standard', responses: 25, price: 40 },
-  { label: 'Extended', responses: 50, price: 70 },
-  { label: 'Wide', responses: 100, price: 125 },
-  { label: 'Deep', responses: 200, price: 225 },
+  { label: 'Starter', responses: 10, price: 18, cents: 1800 },
+  { label: 'Standard', responses: 25, price: 40, cents: 4000 },
+  { label: 'Extended', responses: 50, price: 70, cents: 7000 },
+  { label: 'Wide', responses: 100, price: 125, cents: 12500 },
+  { label: 'Deep', responses: 200, price: 225, cents: 22500 },
 ];
 
 const SURVEY_FOCUSES = [
@@ -32,7 +26,7 @@ const SURVEY_FOCUSES = [
   },
   {
     label: 'Market Fit',
-    description: 'Would readers buy this? How does it compare to similar books they\'ve read?',
+    description: "Would readers buy this? How does it compare to similar books they've read?",
   },
   {
     label: 'Custom Questions',
@@ -44,8 +38,6 @@ export const AuthorSurvey = () => {
   const { navigateTo } = useNavigate();
   const { isDark, toggleTheme } = useTheme();
 
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const [authorName, setAuthorName] = useState('');
@@ -73,17 +65,27 @@ export const AuthorSurvey = () => {
     return true;
   };
 
-  const handleSubmit = async () => {
+  const handleCheckout = () => {
     if (!isFormValid()) {
       setError('Please fill out all required fields.');
       return;
     }
-    setLoading(true);
     setError('');
 
-    const { error: insertError } = await supabase
-      .from('author_survey_submissions')
-      .insert({
+    (window as any).__checkoutItem = {
+      type: 'survey',
+      label: `Reader Survey — ${selectedFocus.label}, ${selectedPackage.label} (${selectedPackage.responses} responses) for "${bookTitle}"`,
+      amount: selectedPackage.cents,
+      metadata: {
+        focus: selectedFocus.label,
+        package: selectedPackage.label,
+        responses: selectedPackage.responses,
+      },
+    };
+
+    (window as any).__pendingSubmission = {
+      table: 'author_survey_submissions',
+      data: {
         author_name: authorName,
         email,
         book_title: bookTitle,
@@ -94,73 +96,13 @@ export const AuthorSurvey = () => {
         custom_questions: customQuestions || null,
         excerpt: excerpt || null,
         notes: notes || null,
-        status: 'pending_payment',
-      });
+        status: 'active',
+      },
+    };
 
-    if (insertError) {
-      setError('Something went wrong. Please try again.');
-      setLoading(false);
-      return;
-    }
-
-    setSubmitted(true);
-    setLoading(false);
+    window.history.pushState({}, '', '/checkout');
+    window.dispatchEvent(new PopStateEvent('popstate'));
   };
-
-  if (submitted) {
-    return (
-      <div className={`min-h-screen flex items-center justify-center px-4 transition-colors ${isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]'}`}>
-        <div className="max-w-md w-full text-center">
-          <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
-          <h1 className={`font-serif text-3xl mb-3 ${textPrimary}`}>Survey Submitted!</h1>
-          <p className={`mb-2 ${textMuted}`}>
-            We've received your survey request for{' '}
-            <span className={`font-medium ${textPrimary}`}>{bookTitle}</span>.
-          </p>
-          <p className={`text-sm mb-8 ${textMuted}`}>
-            We'll email <span className={textPrimary}>{email}</span> with payment instructions. Results are delivered once your survey is complete.
-          </p>
-          <div className={`rounded-xl border p-4 mb-8 text-left ${cardBg}`}>
-            <div className="flex justify-between text-sm mb-2">
-              <span className={textMuted}>Focus</span>
-              <span className={`font-medium ${textPrimary}`}>{selectedFocus.label}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-2">
-              <span className={textMuted}>Package</span>
-              <span className={`font-medium ${textPrimary}`}>{selectedPackage.label}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-2">
-              <span className={textMuted}>Responses</span>
-              <span className={`font-medium ${textPrimary}`}>{selectedPackage.responses} readers</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className={textMuted}>Total</span>
-              <span className="text-[#D4A843] font-bold">${selectedPackage.price}</span>
-            </div>
-          </div>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => {
-                setSubmitted(false);
-                setAuthorName(''); setEmail(''); setBookTitle('');
-                setSelectedPackage(PACKAGES[1]); setSelectedFocus(SURVEY_FOCUSES[0]);
-                setCustomQuestions(''); setExcerpt(''); setNotes('');
-              }}
-              className="bg-[#D4A843] text-[#1B2A4A] font-medium px-6 py-3 rounded-lg hover:bg-[#c49a3a] transition"
-            >
-              Submit Another
-            </button>
-            <button
-              onClick={() => navigateTo('/authors')}
-              className={`font-medium px-6 py-3 rounded-lg transition border ${cardBg} ${textPrimary}`}
-            >
-              Back to Authors
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]'}`}>
@@ -238,7 +180,7 @@ export const AuthorSurvey = () => {
                   }`}
                 >
                   <p className="font-bold text-lg">${pkg.price}</p>
-                  <p className={`text-sm font-medium mt-0.5`}>{pkg.label}</p>
+                  <p className="text-sm font-medium mt-0.5">{pkg.label}</p>
                   <p className={`text-xs mt-1 ${isSelected ? 'text-[#1B2A4A]/70' : textMuted}`}>
                     {pkg.responses} responses
                   </p>
@@ -298,7 +240,7 @@ export const AuthorSurvey = () => {
           </div>
         )}
 
-        {/* Conditional: Excerpt for Chapter Feedback */}
+        {/* Conditional: Excerpt */}
         {selectedFocus.label === 'Chapter / Sample Feedback' && (
           <div className="mb-8">
             <h2 className={`font-serif text-2xl mb-2 ${textPrimary}`}>Your Excerpt</h2>
@@ -341,7 +283,7 @@ export const AuthorSurvey = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className={inputClass}
-                  placeholder="Results and invoice sent here"
+                  placeholder="Results and receipt sent here"
                 />
               </div>
             </div>
@@ -379,14 +321,13 @@ export const AuthorSurvey = () => {
         )}
 
         <button
-          onClick={handleSubmit}
-          disabled={loading}
-          className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-4 rounded-xl hover:bg-[#c49a3a] transition disabled:opacity-50 disabled:cursor-not-allowed text-lg"
+          onClick={handleCheckout}
+          className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-4 rounded-xl hover:bg-[#c49a3a] transition text-lg"
         >
-          {loading ? 'Submitting...' : `Submit Survey — $${selectedPackage.price} due after review`}
+          {`Launch Survey — Pay $${selectedPackage.price}`}
         </button>
         <p className={`text-xs text-center mt-3 ${textMuted}`}>
-          No payment required now. We'll email you with next steps.
+          You'll be taken to secure checkout. Results delivered once all responses are collected.
         </p>
 
       </div>
