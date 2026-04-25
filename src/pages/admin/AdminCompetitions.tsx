@@ -11,41 +11,44 @@ interface Book {
 
 interface Competition {
   id: string;
-  book_id: string;
+  type: string;
+  title: string;
+  book_ids: string[];
   entry_fee: number;
   prize_pool: number;
-  platform_fee: number;
-  reader_pool: number;
-  max_participants: number | null;
+  platform_cut: number;
   start_date: string | null;
   end_date: string | null;
-  status: 'upcoming' | 'active' | 'completed' | 'cancelled';
+  status: 'upcoming' | 'active' | 'completed';
   created_at: string;
-  books: { title: string; author: string } | null;
 }
 
 interface NewCompetition {
-  book_id: string;
-  entry_fee: number;
-  max_participants: string;
+  type: string;
+  title: string;
+  book_ids: string[];
   start_date: string;
   end_date: string;
+  entry_fee: string;
+  prize_pool: string;
 }
 
-const emptyComp: NewCompetition = {
-  book_id: '',
-  entry_fee: 5,
-  max_participants: '',
+const COMPETITION_TYPES = ['Sprint', 'Read-A-Thon', 'Elimination Bracket'];
+
+const emptyCompetition: NewCompetition = {
+  type: 'Sprint',
+  title: '',
+  book_ids: [],
   start_date: '',
   end_date: '',
+  entry_fee: '',
+  prize_pool: '',
 };
-
-const ENTRY_FEE_OPTIONS = [1, 2, 5, 10, 20];
 
 export function AdminCompetitions() {
   const [books, setBooks] = useState<Book[]>([]);
   const [competitions, setCompetitions] = useState<Competition[]>([]);
-  const [newComp, setNewComp] = useState<NewCompetition>(emptyComp);
+  const [newComp, setNewComp] = useState<NewCompetition>(emptyCompetition);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -60,53 +63,57 @@ export function AdminCompetitions() {
   async function loadData() {
     const [{ data: booksData }, { data: compsData }] = await Promise.all([
       supabase.from('books').select('id, title, author, book_type').order('title'),
-      supabase
-        .from('competitions')
-        .select('*, books(title, author)')
-        .order('created_at', { ascending: false }),
+      supabase.from('competitions').select('*').order('created_at', { ascending: false }),
     ]);
     setBooks(booksData || []);
     setCompetitions(compsData || []);
   }
 
-  function calcPools(entryFee: number, maxParticipants: string) {
-    const participants = parseInt(maxParticipants) || 0;
-    const gross = entryFee * participants;
-    const platform_fee = Math.round(gross * 0.2 * 100) / 100;
-    const reader_pool = Math.round(gross * 0.8 * 100) / 100;
-    return { gross, platform_fee, reader_pool };
+  function toggleBook(id: string) {
+    setNewComp((prev) => ({
+      ...prev,
+      book_ids: prev.book_ids.includes(id)
+        ? prev.book_ids.filter((b) => b !== id)
+        : [...prev.book_ids, id],
+    }));
   }
 
   async function handleSave() {
-    if (!newComp.book_id) { setError('Select a book.'); return; }
-    if (!newComp.start_date || !newComp.end_date) { setError('Start and end dates are required.'); return; }
+    if (!newComp.title || !newComp.start_date || !newComp.end_date || !newComp.entry_fee) {
+      setError('Title, dates, and entry fee are required.');
+      return;
+    }
+    if (
+      (newComp.type === 'Sprint' || newComp.type === 'Elimination Bracket') &&
+      newComp.book_ids.length === 0
+    ) {
+      setError('Select at least one book for this competition type.');
+      return;
+    }
     setSaving(true);
     setError('');
-    const { platform_fee, reader_pool } = calcPools(newComp.entry_fee, newComp.max_participants);
-    const gross = newComp.entry_fee * (parseInt(newComp.max_participants) || 0);
+    const entryFee = parseFloat(newComp.entry_fee);
+    const prizePool = parseFloat(newComp.prize_pool) || 0;
     const { error: err } = await supabase.from('competitions').insert({
-      book_id: newComp.book_id,
-      entry_fee: newComp.entry_fee,
-      prize_pool: gross,
-      platform_fee,
-      reader_pool,
-      max_participants: newComp.max_participants ? parseInt(newComp.max_participants) : null,
-      start_date: newComp.start_date || null,
-      end_date: newComp.end_date || null,
+      type: newComp.type,
+      title: newComp.title,
+      entry_fee: entryFee,
+      prize_pool: prizePool,
+      platform_cut: Math.round(prizePool * 0.25 * 100) / 100,
+      start_date: newComp.start_date,
+      end_date: newComp.end_date,
       status: 'upcoming',
+      book_ids: newComp.type === 'Read-A-Thon' ? [] : newComp.book_ids,
     });
     if (err) { setError('Failed to save competition.'); setSaving(false); return; }
     setSuccess('Competition created!');
-    setNewComp(emptyComp);
+    setNewComp(emptyCompetition);
     setShowForm(false);
     setSaving(false);
     loadData();
   }
 
-  async function handleUpdateStatus(
-    id: string,
-    status: 'upcoming' | 'active' | 'completed' | 'cancelled'
-  ) {
+  async function handleUpdateStatus(id: string, status: 'upcoming' | 'active' | 'completed') {
     await supabase.from('competitions').update({ status }).eq('id', id);
     loadData();
   }
@@ -117,14 +124,13 @@ export function AdminCompetitions() {
     loadData();
   }
 
-  const { gross, platform_fee, reader_pool } = calcPools(newComp.entry_fee, newComp.max_participants);
-
   const statusColor = (status: Competition['status']) => {
     if (status === 'active') return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
     if (status === 'upcoming') return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
-    if (status === 'cancelled') return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
     return 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400';
   };
+
+  const standardBooks = (books ?? []).filter((b) => b.book_type !== 'bulletin_board');
 
   return (
     <div className="space-y-4">
@@ -159,58 +165,89 @@ export function AdminCompetitions() {
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Create Competition</h3>
-            <button onClick={() => { setShowForm(false); setNewComp(emptyComp); }} className="text-[#6B7280]">
+            <button onClick={() => { setShowForm(false); setNewComp(emptyCompetition); }} className="text-[#6B7280]">
               <X size={18} />
             </button>
           </div>
 
-          {/* Book */}
+          {/* Type */}
           <div>
-            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Book</label>
-            <select className={selectClass} value={newComp.book_id} onChange={(e) => setNewComp({ ...newComp, book_id: e.target.value })}>
-              <option value="">Select a book...</option>
-              {books.filter((b) => b.book_type !== 'bulletin_board').map((b) => (
-  <option key={b.id} value={b.id}>{b.title} — {b.author}</option>
-))}
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Type</label>
+            <select
+              className={selectClass}
+              value={newComp.type}
+              onChange={(e) => setNewComp({ ...newComp, type: e.target.value, book_ids: [] })}
+            >
+              {COMPETITION_TYPES.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
             </select>
           </div>
 
-          {/* Entry fee */}
+          {/* Title */}
           <div>
-            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Entry Fee</label>
-            <div className="flex flex-wrap gap-2">
-              {ENTRY_FEE_OPTIONS.map((fee) => (
-                <button
-                  key={fee}
-                  onClick={() => setNewComp({ ...newComp, entry_fee: fee })}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
-                    newComp.entry_fee === fee
-                      ? 'bg-[#D4A843] border-[#D4A843] text-[#1B2A4A]'
-                      : 'border-gray-300 dark:border-gray-600 text-[#1B2A4A] dark:text-[#F5F0E8] hover:border-[#D4A843]'
-                  }`}
-                >
-                  ${fee}
-                </button>
-              ))}
-            </div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Title</label>
+            <input
+              className={inputClass}
+              placeholder="e.g. Summer Sprint — The Midnight Library"
+              value={newComp.title}
+              onChange={(e) => setNewComp({ ...newComp, title: e.target.value })}
+            />
           </div>
 
-          {/* Max participants */}
-          <div>
-            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Max Participants (optional)</label>
-            <input
-              type="number"
-              min="1"
-              className={inputClass}
-              placeholder="Leave blank for unlimited"
-              value={newComp.max_participants}
-              onChange={(e) => setNewComp({ ...newComp, max_participants: e.target.value })}
-            />
-            {newComp.max_participants && (
-              <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-1">
-                Gross: ${gross.toFixed(2)} · Platform: ${platform_fee.toFixed(2)} · Prize pool: ${reader_pool.toFixed(2)}
-              </p>
-            )}
+          {/* Books (not for Read-A-Thon) */}
+          {newComp.type !== 'Read-A-Thon' && (
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Books</label>
+              <div className="space-y-1 max-h-48 overflow-y-auto border border-[#e8e0d5] dark:border-gray-700 rounded-lg p-2">
+                {standardBooks.map((b) => (
+                  <label key={b.id} className="flex items-center gap-2 cursor-pointer px-2 py-1 rounded hover:bg-[#f5f0e8] dark:hover:bg-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={newComp.book_ids.includes(b.id)}
+                      onChange={() => toggleBook(b.id)}
+                      className="accent-[#D4A843]"
+                    />
+                    <span className="text-sm text-[#1B2A4A] dark:text-[#F5F0E8]">
+                      {b.title} <span className="text-[#6B7280]">— {b.author}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Entry fee + Prize pool */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Entry Fee ($)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className={inputClass}
+                placeholder="e.g. 5.00"
+                value={newComp.entry_fee}
+                onChange={(e) => setNewComp({ ...newComp, entry_fee: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Prize Pool ($)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className={inputClass}
+                placeholder="e.g. 200.00"
+                value={newComp.prize_pool}
+                onChange={(e) => setNewComp({ ...newComp, prize_pool: e.target.value })}
+              />
+              {newComp.prize_pool && (
+                <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-1">
+                  Platform cut (25%): ${(parseFloat(newComp.prize_pool) * 0.25).toFixed(2)}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Dates */}
@@ -226,10 +263,17 @@ export function AdminCompetitions() {
           </div>
 
           <div className="flex gap-2 pt-2">
-            <button onClick={handleSave} disabled={saving} className="px-4 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-semibold hover:bg-[#c49a3a] disabled:opacity-50">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-semibold hover:bg-[#c49a3a] disabled:opacity-50"
+            >
               {saving ? 'Saving...' : 'Create Competition'}
             </button>
-            <button onClick={() => { setShowForm(false); setNewComp(emptyComp); }} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-[#6B7280] hover:bg-gray-50 dark:hover:bg-gray-700">
+            <button
+              onClick={() => { setShowForm(false); setNewComp(emptyCompetition); }}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-[#6B7280] hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
               Cancel
             </button>
           </div>
@@ -245,24 +289,15 @@ export function AdminCompetitions() {
             <div key={comp.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
-                  <p className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8]">
-                    {comp.books?.title ?? 'Unknown Book'}
-                  </p>
-                  <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-0.5">
-                    {comp.books?.author ?? ''}
-                  </p>
+                  <p className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8]">{comp.title}</p>
+                  <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-0.5">{comp.type}</p>
                   <div className="flex flex-wrap gap-4 mt-2 text-sm">
                     <span className="text-[#1B2A4A] dark:text-[#F5F0E8]">
                       Entry: <strong>${comp.entry_fee}</strong>
                     </span>
                     <span className="text-[#D4A843] font-medium">
-                      Prize pool: ${comp.reader_pool}
+                      Prize pool: ${comp.prize_pool}
                     </span>
-                    {comp.max_participants && (
-                      <span className="text-[#6B7280] dark:text-gray-400">
-                        Max: {comp.max_participants} participants
-                      </span>
-                    )}
                     {comp.start_date && (
                       <span className="text-[#6B7280] dark:text-gray-400">
                         {new Date(comp.start_date).toLocaleDateString()} –{' '}
@@ -285,11 +320,6 @@ export function AdminCompetitions() {
                 {comp.status === 'active' && (
                   <button onClick={() => handleUpdateStatus(comp.id, 'completed')} className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-[#6B7280] hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                     Mark Completed
-                  </button>
-                )}
-                {(comp.status === 'upcoming' || comp.status === 'active') && (
-                  <button onClick={() => handleUpdateStatus(comp.id, 'cancelled')} className="text-xs px-3 py-1.5 rounded-lg border border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
-                    Cancel
                   </button>
                 )}
                 <button onClick={() => handleDelete(comp.id)} className="text-xs px-3 py-1.5 rounded-lg border border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition ml-auto">
