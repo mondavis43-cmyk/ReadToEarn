@@ -1,31 +1,27 @@
 import { useState } from 'react';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
-import { CheckCircle } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
 
 const PACKAGES = [
   {
     label: 'Essential',
     readers: 3,
     price: 50,
+    cents: 5000,
     description: 'Surface your chapter to 3 readers from your target identities',
   },
   {
     label: 'Standard',
     readers: 6,
     price: 80,
+    cents: 8000,
     description: 'Broader pool — more perspectives, more signal',
   },
   {
     label: 'Thorough',
     readers: 9,
     price: 150,
+    cents: 15000,
     description: 'Maximum coverage across all requested identity groups',
   },
 ];
@@ -75,8 +71,6 @@ export const AuthorSensitivityReaders = () => {
       : 'bg-white border-[#D4A843]/30 text-[#1B2A4A] focus:border-[#D4A843] placeholder-[#1B2A4A]/30'
   }`;
 
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const [selectedPackage, setSelectedPackage] = useState(PACKAGES[0]);
@@ -101,12 +95,11 @@ export const AuthorSensitivityReaders = () => {
     chapterText.trim().length >= 100 &&
     selectedIdentities.length > 0;
 
-  const handleSubmit = async () => {
+  const handleCheckout = () => {
     if (!isValid) {
       setError('Please fill out all required fields, paste your chapter, and select at least one identity.');
       return;
     }
-    setLoading(true);
     setError('');
 
     const identityList =
@@ -114,9 +107,20 @@ export const AuthorSensitivityReaders = () => {
         ? [...selectedIdentities.filter((i) => i !== 'Other (author will specify)'), `Other: ${otherIdentity.trim()}`]
         : selectedIdentities;
 
-    const { error: insertError } = await supabase
-      .from('author_sensitivity_submissions')
-      .insert({
+    (window as any).__checkoutItem = {
+      type: 'sensitivity_readers',
+      label: `Sensitivity Readers — ${selectedPackage.label} (${selectedPackage.readers} readers) for "${bookTitle}"`,
+      amount: selectedPackage.cents,
+      metadata: {
+        package: selectedPackage.label,
+        readers: selectedPackage.readers,
+        identities: identityList,
+      },
+    };
+
+    (window as any).__pendingSubmission = {
+      table: 'author_sensitivity_submissions',
+      data: {
         author_name: authorName.trim(),
         email: email.trim(),
         book_title: bookTitle.trim(),
@@ -125,68 +129,14 @@ export const AuthorSensitivityReaders = () => {
         price: selectedPackage.price,
         chapter_text: chapterText.trim(),
         identity_areas: identityList,
-        context: context.trim(),
-        status: 'pending_payment',
-      });
+        context: context.trim() || null,
+        status: 'active',
+      },
+    };
 
-    if (insertError) {
-      setError('Something went wrong. Please try again.');
-      setLoading(false);
-      return;
-    }
-
-    setSubmitted(true);
-    setLoading(false);
+    window.history.pushState({}, '', '/checkout');
+    window.dispatchEvent(new PopStateEvent('popstate'));
   };
-
-  if (submitted) {
-    return (
-      <div className={`min-h-screen ${bg} flex items-center justify-center px-4`}>
-        <div className="max-w-md w-full text-center">
-          <CheckCircle className="w-16 h-16 text-[#D4A843] mx-auto mb-4" />
-          <h1 className={`font-serif text-3xl mb-3 ${textPrimary}`}>Submission Received!</h1>
-          <p className={`mb-2 ${textMuted}`}>
-            We'll email <span className={textPrimary}>{email}</span> with payment instructions.
-          </p>
-          <p className={`text-sm mb-8 ${textMuted}`}>
-            Once payment is confirmed, your chapter will go live to readers matching your requested identities. You'll receive their responses and contact info so you can choose who to work with directly.
-          </p>
-          <div className={`rounded-xl border p-5 mb-8 ${cardBg}`}>
-            <p className={`text-sm ${textMuted}`}>
-              Package: <span className={`font-semibold ${textPrimary}`}>{selectedPackage.label}</span>
-            </p>
-            <p className={`text-sm mt-1 ${textMuted}`}>
-              Up to <span className={`font-semibold ${textPrimary}`}>{selectedPackage.readers} reader responses</span>
-            </p>
-            <p className={`text-xl font-bold mt-3 text-[#D4A843]`}>${selectedPackage.price} due</p>
-          </div>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => {
-                setSubmitted(false);
-                setAuthorName(''); setEmail(''); setBookTitle('');
-                setChapterText(''); setSelectedIdentities([]); setOtherIdentity(''); setContext('');
-                setSelectedPackage(PACKAGES[0]);
-              }}
-              className="bg-[#D4A843] text-[#1B2A4A] font-semibold px-6 py-3 rounded-xl hover:bg-[#c49a3a] transition"
-            >
-              Submit Another
-            </button>
-            <button
-              onClick={() => navigateTo('/authors')}
-              className={`px-6 py-3 rounded-xl border font-medium transition ${
-                isDark
-                  ? 'border-[#D4A843]/30 text-[#F5F0E8] hover:bg-[#1B2A4A]/40'
-                  : 'border-[#1B2A4A]/30 text-[#1B2A4A] hover:bg-[#1B2A4A]/10'
-              }`}
-            >
-              Back to Authors
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={`min-h-screen ${bg}`}>
@@ -201,7 +151,7 @@ export const AuthorSensitivityReaders = () => {
             ← Back to Author Services
           </button>
           <h1 className={`font-serif text-4xl mb-3 ${textPrimary}`}>Sensitivity Readers</h1>
-          <p className={`${textMuted}`}>
+          <p className={textMuted}>
             Upload a sample chapter and tell us which identities you're seeking feedback from. Readers who match those identities will read your chapter, answer survey questions, and share whether they're interested in reading the full manuscript. You review their responses and reach out directly to whoever you want to work with — no middleman.
           </p>
         </div>
@@ -374,7 +324,8 @@ export const AuthorSensitivityReaders = () => {
         {/* Context for Readers */}
         <div className="mb-10">
           <h2 className={`font-serif text-2xl mb-2 ${textPrimary}`}>
-            Context for Readers <span className={`font-normal text-base ${textMuted}`}>(optional)</span>
+            Context for Readers{' '}
+            <span className={`font-normal text-base ${textMuted}`}>(optional)</span>
           </h2>
           <p className={`text-sm mb-4 ${textMuted}`}>
             Anything readers should know before reading — what the book is about, specific concerns you have, what kind of feedback is most useful to you.
@@ -400,12 +351,9 @@ export const AuthorSensitivityReaders = () => {
             <span className={`font-medium ${textPrimary}`}>Up to {selectedPackage.readers}</span>
           </div>
           <div className={`border-t pt-4 mt-2 flex justify-between ${isDark ? 'border-[#D4A843]/20' : 'border-[#D4A843]/30'}`}>
-            <span className={`font-medium ${textPrimary}`}>Total Due</span>
+            <span className={`font-medium ${textPrimary}`}>Total</span>
             <span className="text-[#D4A843] font-bold text-xl">${selectedPackage.price}</span>
           </div>
-          <p className={`text-xs mt-3 ${textMuted}`}>
-            Payment instructions will be sent to your email after submission. No charge until you confirm.
-          </p>
         </div>
 
         {error && (
@@ -415,15 +363,13 @@ export const AuthorSensitivityReaders = () => {
         )}
 
         <button
-          onClick={handleSubmit}
-          disabled={loading}
-          className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-4 rounded-xl hover:bg-[#c49a3a] transition disabled:opacity-50 disabled:cursor-not-allowed text-lg"
+          onClick={handleCheckout}
+          className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-4 rounded-xl hover:bg-[#c49a3a] transition text-lg"
         >
-          {loading ? 'Submitting...' : `Submit — $${selectedPackage.price} due after review`}
+          {`Get Sensitivity Readers — Pay $${selectedPackage.price}`}
         </button>
-
         <p className={`text-xs text-center mt-3 ${textMuted}`}>
-          No payment required now. We'll email you with next steps.
+          You'll be taken to secure checkout. Reader responses delivered within a few days of payment.
         </p>
 
       </div>
