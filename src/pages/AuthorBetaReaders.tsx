@@ -1,19 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
-import { CheckCircle, BookOpen } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+import { BookOpen } from 'lucide-react';
 
 const PACKAGES = [
-  { label: 'Starter', readers: 10, price: 28 },
-  { label: 'Standard', readers: 25, price: 60 },
-  { label: 'Extended', readers: 50, price: 110 },
-  { label: 'Pro', readers: 100, price: 200 },
+  { label: 'Starter', readers: 10, price: 28, cents: 2800 },
+  { label: 'Standard', readers: 25, price: 60, cents: 6000 },
+  { label: 'Extended', readers: 50, price: 110, cents: 11000 },
+  { label: 'Pro', readers: 100, price: 200, cents: 20000 },
 ];
 
 const GENRES = [
@@ -41,8 +35,6 @@ export const AuthorBetaReaders = () => {
   const { navigateTo } = useNavigate();
   const { isDark, toggleTheme } = useTheme();
 
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const [authorName, setAuthorName] = useState('');
@@ -66,17 +58,27 @@ export const AuthorBetaReaders = () => {
 
   const isFormValid = () => authorName && email && bookTitle && excerpt && blurb;
 
-  const handleSubmit = async () => {
+  const handleCheckout = () => {
     if (!isFormValid()) {
       setError('Please fill out all required fields.');
       return;
     }
-    setLoading(true);
     setError('');
 
-    const { error: insertError } = await supabase
-      .from('author_beta_reader_submissions')
-      .insert({
+    (window as any).__checkoutItem = {
+      type: 'beta_readers',
+      label: `Beta Readers — ${selectedPackage.label} (${selectedPackage.readers} readers) for "${bookTitle}"`,
+      amount: selectedPackage.cents,
+      metadata: {
+        package: selectedPackage.label,
+        readers: selectedPackage.readers,
+        feedback_type: selectedFeedback.label,
+      },
+    };
+
+    (window as any).__pendingSubmission = {
+      table: 'author_beta_reader_submissions',
+      data: {
         author_name: authorName,
         email,
         book_title: bookTitle,
@@ -88,78 +90,13 @@ export const AuthorBetaReaders = () => {
         excerpt,
         blurb,
         notes: notes || null,
-        status: 'pending_payment',
-      });
+        status: 'active',
+      },
+    };
 
-    if (insertError) {
-      setError('Something went wrong. Please try again.');
-      setLoading(false);
-      return;
-    }
-
-    setSubmitted(true);
-    setLoading(false);
+    window.history.pushState({}, '', '/checkout');
+    window.dispatchEvent(new PopStateEvent('popstate'));
   };
-
-  if (submitted) {
-    return (
-      <div className={`min-h-screen flex items-center justify-center px-4 transition-colors ${isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]'}`}>
-        <div className="max-w-md w-full text-center">
-          <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
-          <h1 className={`font-serif text-3xl mb-3 ${textPrimary}`}>Request Submitted!</h1>
-          <p className={`mb-2 ${textMuted}`}>
-            We've received your beta reader request for{' '}
-            <span className={`font-medium ${textPrimary}`}>{bookTitle}</span>.
-          </p>
-          <p className={`text-sm mb-8 ${textMuted}`}>
-            We'll email <span className={textPrimary}>{email}</span> with payment instructions. Beta readers are matched and notified once payment is confirmed.
-          </p>
-          <div className={`rounded-xl border p-4 mb-8 text-left ${cardBg}`}>
-            <div className="flex justify-between text-sm mb-2">
-              <span className={textMuted}>Genre</span>
-              <span className={`font-medium ${textPrimary}`}>{genre}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-2">
-              <span className={textMuted}>Feedback type</span>
-              <span className={`font-medium ${textPrimary}`}>{selectedFeedback.label}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-2">
-              <span className={textMuted}>Package</span>
-              <span className={`font-medium ${textPrimary}`}>{selectedPackage.label}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-2">
-              <span className={textMuted}>Readers</span>
-              <span className={`font-medium ${textPrimary}`}>{selectedPackage.readers} beta readers</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className={textMuted}>Total</span>
-              <span className="text-[#D4A843] font-bold">${selectedPackage.price}</span>
-            </div>
-          </div>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => {
-                setSubmitted(false);
-                setAuthorName(''); setEmail(''); setBookTitle('');
-                setGenre(GENRES[0]); setSelectedPackage(PACKAGES[1]);
-                setSelectedFeedback(FEEDBACK_TYPES[0]);
-                setExcerpt(''); setBlurb(''); setNotes('');
-              }}
-              className="bg-[#D4A843] text-[#1B2A4A] font-medium px-6 py-3 rounded-lg hover:bg-[#c49a3a] transition"
-            >
-              Submit Another
-            </button>
-            <button
-              onClick={() => navigateTo('/authors')}
-              className={`font-medium px-6 py-3 rounded-lg transition border ${cardBg} ${textPrimary}`}
-            >
-              Back to Authors
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]'}`}>
@@ -349,7 +286,7 @@ export const AuthorBetaReaders = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className={inputClass}
-                  placeholder="Results and invoice sent here"
+                  placeholder="Results and receipt sent here"
                 />
               </div>
             </div>
@@ -387,14 +324,13 @@ export const AuthorBetaReaders = () => {
         )}
 
         <button
-          onClick={handleSubmit}
-          disabled={loading}
-          className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-4 rounded-xl hover:bg-[#c49a3a] transition disabled:opacity-50 disabled:cursor-not-allowed text-lg"
+          onClick={handleCheckout}
+          className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-4 rounded-xl hover:bg-[#c49a3a] transition text-lg"
         >
-          {loading ? 'Submitting...' : `Submit Request — $${selectedPackage.price} due after review`}
+          {`Get Beta Readers — Pay $${selectedPackage.price}`}
         </button>
         <p className={`text-xs text-center mt-3 ${textMuted}`}>
-          No payment required now. We'll email you with next steps.
+          You'll be taken to secure checkout. Readers are matched and notified immediately after payment.
         </p>
 
       </div>
