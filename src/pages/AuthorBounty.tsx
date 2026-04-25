@@ -2,12 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
 import { CheckCircle, Zap } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
 
 const BOUNTY_POOLS = [
   { size: 25, platform: 5, readerPool: 20, label: '$25 Pool', example: '20 readers at $1 each' },
@@ -19,11 +13,19 @@ const BOUNTY_POOLS = [
 
 const PER_PASS_OPTIONS = [0.25, 0.50, 0.75, 1.00, 1.50, 2.00];
 
+// Pool size in dollars -> amount in cents
+const POOL_CENTS: Record<number, number> = {
+  25: 2500,
+  50: 5000,
+  100: 10000,
+  200: 20000,
+  500: 50000,
+};
+
 export const AuthorBounty = () => {
   const { navigateTo } = useNavigate();
   const { isDark, toggleTheme } = useTheme();
 
-  const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -46,17 +48,26 @@ export const AuthorBounty = () => {
 
   const isFormValid = () => authorName && email && bookTitle;
 
-  const handleSubmit = async () => {
+  const handleCheckout = () => {
     if (!isFormValid()) {
       setError('Please fill out all required fields.');
       return;
     }
-    setLoading(true);
     setError('');
 
-    const { error: insertError } = await supabase
-      .from('author_bounty_submissions')
-      .insert({
+    (window as any).__checkoutItem = {
+      type: 'bounty',
+      label: `Author Bounty — ${selectedPool.label} for "${bookTitle}"`,
+      amount: POOL_CENTS[selectedPool.size],
+      metadata: {
+        pool_size: selectedPool.size,
+        per_pass: perPass,
+      },
+    };
+
+    (window as any).__pendingSubmission = {
+      table: 'author_bounty_submissions',
+      data: {
         author_name: authorName,
         email,
         book_title: bookTitle,
@@ -65,72 +76,13 @@ export const AuthorBounty = () => {
         reader_pool: selectedPool.readerPool,
         per_pass_amount: perPass,
         estimated_readers: estimatedReaders,
-        status: 'pending_payment',
-      });
+        status: 'active',
+      },
+    };
 
-    if (insertError) {
-      setError('Something went wrong. Please try again.');
-      setLoading(false);
-      return;
-    }
-
-    setSubmitted(true);
-    setLoading(false);
+    window.history.pushState({}, '', '/checkout');
+    window.dispatchEvent(new PopStateEvent('popstate'));
   };
-
-  if (submitted) {
-    return (
-      <div className={`min-h-screen flex items-center justify-center px-4 transition-colors ${isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]'}`}>
-        <div className="max-w-md w-full text-center">
-          <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
-          <h1 className={`font-serif text-3xl mb-3 ${textPrimary}`}>Bounty Submitted!</h1>
-          <p className={`mb-2 ${textMuted}`}>
-            We've received your bounty request for{' '}
-            <span className={`font-medium ${textPrimary}`}>{bookTitle}</span>.
-          </p>
-          <p className={`text-sm mb-8 ${textMuted}`}>
-            We'll email <span className={textPrimary}>{email}</span> with payment instructions. Your bounty goes live once payment is confirmed.
-          </p>
-          <div className={`rounded-xl border p-4 mb-8 ${cardBg}`}>
-            <div className="flex justify-between text-sm mb-2">
-              <span className={textMuted}>Pool size</span>
-              <span className={`font-medium ${textPrimary}`}>${selectedPool.size}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-2">
-              <span className={textMuted}>Reader pool (80%)</span>
-              <span className="text-green-500 font-medium">${selectedPool.readerPool}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-2">
-              <span className={textMuted}>Per pass payout</span>
-              <span className={`font-medium ${textPrimary}`}>${perPass.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className={textMuted}>Est. readers</span>
-              <span className={`font-medium ${textPrimary}`}>~{estimatedReaders}</span>
-            </div>
-          </div>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => {
-                setSubmitted(false);
-                setAuthorName(''); setEmail(''); setBookTitle('');
-                setSelectedPool(BOUNTY_POOLS[0]); setPerPass(PER_PASS_OPTIONS[1]);
-              }}
-              className="bg-[#D4A843] text-[#1B2A4A] font-medium px-6 py-3 rounded-lg hover:bg-[#c49a3a] transition"
-            >
-              Submit Another
-            </button>
-            <button
-              onClick={() => navigateTo('/authors')}
-              className={`font-medium px-6 py-3 rounded-lg transition border ${cardBg} ${textPrimary}`}
-            >
-              Back to Authors
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]'}`}>
@@ -298,7 +250,7 @@ export const AuthorBounty = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className={inputClass}
-                  placeholder="Payment instructions sent here"
+                  placeholder="Payment confirmation sent here"
                 />
               </div>
             </div>
@@ -333,14 +285,14 @@ export const AuthorBounty = () => {
         )}
 
         <button
-          onClick={handleSubmit}
+          onClick={handleCheckout}
           disabled={loading}
           className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-4 rounded-xl hover:bg-[#c49a3a] transition disabled:opacity-50 disabled:cursor-not-allowed text-lg"
         >
-          {loading ? 'Submitting...' : `Set Bounty — $${selectedPool.size} due after review`}
+          {`Set Bounty — Pay $${selectedPool.size}`}
         </button>
         <p className={`text-xs text-center mt-3 ${textMuted}`}>
-          No payment required now. We'll email you with next steps.
+          You'll be taken to secure checkout. Your bounty goes live immediately after payment.
         </p>
 
       </div>
