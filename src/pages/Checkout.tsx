@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { loadStripe } from "@stripe/stripe-js";
 import {
@@ -25,7 +25,7 @@ export type CheckoutItem = {
     | "time_boost"
     | "competition_entry";
   label: string;
-  amount: number; // in cents
+  amount: number;
   metadata?: Record<string, string | number>;
 };
 
@@ -69,38 +69,38 @@ export const SURVEY_PRICES = [
 ];
 
 export const BETA_READER_PRICES = [
-  { label: "10 readers", amount: 2800 },
-  { label: "25 readers", amount: 6000 },
-  { label: "50 readers", amount: 11000 },
-  { label: "100 readers", amount: 20000 },
+  { label: "5 readers", amount: 2800 },
+  { label: "10 readers", amount: 6000 },
+  { label: "20 readers", amount: 11000 },
+  { label: "40 readers", amount: 20000 },
 ];
 
 export const SENSITIVITY_READER_PRICES = [
-  { label: "10 readers", amount: 5000 },
-  { label: "25 readers", amount: 8000 },
-  { label: "50 readers", amount: 15000 },
+  { label: "1 reader", amount: 5000 },
+  { label: "2 readers", amount: 8000 },
+  { label: "4 readers", amount: 15000 },
 ];
 
 export const SUBSCRIPTION_PRICES = [
-  { label: "Monthly – $4.99/mo", amount: 499 },
-  { label: "Annual – $49.90/yr", amount: 4990 },
+  { label: "Monthly", amount: 499 },
+  { label: "Annual", amount: 4990 },
 ];
 
 export const TIME_BOOST_PRICES = [
-  { label: "Single Boost (1)", amount: 99 },
-  { label: "Starter Pack (6 boosts)", amount: 499 },
-  { label: "Marathoner Pack (15 boosts)", amount: 999 },
+  { label: "Single Boost", amount: 99 },
+  { label: "Starter Pack (6x)", amount: 499 },
+  { label: "Marathoner Pack (15x)", amount: 999 },
 ];
 
 export const COMPETITION_ENTRY_PRICES = [
-  { label: "Sprint Entry", amount: 500 },
-  { label: "Read-A-Thon Entry", amount: 700 },
-  { label: "Elimination Bracket Entry", amount: 1000 },
+  { label: "Basic Entry", amount: 500 },
+  { label: "Standard Entry", amount: 700 },
+  { label: "Premium Entry", amount: 1000 },
 ];
 
 // ─── Redirect map ─────────────────────────────────────────────────────────────
 
-const REDIRECT_MAP: Record<CheckoutItem["type"], string> = {
+const REDIRECT_MAP: Record<string, string> = {
   listing: "/author-dashboard",
   bounty: "/author-dashboard",
   competition_sponsored: "/author-dashboard",
@@ -109,23 +109,36 @@ const REDIRECT_MAP: Record<CheckoutItem["type"], string> = {
   beta_reader: "/author-dashboard",
   sensitivity_reader: "/author-dashboard",
   subscription: "/profile",
-  time_boost: "/competitions",
+  time_boost: "/profile",
   competition_entry: "/competitions",
 };
 
-// ─── Helper: navigate with your custom router ─────────────────────────────────
+// ─── Navigation helper ────────────────────────────────────────────────────────
 
 const goTo = (path: string) => {
   window.history.pushState({}, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
 };
 
-// ─── Checkout Form ────────────────────────────────────────────────────────────
+// ─── Card element styles ──────────────────────────────────────────────────────
 
-function CheckoutForm({ item }: { item: CheckoutItem }) {
+const CARD_STYLE = {
+  style: {
+    base: {
+      color: "#ffffff",
+      fontFamily: "sans-serif",
+      fontSize: "16px",
+      "::placeholder": { color: "#6b7280" },
+    },
+    invalid: { color: "#ef4444" },
+  },
+};
+
+// ─── CheckoutForm ─────────────────────────────────────────────────────────────
+
+const CheckoutForm = ({ item }: { item: CheckoutItem }) => {
   const stripe = useStripe();
   const elements = useElements();
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -187,19 +200,15 @@ function CheckoutForm({ item }: { item: CheckoutItem }) {
           metadata: item.metadata ?? {},
           status: "succeeded",
         });
-        
-      if (paymentIntent?.status === "succeeded") {
-        // 4. Log to Supabase
-        await supabase.from("payments").insert({
-          user_id: user.id,
-          stripe_payment_intent_id: paymentIntent.id,
-          amount: item.amount,
-          type: item.type,
-          label: item.label,
-          metadata: item.metadata ?? {},
-          status: "succeeded",
-        });
 
+        // 5. Insert pending submission if this was a listing purchase
+        const pending = (window as any).__pendingSubmission;
+        if (pending && item.type === "listing") {
+          await supabase.from("author_submissions").insert(pending);
+          delete (window as any).__pendingSubmission;
+        }
+
+        // 6. Show success + redirect
         setSuccess(true);
         setTimeout(() => goTo(REDIRECT_MAP[item.type] ?? "/profile"), 2500);
       }
@@ -214,7 +223,7 @@ function CheckoutForm({ item }: { item: CheckoutItem }) {
     return (
       <div className="text-center py-20">
         <div className="text-6xl mb-4">🎉</div>
-        <h2 className="text-2xl font-bold text-green-600 mb-2">
+        <h2 className="text-2xl font-bold text-green-400 mb-2">
           Payment Successful!
         </h2>
         <p className="text-gray-500">Redirecting you now...</p>
@@ -222,91 +231,38 @@ function CheckoutForm({ item }: { item: CheckoutItem }) {
     );
   }
 
-  // After payments insert, check for pending submission
-const pending = (window as any).__pendingSubmission;
-      if (pending && item.type === "listing") {
-        await supabase.from("author_submissions").insert(pending);
-        delete (window as any).__pendingSubmission;
-      }
-
-      // 3. Show success + redirect
-      setSuccess(true);
-      setTimeout(() => goTo(REDIRECT_MAP[item.type] ?? "/profile"), 2500);
-    }
-  } catch (err: unknown) {
-    setError(err instanceof Error ? err.message : "Something went wrong.");
-  } finally {
-    setLoading(false);
-  }
-};
-
-  if (success) {
-    return (
-      <div className="text-center py-20">
-        <div className="text-6xl mb-4">🎉</div>
-        <h2 className="text-2xl font-bold text-green-600 mb-2">
-          Payment Successful!
-        </h2>
-        <p className="text-gray-500">Redirecting you now...</p>
-      </div>
-    );
-  }
-  
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Order Summary */}
-      <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
-          Order Summary
-        </p>
-        <div className="flex justify-between items-center">
-          <span className="text-gray-800 font-medium">{item.label}</span>
-          <span className="text-gray-900 font-bold text-xl">
+      <div className="bg-[#1a1a1a] rounded-lg p-5 border border-gray-800">
+        <h3 className="text-white font-medium mb-3">Order Summary</h3>
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-400">{item.label}</span>
+          <span className="text-white font-medium">
             ${(item.amount / 100).toFixed(2)}
           </span>
         </div>
-        {item.metadata && Object.keys(item.metadata).length > 0 && (
-          <div className="mt-3 pt-3 border-t border-gray-200 space-y-1">
-            {Object.entries(item.metadata)
-              .filter(([k]) => k !== "user_id")
-              .map(([k, v]) => (
-                <div
-                  key={k}
-                  className="flex justify-between text-sm text-gray-500"
-                >
-                  <span className="capitalize">{k.replace(/_/g, " ")}</span>
-                  <span>{v}</span>
-                </div>
-              ))}
-          </div>
-        )}
+        <div className="border-t border-gray-700 mt-3 pt-3 flex justify-between">
+          <span className="text-white font-medium">Total</span>
+          <span className="text-white font-bold">
+            ${(item.amount / 100).toFixed(2)}
+          </span>
+        </div>
       </div>
 
       {/* Card Input */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-gray-300 mb-2">
           Card Details
         </label>
-        <div className="border border-gray-300 rounded-xl p-4 bg-white focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent transition">
-          <CardElement
-            options={{
-              style: {
-                base: {
-                  fontSize: "16px",
-                  color: "#1f2937",
-                  fontFamily: "inherit",
-                  "::placeholder": { color: "#9ca3af" },
-                },
-                invalid: { color: "#ef4444" },
-              },
-            }}
-          />
+        <div className="px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-lg">
+          <CardElement options={CARD_STYLE} />
         </div>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+        <div className="p-3 bg-red-900/20 border border-red-900/50 rounded text-red-400 text-sm">
           {error}
         </div>
       )}
@@ -314,41 +270,34 @@ const pending = (window as any).__pendingSubmission;
       {/* Submit */}
       <button
         type="submit"
-        disabled={!stripe || loading}
-        className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-semibold py-3.5 px-6 rounded-xl transition-colors text-base"
+        disabled={loading || !stripe}
+        className="w-full bg-white text-black font-medium py-4 rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed text-lg"
       >
         {loading ? "Processing..." : `Pay $${(item.amount / 100).toFixed(2)}`}
       </button>
 
-      <p className="text-center text-xs text-gray-400">
-        Secured by Stripe. We never store your card details.
+      <p className="text-gray-600 text-xs text-center">
+        Secured by Stripe. Your card info never touches our servers.
       </p>
     </form>
   );
-}
+};
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Checkout page (default export) ──────────────────────────────────────────
 
-export default function Checkout() {
+const Checkout = () => {
   const item = (window as any).__checkoutItem as CheckoutItem | undefined;
-
-  // Clear global item when leaving page
-  useEffect(() => {
-    return () => {
-      delete (window as any).__checkoutItem;
-    };
-  }, []);
 
   if (!item) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center px-4">
         <div className="text-center">
-          <p className="text-gray-500 mb-4">No item selected for checkout.</p>
+          <p className="text-gray-400 mb-4">No item selected for checkout.</p>
           <button
-            onClick={() => window.history.back()}
-            className="text-indigo-600 hover:underline text-sm"
+            onClick={() => goTo("/")}
+            className="bg-white text-black font-medium px-6 py-3 rounded-lg hover:bg-gray-200 transition"
           >
-            Go back
+            Go Home
           </button>
         </div>
       </div>
@@ -356,33 +305,26 @@ export default function Checkout() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-16">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-[#0f0f0f]">
+      <div className="max-w-lg mx-auto px-4 py-16">
         {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Checkout</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Complete your purchase below
-          </p>
-        </div>
-
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-          <Elements stripe={stripePromise}>
-            <CheckoutForm item={item} />
-          </Elements>
-        </div>
-
-        {/* Back */}
-        <div className="text-center mt-6">
+        <div className="mb-8">
           <button
-            onClick={() => window.history.back()}
-            className="text-sm text-gray-400 hover:text-gray-600 transition"
+            onClick={() => goTo(-1 as any)}
+            className="text-gray-500 hover:text-white text-sm transition mb-6 flex items-center gap-1"
           >
-            ← Cancel and go back
+            ← Back
           </button>
+          <h1 className="font-serif text-3xl text-white">Checkout</h1>
         </div>
+
+        {/* Form */}
+        <Elements stripe={stripePromise}>
+          <CheckoutForm item={item} />
+        </Elements>
       </div>
     </div>
   );
-}
+};
+
+export default Checkout;
