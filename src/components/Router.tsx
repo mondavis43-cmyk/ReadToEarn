@@ -33,6 +33,7 @@ import { Competitions } from '../pages/Competitions';
 import { Earn } from '../pages/Earn';
 import { AuthorAMA } from '../pages/AuthorAMA';
 import { AMASession } from '../pages/AMASession';
+import Checkout from '../pages/Checkout';
 
 const WAITLIST_MODE = true;
 
@@ -102,6 +103,7 @@ if (!user) return <Login />;
     '/bulletin-board',
     '/bulletin-submit',
     '/faq',
+    '/checkout',
   ];
 
   const isKnownRoute =
@@ -135,6 +137,7 @@ if (!user) return <Login />;
       {route === '/bulletin-submit' && <BulletinSubmit />}
       {route.startsWith('/quiz/') && <Quiz bookId={route.split('/')[2]} />}
       {route.startsWith('/book/') && <BookPage />}
+      {route === '/checkout' && <Checkout />}
       {!isKnownRoute && <Home />}
     </>
   );
