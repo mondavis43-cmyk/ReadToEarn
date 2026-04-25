@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { loadStripe } from "@stripe/stripe-js";
 import {
@@ -30,7 +29,7 @@ export type CheckoutItem = {
   metadata?: Record<string, string | number>;
 };
 
-// ─── Pricing constants (export so other pages can import) ─────────────────────
+// ─── Pricing constants ────────────────────────────────────────────────────────
 
 export const LISTING_PRICES = [
   { label: "Single (1 book)", amount: 700 },
@@ -114,12 +113,18 @@ const REDIRECT_MAP: Record<CheckoutItem["type"], string> = {
   competition_entry: "/competitions",
 };
 
+// ─── Helper: navigate with your custom router ─────────────────────────────────
+
+const goTo = (path: string) => {
+  window.history.pushState({}, "", path);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+};
+
 // ─── Checkout Form ────────────────────────────────────────────────────────────
 
 function CheckoutForm({ item }: { item: CheckoutItem }) {
   const stripe = useStripe();
   const elements = useElements();
-  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -133,13 +138,14 @@ function CheckoutForm({ item }: { item: CheckoutItem }) {
     setError(null);
 
     try {
+      // 1. Get current user
       const {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
       if (userError || !user) throw new Error("You must be logged in to checkout.");
 
-      // Create PaymentIntent
+      // 2. Create PaymentIntent via Edge Function
       const { data, error: fnError } = await supabase.functions.invoke(
         "create-payment-intent",
         {
@@ -159,7 +165,7 @@ function CheckoutForm({ item }: { item: CheckoutItem }) {
       if (fnError || !data?.clientSecret)
         throw new Error(fnError?.message || "Failed to initialize payment.");
 
-      // Confirm payment
+      // 3. Confirm card payment
       const cardElement = elements.getElement(CardElement);
       if (!cardElement) throw new Error("Card element not found.");
 
@@ -171,7 +177,7 @@ function CheckoutForm({ item }: { item: CheckoutItem }) {
       if (stripeError) throw new Error(stripeError.message);
 
       if (paymentIntent?.status === "succeeded") {
-        // Log to Supabase
+        // 4. Log to Supabase
         await supabase.from("payments").insert({
           user_id: user.id,
           stripe_payment_intent_id: paymentIntent.id,
@@ -183,7 +189,7 @@ function CheckoutForm({ item }: { item: CheckoutItem }) {
         });
 
         setSuccess(true);
-        setTimeout(() => navigate(REDIRECT_MAP[item.type] ?? "/profile"), 2500);
+        setTimeout(() => goTo(REDIRECT_MAP[item.type] ?? "/profile"), 2500);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -196,7 +202,9 @@ function CheckoutForm({ item }: { item: CheckoutItem }) {
     return (
       <div className="text-center py-20">
         <div className="text-6xl mb-4">🎉</div>
-        <h2 className="text-2xl font-bold text-green-600 mb-2">Payment Successful!</h2>
+        <h2 className="text-2xl font-bold text-green-600 mb-2">
+          Payment Successful!
+        </h2>
         <p className="text-gray-500">Redirecting you now...</p>
       </div>
     );
@@ -220,7 +228,10 @@ function CheckoutForm({ item }: { item: CheckoutItem }) {
             {Object.entries(item.metadata)
               .filter(([k]) => k !== "user_id")
               .map(([k, v]) => (
-                <div key={k} className="flex justify-between text-sm text-gray-500">
+                <div
+                  key={k}
+                  className="flex justify-between text-sm text-gray-500"
+                >
                   <span className="capitalize">{k.replace(/_/g, " ")}</span>
                   <span>{v}</span>
                 </div>
@@ -277,17 +288,22 @@ function CheckoutForm({ item }: { item: CheckoutItem }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Checkout() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const item = location.state?.checkoutItem as CheckoutItem | undefined;
+  const item = (window as any).__checkoutItem as CheckoutItem | undefined;
+
+  // Clear global item when leaving page
+  useEffect(() => {
+    return () => {
+      delete (window as any).__checkoutItem;
+    };
+  }, []);
 
   if (!item) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-500 mb-4">No item selected for checkout.</p>
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => window.history.back()}
             className="text-indigo-600 hover:underline text-sm"
           >
             Go back
@@ -303,7 +319,9 @@ export default function Checkout() {
         {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-gray-900">Checkout</h1>
-          <p className="text-gray-500 text-sm mt-1">Complete your purchase below</p>
+          <p className="text-gray-500 text-sm mt-1">
+            Complete your purchase below
+          </p>
         </div>
 
         {/* Card */}
@@ -313,10 +331,10 @@ export default function Checkout() {
           </Elements>
         </div>
 
-        {/* Back link */}
+        {/* Back */}
         <div className="text-center mt-6">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => window.history.back()}
             className="text-sm text-gray-400 hover:text-gray-600 transition"
           >
             ← Cancel and go back
