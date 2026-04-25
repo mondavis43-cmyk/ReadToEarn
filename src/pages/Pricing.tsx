@@ -13,6 +13,17 @@ export function Pricing() {
   const textPrimary = isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]';
   const textMuted = isDark ? 'text-[#a0aec0]' : 'text-[#6b7280]';
 
+  const goToCheckout = (plan: 'monthly' | 'annual') => {
+    (window as any).__checkoutItem = {
+      type: 'subscription',
+      label: plan === 'monthly' ? 'Upgrade — Monthly ($4.99/mo)' : 'Upgrade — Annual ($49.90/yr)',
+      amount: plan === 'monthly' ? 499 : 4990,
+      metadata: { plan },
+    };
+    window.history.pushState({}, '', '/checkout');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+
   return (
     <div className={`min-h-screen ${bg} transition-colors duration-300 pb-20`}>
       {/* Hero */}
@@ -21,7 +32,7 @@ export function Pricing() {
           Membership Plans
         </h1>
         <p className={`text-lg ${textMuted} max-w-2xl mx-auto leading-relaxed`}>
-          Whether you’re a casual trivia fan or a competitive reader, 
+          Whether you're a casual trivia fan or a competitive reader, 
           we have a place for you. Join the community and start earning for your insights.
         </p>
       </section>
@@ -112,13 +123,13 @@ export function Pricing() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button 
-              onClick={() => navigateTo('/signup?plan=monthly')}
+              onClick={() => goToCheckout('monthly')}
               className="py-3 rounded-xl font-bold bg-[#D4A843] text-[#1B2A4A] hover:bg-[#c49a38] transition text-sm"
             >
               Subscribe Monthly — $4.99
             </button>
             <button 
-              onClick={() => navigateTo('/signup?plan=annual')}
+              onClick={() => goToCheckout('annual')}
               className="py-3 rounded-xl font-bold bg-[#1B2A4A] text-white hover:bg-[#243660] border border-[#D4A843]/30 transition text-sm"
             >
               Go Annual — $49.90
