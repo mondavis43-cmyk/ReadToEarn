@@ -62,7 +62,6 @@ export const AuthorSubmit = () => {
     Array.from({ length: 10 }, emptyQuestion)
   );
 
-  // Credits state
   const [existingCredits, setExistingCredits] = useState<number | null>(null);
   const [checkingCredits, setCheckingCredits] = useState(false);
 
@@ -108,7 +107,7 @@ export const AuthorSubmit = () => {
     setLoading(true);
     setError('');
 
-    // Use existing credit instead of Stripe
+    // Use existing credit instead of payment
     if (existingCredits && existingCredits > 0) {
       const { error: insertError } = await supabase
         .from('author_submissions')
@@ -134,7 +133,6 @@ export const AuthorSubmit = () => {
         return;
       }
 
-      // Increment credits_used by 1
       const { data: creditRow } = await supabase
         .from('author_credits')
         .select('credits_used')
@@ -153,41 +151,37 @@ export const AuthorSubmit = () => {
       return;
     }
 
-    // No credits — go to Stripe
-    try {
-      const res = await fetch(
-        'https://ohsocstmqwrsxvlcdrae.supabase.co/functions/v1/create-checkout',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email,
-            bundle: selectedBundle,
-            bookData: {
-              title,
-              author,
-              pageCount: parseInt(pageCount),
-              description,
-              coverUrl,
-              affiliateLink,
-              genres: selectedGenres,
-              tropes: selectedTropes,
-              questions,
-            },
-          }),
-        }
-      );
+    // No credits — save form data and go to checkout
+    // Store book data so it can be submitted after payment succeeds
+    (window as any).__pendingSubmission = {
+      email,
+      title,
+      author,
+      page_count: parseInt(pageCount),
+      description,
+      cover_url: coverUrl,
+      affiliate_link: affiliateLink,
+      genres: selectedGenres,
+      tropes: selectedTropes,
+      questions,
+      bundle_size: selectedBundle.books,
+      amount_paid: selectedBundle.total,
+      status: 'paid',
+    };
 
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        setError('Something went wrong creating your checkout session. Please try again.');
-      }
-    } catch {
-      setError('Network error. Please try again.');
-    }
+    (window as any).__checkoutItem = {
+      type: 'listing',
+      label: `${selectedBundle.label} Listing (${selectedBundle.books} book${selectedBundle.books > 1 ? 's' : ''})`,
+      amount: Math.round(selectedBundle.total * 100),
+      metadata: {
+        bundle: selectedBundle.label,
+        books: selectedBundle.books,
+        email,
+      },
+    };
 
+    window.history.pushState({}, '', '/checkout');
+    window.dispatchEvent(new PopStateEvent('popstate'));
     setLoading(false);
   };
 
@@ -251,11 +245,10 @@ export const AuthorSubmit = () => {
             Fill out the form below and complete payment to get your book listed in the Read to Earn library.
           </p>
           <p className="text-gray-600 text-xs text-center mb-12">
-  Already purchased a bundle? Enter your email below and click away from the field — your remaining credits will load automatically.
-</p>
+            Already purchased a bundle? Enter your email below and click away from the field — your remaining credits will load automatically.
+          </p>
         </div>
 
-        {/* Bundle Picker - hidden if author has credits */}
         {existingCredits !== null && existingCredits > 0 ? (
           <div className="mb-12 bg-green-900/20 border border-green-700/50 rounded-lg p-6">
             <h2 className="font-serif text-2xl text-white mb-2">You have credits</h2>
@@ -264,43 +257,43 @@ export const AuthorSubmit = () => {
             </p>
           </div>
         ) : (
-<div className="mb-12">
-  <h2 className="font-serif text-2xl text-white mb-2">Choose a Bundle</h2>
-  <p className="text-gray-500 text-sm mb-6">
-    Buy slots in advance and use them whenever you're ready. Unused slots never expire.
-  </p>
-  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-    {BUNDLES.map((bundle) => {
-      const isSelected = selectedBundle.books === bundle.books;
-      return (
-        <button
-          key={bundle.books}
-          onClick={() => setSelectedBundle(bundle)}
-          className={`relative rounded-lg p-4 border text-left transition ${
-            isSelected
-              ? 'bg-white text-black border-white'
-              : 'bg-[#1a1a1a] text-white border-gray-700 hover:border-gray-500'
-          }`}
-        >
-          <p className="font-semibold text-sm mb-1">{bundle.label}</p>
-          <p className={`text-lg font-bold ${isSelected ? 'text-black' : 'text-white'}`}>
-            ${bundle.total.toFixed(2)}
-          </p>
-          <p className={`text-xs mt-0.5 ${isSelected ? 'text-gray-600' : 'text-gray-500'}`}>
-            ${bundle.perBook.toFixed(2)}/book
-          </p>
-          {bundle.savings && (
-            <span className={`text-xs font-medium mt-1 block ${
-              isSelected ? 'text-green-700' : 'text-green-400'
-            }`}>
-              {bundle.savings}
-            </span>
-          )}
-        </button>
-      );
-    })}
-  </div>
-</div>
+          <div className="mb-12">
+            <h2 className="font-serif text-2xl text-white mb-2">Choose a Bundle</h2>
+            <p className="text-gray-500 text-sm mb-6">
+              Buy slots in advance and use them whenever you're ready. Unused slots never expire.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+              {BUNDLES.map((bundle) => {
+                const isSelected = selectedBundle.books === bundle.books;
+                return (
+                  <button
+                    key={bundle.books}
+                    onClick={() => setSelectedBundle(bundle)}
+                    className={`relative rounded-lg p-4 border text-left transition ${
+                      isSelected
+                        ? 'bg-white text-black border-white'
+                        : 'bg-[#1a1a1a] text-white border-gray-700 hover:border-gray-500'
+                    }`}
+                  >
+                    <p className="font-semibold text-sm mb-1">{bundle.label}</p>
+                    <p className={`text-lg font-bold ${isSelected ? 'text-black' : 'text-white'}`}>
+                      ${bundle.total.toFixed(2)}
+                    </p>
+                    <p className={`text-xs mt-0.5 ${isSelected ? 'text-gray-600' : 'text-gray-500'}`}>
+                      ${bundle.perBook.toFixed(2)}/book
+                    </p>
+                    {bundle.savings && (
+                      <span className={`text-xs font-medium mt-1 block ${
+                        isSelected ? 'text-green-700' : 'text-green-400'
+                      }`}>
+                        {bundle.savings}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* Book Info */}
@@ -497,7 +490,7 @@ export const AuthorSubmit = () => {
           </div>
         </div>
 
-        {/* Order Summary - hidden if using credits */}
+        {/* Order Summary */}
         {!(existingCredits !== null && existingCredits > 0) && (
           <div className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800 mb-6">
             <h2 className="font-serif text-xl text-white mb-4">Order Summary</h2>
@@ -539,7 +532,7 @@ export const AuthorSubmit = () => {
           className="w-full bg-white text-black font-medium py-4 rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed text-lg"
         >
           {loading
-            ? existingCredits && existingCredits > 0 ? 'Submitting...' : 'Redirecting to payment...'
+            ? existingCredits && existingCredits > 0 ? 'Submitting...' : 'Going to checkout...'
             : existingCredits && existingCredits > 0 ? 'Submit Book' : `Pay $${selectedBundle.total.toFixed(2)} & Submit`}
         </button>
 
