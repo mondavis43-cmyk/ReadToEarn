@@ -14,6 +14,7 @@ import { AdminReports } from './admin/AdminReports';
 import { AdminTrivia } from './admin/AdminTrivia';
 import { AdminTournaments } from './admin/AdminTournaments';
 import { AdminEarning } from './admin/AdminEarning';
+import { AdminAMA } from './admin/AdminAMA';
 
 import { useState } from 'react';
 
@@ -120,6 +121,7 @@ export function Admin() {
         {activeTab === 'trivia' && <AdminTrivia />}
         {activeTab === 'tournaments' && <AdminTournaments />}
         {activeTab === 'earning' && <AdminEarning />}
+        {activeTab === 'ama' && <AdminAMA />}
       </div>
     </div>
   );
