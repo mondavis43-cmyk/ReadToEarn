@@ -28,6 +28,9 @@ import { TermsOfService } from '../pages/TermsOfService';
 import { PrivacyPolicy } from '../pages/PrivacyPolicy';
 import { BulletinBoard } from '../pages/BulletinBoard';
 import { BulletinSubmit } from '../pages/BulletinSubmit';
+import { HowItWorks } from '../pages/HowItWorks';
+import { Competitions } from '../pages/Competitions';
+import { Earn } from '../pages/Earn';
 
 const WAITLIST_MODE = true;
 
@@ -69,8 +72,12 @@ export const Router = () => {
   if (!user) return <Login />;
 
   const KNOWN_ROUTES = [
+    '/',
     '/home',
     '/library',
+    '/how-it-works',
+    '/competitions',
+    '/earn',
     '/pricing',
     '/profile',
     '/cashout',
@@ -97,8 +104,11 @@ export const Router = () => {
   return (
     <>
       <NavBar />
-      {route === '/home' && <Home />}
+      {(route === '/' || route === '/home') && <Home />}
       {route === '/library' && <Library />}
+      {route === '/how-it-works' && <HowItWorks />}
+      {route === '/competitions' && <Competitions />}
+      {route === '/earn' && <Earn />}
       {route === '/pricing' && <Pricing />}
       {route === '/profile' && <Profile />}
       {route === '/cashout' && <Cashout />}
