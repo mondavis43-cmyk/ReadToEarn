@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
