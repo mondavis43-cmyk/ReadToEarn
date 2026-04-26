@@ -70,7 +70,6 @@ export const BookSearchInput = ({
     const timer = setTimeout(async () => {
       setLoading(true);
       const { data } = await supabase
-        const { data } = await supabase
   .from('books')
   .select('id, title, author, genre')
   .neq('book_type', 'bulletin_board')
