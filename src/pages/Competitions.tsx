@@ -36,7 +36,10 @@ const formatLabel = (format: string) => {
 };
 
 const PublicTournaments = ({
-  isDark, textPrimary, textMuted, cardBg, navigateTo
+  textPrimary,
+  textMuted,
+  cardBg,
+  navigateTo,
 }: {
   isDark: boolean;
   textPrimary: string;
@@ -378,33 +381,37 @@ export const Competitions = () => {
         </div>
 
         {/* User-Created Tournaments */}
-<div className="mb-16">
-  <h2 className={`font-serif text-3xl mb-2 ${textPrimary}`}>Run Your Own Tournament</h2>
-  <p className={`text-sm mb-8 ${textMuted}`}>
-    Any reader can create a public or private tournament. Set the book, format, and entry fee. Prize pool grows from entry fees — platform keeps 25%, same as official competitions.
-  </p>
+        <div className="mb-16">
+          <h2 className={`font-serif text-3xl mb-2 ${textPrimary}`}>Run Your Own Tournament</h2>
+          <p className={`text-sm mb-8 ${textMuted}`}>
+            Any reader can create a public or private tournament. Set the book, format, and entry fee. Prize pool grows from entry fees — platform keeps 25%, same as official competitions.
+          </p>
 
-  {/* Create CTA */}
-  <div className={`rounded-xl border p-6 mb-6 transition-colors ${cardBg}`}>
-    <div className="flex items-center gap-3 mb-3">
-      <Plus className="text-[#D4A843]" size={20} />
-      <h3 className={`font-serif text-lg ${textPrimary}`}>Create a Tournament</h3>
-    </div>
-    <p className={`text-sm mb-4 ${textMuted}`}>
-      Choose your book, pick a format, set your entry fee, and decide if it's public or invite-only. Share your invite code and let the competition begin.
-    </p>
-    <button
-      onClick={() => navigateTo('/tournaments/create')}
-      className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1B2A4A] bg-[#D4A843] px-4 py-2 rounded-lg hover:bg-[#c49a3a] transition"
-    >
-      Create a Tournament <ArrowRight size={14} />
-    </button>
-  </div>
+          {/* Create CTA */}
+          <div className={`rounded-xl border p-6 mb-6 transition-colors ${cardBg}`}>
+            <div className="flex items-center gap-3 mb-3">
+              <Plus className="text-[#D4A843]" size={20} />
+              <h3 className={`font-serif text-lg ${textPrimary}`}>Create a Tournament</h3>
+            </div>
+            <p className={`text-sm mb-4 ${textMuted}`}>
+              Choose your book, pick a format, set your entry fee, and decide if it's public or invite-only. Share your invite code and let the competition begin.
+            </p>
+            <button
+              onClick={() => navigateTo('/tournaments/create')}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1B2A4A] bg-[#D4A843] px-4 py-2 rounded-lg hover:bg-[#c49a3a] transition"
+            >
+              Create a Tournament <ArrowRight size={14} />
+            </button>
+          </div>
 
-  {/* Public tournaments list */}
-  <PublicTournaments isDark={isDark} textPrimary={textPrimary} textMuted={textMuted} cardBg={cardBg} navigateTo={navigateTo} />
-          </div>
-          </div>
+          {/* Public tournaments list */}
+          <PublicTournaments
+            isDark={isDark}
+            textPrimary={textPrimary}
+            textMuted={textMuted}
+            cardBg={cardBg}
+            navigateTo={navigateTo}
+          />
         </div>
 
       </div>
