@@ -210,7 +210,7 @@ export const AuthorCompetition = () => {
                     ? 'Readers quiz only on your book within a set time window.'
                     : type === 'Read-A-Thon'
                       ? 'Your book is required reading. Readers also quiz freely across the platform.'
-                      : 'Multi-round bracket. Readers advance by passing score thresholds.'}
+                      : 'A three round bracket. If you have one listing, your book will be the featured book in one of the rounds. If you have at least three listings, the entire competition can revolve around those three books.'}
                 </p>
               </button>
             ))}
