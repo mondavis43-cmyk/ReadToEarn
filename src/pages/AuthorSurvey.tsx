@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
 import { MessageSquare, Plus, Trash2, GripVertical, ToggleLeft, ToggleRight } from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
+const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
 const PACKAGES = [
   { label: 'Starter',  responses: 10,  price: 18,  cents: 1800  },
@@ -29,7 +29,7 @@ export const AuthorSurvey = () => {
   const [bookTitle, setBookTitle]           = useState('');
   const [selectedPackage, setSelectedPackage] = useState(PACKAGES[1]);
   const [questions, setQuestions]           = useState<Question[]>([
-    { id: uuidv4(), question: '', required: true },
+    { id: uid(), question: '', required: true },
   ]);
   const [excerpt, setExcerpt]               = useState('');
   const [notes, setNotes]                   = useState('');
@@ -48,7 +48,7 @@ export const AuthorSurvey = () => {
   // ── question builder helpers ───────────────────────────────
   const addQuestion = () => {
     if (questions.length >= MAX_QUESTIONS) return;
-    setQuestions(prev => [...prev, { id: uuidv4(), question: '', required: false }]);
+    setQuestions(prev => [...prev, { id: uid(), question: '', required: false }]);
   };
 
   const removeQuestion = (id: string) => {
