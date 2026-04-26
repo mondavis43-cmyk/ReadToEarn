@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../lib/supabase';
 import { useTheme } from '../contexts/ThemeContext';
 import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
 
