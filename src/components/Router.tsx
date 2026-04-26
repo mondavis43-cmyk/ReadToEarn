@@ -159,6 +159,7 @@ export const Router = () => {
       {route === '/request-book' && <RequestBook />}
       {route === '/faq' && <FAQ />}
       {route === '/authors' && <Authors />}
+      {route === '/admin/submissions' && <AdminSubmissions />}
       {route === '/author-submit' && <AuthorSubmit />}
       {route === '/author-bounty' && <AuthorBounty />}
       {route === '/author-competition' && <AuthorCompetition />}
