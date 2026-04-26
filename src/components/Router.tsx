@@ -172,7 +172,13 @@ export const Router = () => {
       {route === '/bulletin-submit' && <BulletinSubmit />}
       {route === '/account-settings' && <AccountSettings />}
       {route === '/checkout' && <Checkout />}
-      {route.startsWith('/quiz/') && <Quiz bookId={route.split('/')[2]} />}
+      {route.startsWith('/quiz/') && (() => {
+  const bookId = route.split('/')[2]?.split('?')[0];
+  const params = new URLSearchParams(window.location.search);
+  const competitionId = params.get('competition') ?? undefined;
+  const competitionRound = params.get('round') ? Number(params.get('round')) : undefined;
+  return <Quiz bookId={bookId} competitionId={competitionId} competitionRound={competitionRound} />;
+})()}
       {route.startsWith('/book/') && <BookPage />}
       {!isKnownRoute && <Home />}
     </>
