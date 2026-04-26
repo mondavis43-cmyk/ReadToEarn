@@ -8,6 +8,7 @@ import { Quiz } from '../pages/Quiz';
 import { Profile } from '../pages/Profile';
 import { Cashout } from '../pages/Cashout';
 import { Admin } from '../pages/Admin';
+import { AdminSubmissions } from '../pages/admin/AdminSubmissions';
 import { BookPage } from '../pages/BookPage';
 import { Waitlist } from '../pages/Waitlist';
 import { ResetPassword } from '../pages/ResetPassword';
@@ -60,6 +61,7 @@ export const Router = () => {
       route !== '/login' &&
       route !== '/signup' &&
       route !== '/admin' &&
+      route !== '/admin/submissions' &&
       route !== '/reset-password'
     ) {
       if (!WAITLIST_MODE) {
@@ -77,8 +79,9 @@ export const Router = () => {
     );
   }
 
-  // Public routes — no auth required
+  // Public routes — no NavBar, no auth required
   if (route === '/admin') return <Admin />;
+  if (route === '/admin/submissions') return <AdminSubmissions />;
   if (route === '/reset-password') return <ResetPassword />;
   if (route === '/terms') return <TermsOfService />;
   if (route === '/privacy') return <PrivacyPolicy />;
@@ -94,7 +97,7 @@ export const Router = () => {
   if (!user && route === '/signup') return <Signup />;
   if (!user) return <Login />;
 
-  // Dynamic routes that need no NavBar — handle before the NavBar wrapper
+  // Dynamic routes — no NavBar
   if (route.startsWith('/competition/')) {
     const competitionId = route.replace('/competition/', '');
     return <CompetitionDetail competitionId={competitionId} />;
@@ -159,7 +162,6 @@ export const Router = () => {
       {route === '/request-book' && <RequestBook />}
       {route === '/faq' && <FAQ />}
       {route === '/authors' && <Authors />}
-      {route === '/admin/submissions' && <AdminSubmissions />}
       {route === '/author-submit' && <AuthorSubmit />}
       {route === '/author-bounty' && <AuthorBounty />}
       {route === '/author-competition' && <AuthorCompetition />}
@@ -174,12 +176,12 @@ export const Router = () => {
       {route === '/account-settings' && <AccountSettings />}
       {route === '/checkout' && <Checkout />}
       {route.startsWith('/quiz/') && (() => {
-  const bookId = route.split('/')[2]?.split('?')[0];
-  const params = new URLSearchParams(window.location.search);
-  const competitionId = params.get('competition') ?? undefined;
-  const competitionRound = params.get('round') ? Number(params.get('round')) : undefined;
-  return <Quiz bookId={bookId} competitionId={competitionId} competitionRound={competitionRound} />;
-})()}
+        const bookId = route.split('/')[2]?.split('?')[0];
+        const params = new URLSearchParams(window.location.search);
+        const competitionId = params.get('competition') ?? undefined;
+        const competitionRound = params.get('round') ? Number(params.get('round')) : undefined;
+        return <Quiz bookId={bookId} competitionId={competitionId} competitionRound={competitionRound} />;
+      })()}
       {route.startsWith('/book/') && <BookPage />}
       {!isKnownRoute && <Home />}
     </>
