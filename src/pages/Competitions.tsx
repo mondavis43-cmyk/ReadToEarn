@@ -35,6 +35,63 @@ const formatLabel = (format: string) => {
   return 'Elimination';
 };
 
+const PublicTournaments = ({
+  isDark, textPrimary, textMuted, cardBg, navigateTo
+}: {
+  isDark: boolean;
+  textPrimary: string;
+  textMuted: string;
+  cardBg: string;
+  navigateTo: (path: string) => void;
+}) => {
+  const [tournaments, setTournaments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase
+      .from('tournaments')
+      .select('*')
+      .eq('is_public', true)
+      .in('status', ['upcoming', 'active'])
+      .order('starts_at', { ascending: true })
+      .limit(5)
+      .then(({ data }) => {
+        setTournaments(data || []);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) return null;
+  if (tournaments.length === 0) return (
+    <div className={`rounded-xl border p-6 text-center transition-colors ${cardBg}`}>
+      <p className={`text-sm ${textMuted}`}>No public tournaments yet. Create the first one!</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      <p className={`text-sm font-semibold ${textPrimary}`}>Open Tournaments</p>
+      {tournaments.map((t) => (
+        <div key={t.id} className={`rounded-xl border p-5 transition-colors ${cardBg}`}>
+          <div className="flex items-center gap-2 mb-2">
+            {t.format === 'sprint' ? <Zap size={13} className="text-[#D4A843]" /> : t.format === 'readathon' ? <BookOpen size={13} className="text-[#D4A843]" /> : <Trophy size={13} className="text-[#D4A843]" />}
+            <span className="text-xs font-semibold text-[#D4A843] uppercase tracking-wide">{formatLabel(t.format)}</span>
+            <span className={`text-xs ml-auto ${textMuted}`}>Entry: ${t.entry_fee}</span>
+          </div>
+          <h4 className={`font-serif text-base mb-1 ${textPrimary}`}>{t.title}</h4>
+          <p className={`text-xs mb-3 ${textMuted}`}>{t.book_title}{t.book_author ? ` — ${t.book_author}` : ''}</p>
+          <button
+            onClick={() => navigateTo(`/tournament/${t.id}`)}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
+          >
+            View Tournament <ArrowRight size={14} />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 export const Competitions = () => {
   const { isDark, toggleTheme } = useTheme();
   const { navigateTo } = useNavigate();
@@ -312,28 +369,32 @@ export const Competitions = () => {
         </div>
 
         {/* User-Created Tournaments */}
-        <div className="mb-16">
-          <h2 className={`font-serif text-3xl mb-2 ${textPrimary}`}>Run Your Own Tournament</h2>
-          <p className={`text-sm mb-8 ${textMuted}`}>
-            Any reader can create a public or private tournament. Set the book, format, and entry fee. Invite your community. We handle everything else. Platform keeps 25% — same as official competitions.
-          </p>
-          <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
-            <div className="flex items-center gap-3 mb-4">
-              <Plus className="text-[#D4A843]" size={20} />
-              <h3 className={`font-serif text-lg ${textPrimary}`}>Create a Tournament</h3>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#D4A843]/15 text-[#D4A843] border border-[#D4A843]/30 ml-auto">
-                Coming Soon
-              </span>
-            </div>
-            <p className={`text-sm mb-4 ${textMuted}`}>
-              Choose your book, pick a format (Sprint, Read-A-Thon, or Elimination), set your entry fee, and decide if it's public or invite-only. Share your invite code and let the competition begin.
-            </p>
-            <button
-              disabled
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843]/40 cursor-not-allowed"
-            >
-              Create a Tournament <ArrowRight size={14} />
-            </button>
+<div className="mb-16">
+  <h2 className={`font-serif text-3xl mb-2 ${textPrimary}`}>Run Your Own Tournament</h2>
+  <p className={`text-sm mb-8 ${textMuted}`}>
+    Any reader can create a public or private tournament. Set the book, format, and entry fee. Prize pool grows from entry fees — platform keeps 25%, same as official competitions.
+  </p>
+
+  {/* Create CTA */}
+  <div className={`rounded-xl border p-6 mb-6 transition-colors ${cardBg}`}>
+    <div className="flex items-center gap-3 mb-3">
+      <Plus className="text-[#D4A843]" size={20} />
+      <h3 className={`font-serif text-lg ${textPrimary}`}>Create a Tournament</h3>
+    </div>
+    <p className={`text-sm mb-4 ${textMuted}`}>
+      Choose your book, pick a format, set your entry fee, and decide if it's public or invite-only. Share your invite code and let the competition begin.
+    </p>
+    <button
+      onClick={() => navigateTo('/tournaments/create')}
+      className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1B2A4A] bg-[#D4A843] px-4 py-2 rounded-lg hover:bg-[#c49a3a] transition"
+    >
+      Create a Tournament <ArrowRight size={14} />
+    </button>
+  </div>
+
+  {/* Public tournaments list */}
+  <PublicTournaments isDark={isDark} textPrimary={textPrimary} textMuted={textMuted} cardBg={cardBg} navigateTo={navigateTo} />
+          </div>
           </div>
         </div>
 
