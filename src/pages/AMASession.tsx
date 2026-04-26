@@ -13,13 +13,14 @@ type AMASession = {
   ama_ends_at: string | null;
   author_id: string;
   books?: { title: string; author: string } | null;
-  profiles?: { display_name: string | null; email: string } | null;
+  profiles?: { display_name: string | null; username: string | null; email: string } | null;
 };
 
 type Question = {
   id: string;
   user_id: string;
   display_name: string | null;
+  username: string | null;
   content: string;
   created_at: string;
   ama_answers?: Answer[];
@@ -37,8 +38,29 @@ type Reply = {
   id: string;
   user_id: string;
   display_name: string | null;
+  username: string | null;
   content: string;
   created_at: string;
+};
+
+// Returns @username if set, falls back to display_name, then fallback string
+const resolveName = (
+  username?: string | null,
+  displayName?: string | null,
+  fallback = 'Reader'
+) => {
+  if (username) return `@${username}`;
+  return displayName || fallback;
+};
+
+// Returns first character for avatar initials
+const resolveInitial = (
+  username?: string | null,
+  displayName?: string | null
+) => {
+  if (username) return username[0].toUpperCase();
+  if (displayName) return displayName[0].toUpperCase();
+  return 'R';
 };
 
 export const AMASession = ({ sessionId }: { sessionId: string }) => {
@@ -79,7 +101,7 @@ export const AMASession = ({ sessionId }: { sessionId: string }) => {
     if (u) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('display_name, role')
+        .select('display_name, username, role')
         .eq('id', u.id)
         .single();
       setUserProfile(profile);
@@ -88,7 +110,7 @@ export const AMASession = ({ sessionId }: { sessionId: string }) => {
     const [{ data: sessionData }, { data: questionsData }] = await Promise.all([
       supabase
         .from('ama_sessions')
-        .select('*, books(title, author), profiles(display_name, email)')
+        .select('*, books(title, author), profiles(display_name, username, email)')
         .eq('id', sessionId)
         .single(),
       supabase
@@ -120,6 +142,7 @@ export const AMASession = ({ sessionId }: { sessionId: string }) => {
       session_id: sessionId,
       user_id: user.id,
       display_name: userProfile?.display_name || user.email,
+      username: userProfile?.username || null,
       content: questionText.trim(),
     });
     if (error) { setQuestionError('Failed to submit. Try again.'); setSubmittingQ(false); return; }
@@ -151,6 +174,7 @@ export const AMASession = ({ sessionId }: { sessionId: string }) => {
       question_id: questionId,
       user_id: user.id,
       display_name: userProfile?.display_name || user.email,
+      username: userProfile?.username || null,
       content: text,
     });
     setReplyText((prev) => ({ ...prev, [questionId]: '' }));
@@ -174,8 +198,11 @@ export const AMASession = ({ sessionId }: { sessionId: string }) => {
     );
   }
 
-  const authorName =
-    session.profiles?.display_name || session.profiles?.email || 'Author';
+  const authorName = resolveName(
+    session.profiles?.username,
+    session.profiles?.display_name,
+    session.profiles?.email || 'Author'
+  );
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-[#0F1923]' : 'bg-[#FAF8F5]'}`}>
@@ -289,17 +316,20 @@ export const AMASession = ({ sessionId }: { sessionId: string }) => {
               const answer = q.ama_answers?.[0];
               const replies = q.ama_replies || [];
               const isMyQuestion = user && q.user_id === user.id;
+              const questionerName = resolveName(q.username, q.display_name);
+              const questionerInitial = resolveInitial(q.username, q.display_name);
 
               return (
                 <div key={q.id} className={`rounded-2xl border ${cardBg} overflow-hidden`}>
+
                   {/* Question */}
                   <div className="p-5">
                     <div className="flex items-center gap-2 mb-2">
                       <div className="w-7 h-7 rounded-full bg-[#D4A843]/20 flex items-center justify-center text-xs font-bold text-[#D4A843]">
-                        {(q.display_name || 'A')[0].toUpperCase()}
+                        {questionerInitial}
                       </div>
                       <span className={`text-xs font-medium ${textPrimary}`}>
-                        {q.display_name || 'Reader'}
+                        {questionerName}
                         {isMyQuestion && <span className="ml-1 text-[#D4A843]">(you)</span>}
                       </span>
                       <span className={`text-xs ${textMuted}`}>
@@ -309,7 +339,7 @@ export const AMASession = ({ sessionId }: { sessionId: string }) => {
                     <p className={`text-sm ${textPrimary}`}>{q.content}</p>
                   </div>
 
-                  {/* Author answer input (author only, no answer yet, answering status) */}
+                  {/* Author answer input */}
                   {isAuthor && !answer && session.status === 'answering' && (
                     <div className="border-t border-[#e8e0d5] dark:border-gray-700 bg-[#D4A843]/5 p-4">
                       <textarea
@@ -346,19 +376,23 @@ export const AMASession = ({ sessionId }: { sessionId: string }) => {
                       {/* Replies */}
                       {replies.length > 0 && (
                         <div className="mt-4 space-y-3 pl-4 border-l-2 border-[#D4A843]/20">
-                          {replies.map((r) => (
-                            <div key={r.id}>
-                              <div className="flex items-center gap-2 mb-1">
-                                <div className="w-5 h-5 rounded-full bg-[#D4A843]/20 flex items-center justify-center text-xs font-bold text-[#D4A843]">
-                                  {(r.display_name || 'R')[0].toUpperCase()}
+                          {replies.map((r) => {
+                            const replyName = resolveName(r.username, r.display_name);
+                            const replyInitial = resolveInitial(r.username, r.display_name);
+                            return (
+                              <div key={r.id}>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <div className="w-5 h-5 rounded-full bg-[#D4A843]/20 flex items-center justify-center text-xs font-bold text-[#D4A843]">
+                                    {replyInitial}
+                                  </div>
+                                  <span className={`text-xs font-medium ${textPrimary}`}>
+                                    {replyName}
+                                  </span>
                                 </div>
-                                <span className={`text-xs font-medium ${textPrimary}`}>
-                                  {r.display_name || 'Reader'}
-                                </span>
+                                <p className={`text-xs ${textMuted}`}>{r.content}</p>
                               </div>
-                              <p className={`text-xs ${textMuted}`}>{r.content}</p>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
 
