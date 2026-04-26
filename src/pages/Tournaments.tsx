@@ -188,10 +188,10 @@ export const Tournaments = () => {
 
   useEffect(() => {
     supabase
-      .from('books')
-      .select('id, title, author')
-      .order('title', { ascending: true })
-      .then(({ data }) => setBooks(data || []));
+  .from('books')
+  .select('id, title, author')
+  .eq('on_bulletin', false)
+  .order('title', { ascending: true })
   }, []);
 
   useEffect(() => {
