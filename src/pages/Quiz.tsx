@@ -28,16 +28,25 @@ interface Book {
 
 interface QuizProps {
   bookId: string;
+  competitionId?: string;
+  competitionRound?: number;
 }
 
 const QUIZ_DURATION = 8 * 60;
 const MIN_QUIZ_TIME = 2 * 60 * 1000;
 
+// Pass thresholds per elimination round
+const ELIMINATION_PASS_THRESHOLD: Record<number, number> = {
+  1: 8,
+  2: 9,
+  // Round 3 (master quiz) has no pass threshold — highest score wins
+};
+
 const REPORT_REASONS = [
   'Answer seems incorrect',
   'Question is confusing or unclear',
   'Typo or formatting issue',
-  'Question contains a spoiler',
+  'None of the answer choices seem right',
   'Other',
 ];
 
@@ -56,10 +65,13 @@ const formatTime = (seconds: number) => {
   return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
-export const Quiz = ({ bookId }: QuizProps) => {
+export const Quiz = ({ bookId, competitionId, competitionRound }: QuizProps) => {
   const { user } = useAuth();
   const { navigateTo } = useNavigate();
   const { isDark } = useTheme();
+
+  const isCompetitionQuiz = !!competitionId && !!competitionRound;
+  const isFinalRound = isCompetitionQuiz && competitionRound === 3;
 
   const [book, setBook] = useState<Book | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -120,10 +132,26 @@ export const Quiz = ({ bookId }: QuizProps) => {
   const loadQuiz = async () => {
     if (!user) return;
 
+    // For competition quizzes check elimination_progress instead of completed_books
+    const completedCheck = isCompetitionQuiz
+      ? supabase
+          .from('elimination_progress')
+          .select('id')
+          .eq('competition_id', competitionId)
+          .eq('user_id', user.id)
+          .eq('round', competitionRound)
+          .maybeSingle()
+      : supabase
+          .from('completed_books')
+          .select('id, passed')
+          .eq('user_id', user.id)
+          .eq('book_id', bookId)
+          .maybeSingle();
+
     const [bookResult, questionsResult, completedResult] = await Promise.all([
       supabase.from('books').select('*').eq('id', bookId).single(),
       supabase.from('questions').select('*').eq('book_id', bookId),
-      supabase.from('completed_books').select('id, passed').eq('user_id', user.id).eq('book_id', bookId).maybeSingle(),
+      completedCheck,
     ]);
 
     if (bookResult.data) setBook(bookResult.data);
@@ -178,12 +206,27 @@ export const Quiz = ({ bookId }: QuizProps) => {
     });
 
     setScore(correct);
-    const pass = correct >= 8;
+
+    // Determine pass
+    let pass = false;
+    if (isCompetitionQuiz) {
+      if (isFinalRound) {
+        // Final round — everyone who submits "passes" (winner determined server-side by score + time)
+        pass = true;
+      } else {
+        const threshold = ELIMINATION_PASS_THRESHOLD[competitionRound!] ?? 8;
+        pass = correct >= threshold;
+      }
+    } else {
+      pass = correct >= 8;
+    }
+
     setPassed(pass);
     setSubmitted(true);
 
     if (!user || !book) return;
 
+    // Always log the attempt
     await supabase.from('quiz_attempts').insert({
       user_id: user.id,
       book_id: bookId,
@@ -191,56 +234,86 @@ export const Quiz = ({ bookId }: QuizProps) => {
       passed: pass,
     });
 
-    if (!alreadyCompleted) {
-      await supabase.from('completed_books').insert({
-        user_id: user.id,
-        book_id: bookId,
-        passed: pass,
-        score: correct,
-        completed_at: new Date().toISOString(),
-      });
+    if (isCompetitionQuiz) {
+      // Competition path — write to elimination_progress, no payout
+      if (!alreadyCompleted) {
+        await supabase.from('elimination_progress').insert({
+          competition_id: competitionId,
+          user_id: user.id,
+          round: competitionRound,
+          score: correct,
+          total_questions: questions.length,
+          passed: pass,
+          submitted_at: new Date().toISOString(),
+        });
+      }
+    } else {
+      // Standard library path — payout flow unchanged
+      if (!alreadyCompleted) {
+        await supabase.from('completed_books').insert({
+          user_id: user.id,
+          book_id: bookId,
+          passed: pass,
+          score: correct,
+          completed_at: new Date().toISOString(),
+        });
 
-      if (pass) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('available_balance, streak_count, last_quiz_date, referred_by, subscription_tier, requires_tax_review')
-          .eq('id', user.id)
-          .single();
+        if (pass) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('available_balance, streak_count, last_quiz_date, referred_by, subscription_tier, requires_tax_review')
+            .eq('id', user.id)
+            .single();
 
-        if (profileData) {
-          const today = new Date().toISOString().split('T')[0];
-          const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-          const newStreak = profileData.last_quiz_date === yesterday ? (profileData.streak_count ?? 0) + 1 : 1;
+          if (profileData) {
+            const today = new Date().toISOString().split('T')[0];
+            const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+            const newStreak = profileData.last_quiz_date === yesterday
+              ? (profileData.streak_count ?? 0) + 1
+              : 1;
 
-          let bonus = 0;
-          if (newStreak === 7 || newStreak === 30) {
-            bonus = 0.10;
-            setStreakBonus(newStreak);
-          }
+            let bonus = 0;
+            if (newStreak === 7 || newStreak === 30) {
+              bonus = 0.10;
+              setStreakBonus(newStreak);
+            }
 
-          const payout = calculatePayout(book.book_type, book.page_count, (profileData.subscription_tier ?? 'free') as SubscriptionTier);
-          setEarnedAmount(payout);
+            const payout = calculatePayout(
+              book.book_type,
+              book.page_count,
+              (profileData.subscription_tier ?? 'free') as SubscriptionTier
+            );
+            setEarnedAmount(payout);
 
-          const projectedBalance = profileData.available_balance + payout + bonus;
-          const shouldFlag = projectedBalance >= 500;
+            const projectedBalance = profileData.available_balance + payout + bonus;
+            const shouldFlag = projectedBalance >= 500;
 
-          await supabase.from('profiles').update({
-            available_balance: projectedBalance,
-            streak_count: newStreak,
-            last_quiz_date: today,
-            requires_tax_review: profileData.requires_tax_review || shouldFlag,
-          }).eq('id', user.id);
+            await supabase.from('profiles').update({
+              available_balance: projectedBalance,
+              streak_count: newStreak,
+              last_quiz_date: today,
+              requires_tax_review: profileData.requires_tax_review || shouldFlag,
+            }).eq('id', user.id);
 
-          await supabase.from('payout_logs').insert({
-            user_id: user.id,
-            amount: payout + bonus,
-            status: shouldFlag ? 'pending_review' : 'completed',
-            reason: shouldFlag ? '1099_threshold' : null,
-          });
+            await supabase.from('payout_logs').insert({
+              user_id: user.id,
+              amount: payout + bonus,
+              status: shouldFlag ? 'pending_review' : 'completed',
+              reason: shouldFlag ? '1099_threshold' : null,
+            });
 
-          if (profileData.referred_by) {
-            const { data: ref } = await supabase.from('profiles').select('available_balance').eq('id', profileData.referred_by).single();
-            if (ref) await supabase.from('profiles').update({ available_balance: ref.available_balance + 0.50 }).eq('id', profileData.referred_by);
+            if (profileData.referred_by) {
+              const { data: ref } = await supabase
+                .from('profiles')
+                .select('available_balance')
+                .eq('id', profileData.referred_by)
+                .single();
+              if (ref) {
+                await supabase.from('profiles')
+                  .update({ available_balance: ref.available_balance + 0.50 })
+                  .eq('id', profileData.referred_by);
+              }
+            }
           }
         }
       }
@@ -279,23 +352,155 @@ export const Quiz = ({ bookId }: QuizProps) => {
     </div>
   );
 
+  // Result screen
+  const renderResult = () => {
+    if (isCompetitionQuiz) {
+      if (isFinalRound) {
+        return (
+          <>
+            <div className="flex items-center gap-3 mb-2">
+              <PartyPopper className="w-6 h-6 text-[#D4A843]" />
+              <h2 className={`text-3xl font-serif ${headingColor}`}>Final round submitted!</h2>
+            </div>
+            <p className={`${subColor} mb-6`}>
+              You scored {score} out of {questions.length}. Winners are announced when the competition closes.
+            </p>
+            <button
+              onClick={() => navigateTo(`/competition/${competitionId}`)}
+              className="bg-[#D4A843] text-[#1B2A4A] font-medium px-6 py-2.5 rounded-lg hover:bg-[#c49a38] transition"
+            >
+              Back to Competition
+            </button>
+          </>
+        );
+      }
+
+      if (passed) {
+        return (
+          <>
+            <div className="flex items-center gap-3 mb-2">
+              <PartyPopper className="w-6 h-6 text-[#D4A843]" />
+              <h2 className={`text-3xl font-serif ${headingColor}`}>
+                Round {competitionRound} passed!
+              </h2>
+            </div>
+            <p className={`${subColor} mb-6`}>
+              {score} out of {questions.length} correct. You advance to Round {competitionRound! + 1}.
+            </p>
+            <button
+              onClick={() => navigateTo(`/competition/${competitionId}`)}
+              className="bg-[#D4A843] text-[#1B2A4A] font-medium px-6 py-2.5 rounded-lg hover:bg-[#c49a38] transition"
+            >
+              Back to Competition
+            </button>
+          </>
+        );
+      }
+
+      return (
+        <>
+          <h2 className={`text-3xl font-serif ${headingColor} mb-2`}>
+            {timedOut ? 'Time is up' : 'Eliminated'}
+          </h2>
+          <p className={`${subColor} mb-6`}>
+            {score} out of {questions.length} correct.{' '}
+            {ELIMINATION_PASS_THRESHOLD[competitionRound!]
+              ? `${ELIMINATION_PASS_THRESHOLD[competitionRound!]} required to advance.`
+              : ''}
+          </p>
+          <button
+            onClick={() => navigateTo(`/competition/${competitionId}`)}
+            className="bg-[#D4A843] text-[#1B2A4A] font-medium px-6 py-2.5 rounded-lg hover:bg-[#c49a38] transition"
+          >
+            Back to Competition
+          </button>
+        </>
+      );
+    }
+
+    // Standard library result
+    return passed ? (
+      <>
+        <div className="flex items-center gap-3 mb-2">
+          <PartyPopper className="w-6 h-6 text-[#D4A843]" />
+          <h2 className={`text-3xl font-serif ${headingColor}`}>You passed!</h2>
+        </div>
+        <p className={`${subColor} mb-6`}>{score} out of {questions.length} correct</p>
+        {!alreadyCompleted && (
+          <div className="bg-[#D4A843]/10 border border-[#D4A843]/30 rounded-lg p-4 mb-3">
+            <p className="text-[#D4A843] font-medium text-sm">+${earnedAmount.toFixed(2)} added to balance</p>
+          </div>
+        )}
+        {streakBonus && (
+          <div className="bg-[#D4A843]/10 border border-[#D4A843]/30 rounded-lg p-4 mb-3">
+            <p className="text-[#D4A843] font-medium text-sm">{streakBonus}-day streak bonus! +$0.10</p>
+          </div>
+        )}
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={() => navigateTo('/library')}
+            className="bg-[#D4A843] text-[#1B2A4A] font-medium px-6 py-2.5 rounded-lg hover:bg-[#c49a38] transition"
+          >
+            Back to Library
+          </button>
+        </div>
+      </>
+    ) : (
+      <>
+        <h2 className={`text-3xl font-serif ${headingColor} mb-2`}>
+          {timedOut ? 'Time is up' : 'Not quite'}
+        </h2>
+        <p className={`${subColor} mb-6`}>{score} out of {questions.length} correct. (8 required)</p>
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={() => navigateTo('/library')}
+            className="bg-[#D4A843] text-[#1B2A4A] font-medium px-6 py-2.5 rounded-lg hover:bg-[#c49a38] transition"
+          >
+            Back to Library
+          </button>
+          <button
+            onClick={() => {
+              setSubmitted(false);
+              setAnswers({});
+              setScore(0);
+              setPassed(false);
+              setTimedOut(false);
+              setTimeLeft(QUIZ_DURATION);
+              startTimeRef.current = Date.now();
+            }}
+            className={`${isDark ? 'bg-[#F5F0E8]/10 text-[#F5F0E8]' : 'bg-[#1B2A4A]/10 text-[#1B2A4A]'} font-medium px-6 py-2.5 rounded-lg transition`}
+          >
+            Try Again
+          </button>
+        </div>
+      </>
+    );
+  };
+
   return (
     <div className={`min-h-screen ${bg} transition-colors duration-300`}>
       {/* Header */}
       <div className={`border-b ${dividerColor} px-4 py-4 sticky top-0 z-10 ${isDark ? 'bg-[#1B2A4A]' : 'bg-[#F5F0E8]'}`}>
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <button onClick={() => navigateTo('/library')} className={`${subColor} hover:text-[#D4A843] transition flex-shrink-0`}>
+            <button
+              onClick={() => isCompetitionQuiz ? navigateTo(`/competition/${competitionId}`) : navigateTo('/library')}
+              className={`${subColor} hover:text-[#D4A843] transition flex-shrink-0`}
+            >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div className="min-w-0">
               <h1 className={`font-serif text-lg ${headingColor} truncate`}>{book?.title}</h1>
-              <p className={`text-xs ${subColor} truncate`}>{book?.author}</p>
+              <p className={`text-xs ${subColor} truncate`}>
+                {isCompetitionQuiz ? `Round ${competitionRound} — ${book?.author}` : book?.author}
+              </p>
             </div>
           </div>
           {!submitted && (
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-mono flex-shrink-0 transition-colors ${
-              timeLeft <= 30 ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-[#162238] border-[#F5F0E8]/10 text-[#F5F0E8]/60'
+              timeLeft <= 30
+                ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                : 'bg-[#162238] border-[#F5F0E8]/10 text-[#F5F0E8]/60'
             }`}>
               <Timer className="w-3.5 h-3.5" />
               {formatTime(timeLeft)}
@@ -308,57 +513,15 @@ export const Quiz = ({ bookId }: QuizProps) => {
         {alreadyCompleted && (
           <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6 text-yellow-300 text-sm flex items-center gap-2">
             <AlertCircle className="w-4 h-4" />
-            You have already used your attempt for this book.
+            {isCompetitionQuiz
+              ? `You have already submitted Round ${competitionRound}.`
+              : 'You have already used your attempt for this book.'}
           </div>
         )}
 
         {submitted ? (
           <div className={`${cardBg} rounded-lg p-8 border ${cardBorder}`}>
-            {passed ? (
-              <>
-                <div className="flex items-center gap-3 mb-2">
-                  <PartyPopper className="w-6 h-6 text-[#D4A843]" />
-                  <h2 className={`text-3xl font-serif ${headingColor}`}>You passed!</h2>
-                </div>
-                <p className={`${subColor} mb-6`}>{score} out of {questions.length} correct</p>
-                {!alreadyCompleted && (
-                  <div className="bg-[#D4A843]/10 border border-[#D4A843]/30 rounded-lg p-4 mb-3">
-                    <p className="text-[#D4A843] font-medium text-sm">+${earnedAmount.toFixed(2)} added to balance</p>
-                  </div>
-                )}
-                {streakBonus && (
-                  <div className="bg-[#D4A843]/10 border border-[#D4A843]/30 rounded-lg p-4 mb-3">
-                    <p className="text-[#D4A843] font-medium text-sm">{streakBonus}-day streak bonus! +$0.10</p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <h2 className={`text-3xl font-serif ${headingColor} mb-2`}>{timedOut ? 'Time is up' : 'Not quite'}</h2>
-                <p className={`${subColor} mb-6`}>{score} out of {questions.length} correct. (8 required)</p>
-              </>
-            )}
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => navigateTo('/library')} className="bg-[#D4A843] text-[#1B2A4A] font-medium px-6 py-2.5 rounded-lg hover:bg-[#c49a38] transition">
-                Back to Library
-              </button>
-              {!passed && (
-                <button
-                  onClick={() => {
-                    setSubmitted(false);
-                    setAnswers({});
-                    setScore(0);
-                    setPassed(false);
-                    setTimedOut(false);
-                    setTimeLeft(QUIZ_DURATION);
-                    startTimeRef.current = Date.now();
-                  }}
-                  className={`${isDark ? 'bg-[#F5F0E8]/10 text-[#F5F0E8]' : 'bg-[#1B2A4A]/10 text-[#1B2A4A]'} font-medium px-6 py-2.5 rounded-lg transition`}
-                >
-                  Try Again
-                </button>
-              )}
-            </div>
+            {renderResult()}
           </div>
         ) : (
           <div className="space-y-6">
@@ -443,10 +606,14 @@ export const Quiz = ({ bookId }: QuizProps) => {
 
             <div className="flex flex-col items-end gap-2 pt-2 pb-8">
               {isSpeeding && (
-                <p className="text-red-400 text-xs animate-pulse">Wait! We verify reading time. Please review your answers for a moment.</p>
+                <p className="text-red-400 text-xs animate-pulse">
+                  Wait! We verify reading time. Please review your answers for a moment.
+                </p>
               )}
               <div className="flex items-center justify-between w-full">
-                <p className={`text-sm ${subColor}`}>{Object.keys(answers).length} of {questions.length} answered</p>
+                <p className={`text-sm ${subColor}`}>
+                  {Object.keys(answers).length} of {questions.length} answered
+                </p>
                 <button
                   onClick={() => handleSubmit(false)}
                   disabled={Object.keys(answers).length < questions.length || isSpeeding}
