@@ -1,130 +1,302 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from '../hooks/useNavigate';
-import { ChevronLeft, Zap, BookOpen, Trophy, Copy, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { Trophy, Copy, Check, Zap, BookOpen, X, Search } from 'lucide-react';
 
-const FORMAT_OPTIONS = [
-  { value: 'sprint', label: 'Sprint', icon: <Zap size={16} />, desc: '100% of prize pool to 1st place. Ranked by quiz accuracy + speed.' },
-  { value: 'readathon', label: 'Read-A-Thon', icon: <BookOpen size={16} />, desc: '50/30/20 split. Ranked by pages read.' },
-  { value: 'elimination', label: 'Elimination', icon: <Trophy size={16} />, desc: '50/30/20 split. Ranked by survival rounds.' },
-] as const;
+type Format = 'sprint' | 'readathon' | 'elimination';
 
-const ENTRY_FEE_OPTIONS = [5, 7, 10];
+type Book = {
+  id: string;
+  title: string;
+  author: string;
+};
+
+const generateInviteCode = () =>
+  Math.random().toString(36).substring(2, 8).toUpperCase();
+
+// ─── Reusable searchable book picker ───────────────────────────────────────
+
+const BookSearchInput = ({
+  books,
+  selected,
+  onSelect,
+  onRemove,
+  multi = false,
+  max = 1,
+  isDark,
+  textPrimary,
+  textMuted,
+}: {
+  books: Book[];
+  selected: Book[];
+  onSelect: (book: Book) => void;
+  onRemove: (id: string) => void;
+  multi?: boolean;
+  max?: number;
+  isDark: boolean;
+  textPrimary: string;
+  textMuted: string;
+}) => {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const selectedIds = selected.map(b => b.id);
+
+  const filtered = books.filter(b => {
+    if (selectedIds.includes(b.id)) return false;
+    if (!query.trim()) return true;
+    const q = query.toLowerCase();
+    return b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q);
+  });
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleSelect = (book: Book) => {
+    onSelect(book);
+    setQuery('');
+    if (!multi) setOpen(false);
+  };
+
+  const atMax = selected.length >= max;
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Selected tags */}
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-2">
+          {selected.map(b => (
+            <span
+              key={b.id}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#D4A843]/20 text-[#D4A843] border border-[#D4A843]/30"
+            >
+              {b.title}
+              <button
+                onClick={() => onRemove(b.id)}
+                className="hover:text-white transition-colors"
+              >
+                <X size={11} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Search input — hide when single and already selected */}
+      {(!atMax || multi) && (
+        <div className="relative">
+          <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
+          <input
+            className={`w-full pl-9 pr-4 py-2.5 rounded-lg border text-sm transition-colors outline-none ${
+              isDark
+                ? 'bg-[#0f1623] border-[#D4A843]/20 text-[#F5F0E8] placeholder-[#F5F0E8]/30 focus:border-[#D4A843]/60'
+                : 'bg-white border-[#1B2A4A]/20 text-[#1B2A4A] placeholder-[#1B2A4A]/30 focus:border-[#1B2A4A]/60'
+            }`}
+            placeholder={
+              atMax
+                ? `Max ${max} book${max > 1 ? 's' : ''} selected`
+                : multi
+                ? `Search books... (${selected.length}/${max} selected)`
+                : 'Search by title or author...'
+            }
+            value={query}
+            onChange={e => { setQuery(e.target.value); setOpen(true); }}
+            onFocus={() => setOpen(true)}
+            disabled={atMax && !multi}
+          />
+        </div>
+      )}
+
+      {/* Dropdown */}
+      {open && !atMax && (
+        <div className={`absolute z-50 w-full mt-1 rounded-lg border shadow-lg overflow-hidden ${
+          isDark ? 'bg-[#0f1623] border-[#D4A843]/20' : 'bg-white border-[#1B2A4A]/20'
+        }`}>
+          <div className="max-h-52 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <div className={`px-4 py-3 text-sm ${textMuted}`}>
+                {query ? `No books found for "${query}" — not in our system yet.` : 'No more books to select.'}
+              </div>
+            ) : (
+              filtered.slice(0, 50).map(b => (
+                <button
+                  key={b.id}
+                  onMouseDown={() => handleSelect(b)}
+                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors border-b last:border-b-0 ${
+                    isDark
+                      ? 'border-[#D4A843]/10 text-[#F5F0E8] hover:bg-[#D4A843]/10'
+                      : 'border-[#1B2A4A]/10 text-[#1B2A4A] hover:bg-[#D4A843]/10'
+                  }`}
+                >
+                  <span className="font-medium">{b.title}</span>
+                  <span className={`ml-2 text-xs ${textMuted}`}>— {b.author}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Main component ─────────────────────────────────────────────────────────
 
 export const Tournaments = () => {
-  const { isDark } = useTheme();
+  const { isDark, toggleTheme } = useTheme();
   const { navigateTo } = useNavigate();
 
   const textPrimary = isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]';
   const textMuted = isDark ? 'text-[#F5F0E8]/70' : 'text-[#1B2A4A]/70';
   const cardBg = isDark ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20' : 'bg-white border-[#D4A843]/30';
-  const inputClass = `w-full px-3 py-2.5 rounded-lg border ${isDark ? 'border-[#D4A843]/20 bg-[#0F1923] text-[#F5F0E8]' : 'border-[#1B2A4A]/20 bg-white text-[#1B2A4A]'} text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A843]/40`;
+  const inputClass = `w-full px-4 py-2.5 rounded-lg border text-sm transition-colors outline-none ${
+    isDark
+      ? 'bg-[#0f1623] border-[#D4A843]/20 text-[#F5F0E8] placeholder-[#F5F0E8]/30 focus:border-[#D4A843]/60'
+      : 'bg-white border-[#1B2A4A]/20 text-[#1B2A4A] placeholder-[#1B2A4A]/30 focus:border-[#1B2A4A]/60'
+  }`;
 
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [created, setCreated] = useState<{ id: string; invite_code: string; title: string } | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [error, setError] = useState('');
-
+  const [books, setBooks] = useState<Book[]>([]);
   const [title, setTitle] = useState('');
-  const [bookTitle, setBookTitle] = useState('');
-  const [bookAuthor, setBookAuthor] = useState('');
-  const [format, setFormat] = useState<'sprint' | 'readathon' | 'elimination'>('sprint');
-  const [entryFee, setEntryFee] = useState<number>(5);
+  const [format, setFormat] = useState<Format>('sprint');
+
+  // Sprint: single book
+  const [sprintBook, setSprintBook] = useState<Book[]>([]);
+  // Elimination: up to 3 books
+  const [elimBooks, setElimBooks] = useState<Book[]>([]);
+
+  const [entryFee, setEntryFee] = useState<5 | 7 | 10>(5);
   const [isPublic, setIsPublic] = useState(true);
   const [maxParticipants, setMaxParticipants] = useState('');
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [inviteCode, setInviteCode] = useState('');
+  const [tournamentId, setTournamentId] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user: u } }) => {
-      if (!u) { navigateTo('/login'); return; }
-      setUser(u);
-    });
+    supabase
+      .from('books')
+      .select('id, title, author')
+      .order('title', { ascending: true })
+      .then(({ data }) => setBooks(data || []));
   }, []);
 
-  const generateInviteCode = () =>
-    Math.random().toString(36).substring(2, 8).toUpperCase();
+  useEffect(() => {
+    setSprintBook([]);
+    setElimBooks([]);
+  }, [format]);
 
-  const handleCreate = async () => {
+  const handleSubmit = async () => {
     setError('');
-    if (!title.trim()) { setError('Tournament name is required.'); return; }
-    if (!bookTitle.trim()) { setError('Book title is required.'); return; }
-    if (!startsAt) { setError('Start date is required.'); return; }
-    if (!endsAt) { setError('End date is required.'); return; }
-    if (new Date(endsAt) <= new Date(startsAt)) { setError('End date must be after start date.'); return; }
 
-    setLoading(true);
-    const invite_code = generateInviteCode();
+    if (!title.trim()) { setError('Tournament title is required.'); return; }
+    if (format === 'sprint' && sprintBook.length === 0) { setError('Please select a book for Sprint.'); return; }
+    if (format === 'elimination' && elimBooks.length < 2) { setError('Please select at least 2 books for Elimination.'); return; }
+    if (!startsAt || !endsAt) { setError('Start and end dates are required.'); return; }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { navigateTo('/login'); return; }
+
+    setSubmitting(true);
+    const code = generateInviteCode();
+
+    let bookTitle: string | null = null;
+    let bookAuthor: string | null = null;
+    let bookIds: string[] = [];
+
+    if (format === 'sprint' && sprintBook[0]) {
+      bookTitle = sprintBook[0].title;
+      bookAuthor = sprintBook[0].author;
+      bookIds = [sprintBook[0].id];
+    } else if (format === 'elimination') {
+      bookTitle = elimBooks.map(b => b.title).join(', ');
+      bookAuthor = elimBooks.map(b => b.author).join(', ');
+      bookIds = elimBooks.map(b => b.id);
+    }
 
     const { data, error: insertError } = await supabase
       .from('tournaments')
       .insert({
         creator_id: user.id,
         title: title.trim(),
-        book_title: bookTitle.trim(),
-        book_author: bookAuthor.trim() || null,
         format,
+        book_title: bookTitle,
+        book_author: bookAuthor,
+        book_ids: bookIds,
         entry_fee: entryFee,
-        prize_pool: 0,
         is_public: isPublic,
-        invite_code,
-        status: 'upcoming',
+        invite_code: code,
+        max_participants: maxParticipants ? parseInt(maxParticipants) : null,
         starts_at: new Date(startsAt).toISOString(),
         ends_at: new Date(endsAt).toISOString(),
-        max_participants: maxParticipants ? parseInt(maxParticipants) : null,
+        status: 'upcoming',
+        prize_pool: 0,
       })
       .select()
       .single();
 
-    setLoading(false);
+    setSubmitting(false);
 
-    if (insertError) {
-      setError('Failed to create tournament. Please try again.');
+    if (insertError || !data) {
+      setError('Something went wrong. Please try again.');
       return;
     }
 
-    setCreated({ id: data.id, invite_code: data.invite_code, title: data.title });
+    setInviteCode(code);
+    setTournamentId(data.id);
+    setSuccess(true);
   };
 
-  const handleCopy = () => {
-    if (!created) return;
-    const link = `${window.location.origin}/tournament/${created.id}`;
-    navigator.clipboard.writeText(link);
+  const copyLink = () => {
+    navigator.clipboard.writeText(`${window.location.origin}/tournament/${tournamentId}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (created) {
+  const formatOptions: { key: Format; label: string; icon: React.ReactNode; desc: string }[] = [
+    { key: 'sprint', label: 'Sprint', icon: <Zap size={15} />, desc: 'One book, fastest accurate readers win. 100% of prize pool to 1st place.' },
+    { key: 'readathon', label: 'Read-A-Thon', icon: <BookOpen size={15} />, desc: 'Readers track pages across any books they choose. Top 3 split 50/30/20.' },
+    { key: 'elimination', label: 'Elimination', icon: <Trophy size={15} />, desc: 'Multi-book bracket. Pick 2–3 books. Top 3 split 50/30/20.' },
+  ];
+
+  if (success) {
     return (
-      <div className={`min-h-screen ${isDark ? 'bg-[#0F1923]' : 'bg-[#FAF8F5]'} flex items-center justify-center px-4`}>
-        <div className={`rounded-2xl border ${cardBg} p-8 max-w-md w-full text-center`}>
-          <div className="w-14 h-14 rounded-full bg-[#D4A843]/20 flex items-center justify-center mx-auto mb-4">
-            <Trophy size={24} className="text-[#D4A843]" />
+      <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]'}`}>
+        <div className={`border-b transition-colors duration-300 ${isDark ? 'border-[#1B2A4A] bg-[#0f1623]' : 'border-[#D4A843]/30 bg-[#F5F0E8]'}`}>
+          <div className="max-w-3xl mx-auto px-4 py-4 flex justify-between items-center">
+            <button onClick={() => navigateTo('/')} className={`font-serif text-lg font-bold ${isDark ? 'text-[#D4A843]' : 'text-[#1B2A4A]'}`}>Read to Earn</button>
+            <button onClick={toggleTheme} className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${isDark ? 'border-[#D4A843]/40 text-[#D4A843]' : 'border-[#1B2A4A]/30 text-[#1B2A4A]'}`}>{isDark ? '☀ Light' : '☾ Dark'}</button>
           </div>
-          <h2 className={`font-serif text-2xl mb-2 ${textPrimary}`}>Tournament Created!</h2>
-          <p className={`text-sm ${textMuted} mb-6`}>
-            <span className="font-semibold text-[#D4A843]">{created.title}</span> is live. Share the link or invite code to get participants.
-          </p>
-
-          <div className={`rounded-xl border ${isDark ? 'border-[#D4A843]/20 bg-[#0F1923]' : 'border-[#D4A843]/30 bg-[#FAF8F5]'} p-4 mb-4`}>
-            <p className={`text-xs ${textMuted} mb-1`}>Invite Code</p>
-            <p className="text-2xl font-bold tracking-widest text-[#D4A843]">{created.invite_code}</p>
+        </div>
+        <div className="max-w-xl mx-auto px-4 py-20 text-center">
+          <div className="text-5xl mb-6">🏆</div>
+          <h1 className={`font-serif text-3xl mb-3 ${textPrimary}`}>Tournament Created!</h1>
+          <p className={`text-sm mb-8 ${textMuted}`}>Share the link or invite code with participants.</p>
+          <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
+            <p className={`text-xs mb-1 ${textMuted}`}>Invite Code</p>
+            <p className="font-mono text-3xl font-bold text-[#D4A843] mb-4">{inviteCode}</p>
+            <button
+              onClick={copyLink}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#D4A843] text-[#1B2A4A] text-sm font-semibold rounded-lg hover:bg-[#c49a3a] transition"
+            >
+              {copied ? <Check size={15} /> : <Copy size={15} />}
+              {copied ? 'Copied!' : 'Copy Tournament Link'}
+            </button>
           </div>
-
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-2 mx-auto px-5 py-2.5 bg-[#D4A843] text-[#1B2A4A] rounded-xl text-sm font-semibold hover:bg-[#c49a3a] transition mb-4"
-          >
-            {copied ? <Check size={15} /> : <Copy size={15} />}
-            {copied ? 'Copied!' : 'Copy Tournament Link'}
-          </button>
-
-          <button
-            onClick={() => navigateTo(`/tournament/${created.id}`)}
-            className={`text-sm ${textMuted} hover:text-[#D4A843] transition underline`}
-          >
+          <button onClick={() => navigateTo(`/tournament/${tournamentId}`)} className={`text-sm ${textMuted} hover:underline`}>
             View Tournament Page →
           </button>
         </div>
@@ -133,188 +305,172 @@ export const Tournaments = () => {
   }
 
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-[#0F1923]' : 'bg-[#FAF8F5]'}`}>
-      <div className="max-w-xl mx-auto px-4 py-10">
-
-        <button
-          onClick={() => navigateTo('/competitions')}
-          className={`flex items-center gap-1 text-sm ${textMuted} hover:text-[#D4A843] transition mb-6`}
-        >
-          <ChevronLeft size={16} /> Back to Competitions
-        </button>
-
-        <div className="mb-8">
-          <h1 className={`font-serif text-3xl mb-2 ${textPrimary}`}>Create a Tournament</h1>
-          <p className={`text-sm ${textMuted}`}>
-            Set the book, format, and entry fee. Prize pool grows as participants join. Platform keeps 25%.
-          </p>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]'}`}>
+      <div className={`border-b transition-colors duration-300 ${isDark ? 'border-[#1B2A4A] bg-[#0f1623]' : 'border-[#D4A843]/30 bg-[#F5F0E8]'}`}>
+        <div className="max-w-3xl mx-auto px-4 py-4 flex justify-between items-center">
+          <button onClick={() => navigateTo('/')} className={`font-serif text-lg font-bold ${isDark ? 'text-[#D4A843]' : 'text-[#1B2A4A]'}`}>Read to Earn</button>
+          <button onClick={toggleTheme} className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${isDark ? 'border-[#D4A843]/40 text-[#D4A843]' : 'border-[#1B2A4A]/30 text-[#1B2A4A]'}`}>{isDark ? '☀ Light' : '☾ Dark'}</button>
         </div>
+      </div>
+
+      <div className="max-w-xl mx-auto px-4 py-16">
+        <h1 className={`font-serif text-4xl mb-2 ${textPrimary}`}>Create a Tournament</h1>
+        <p className={`text-sm mb-10 ${textMuted}`}>Set the rules, pick the book(s), and invite your readers.</p>
 
         <div className="space-y-6">
 
-          {/* Tournament name */}
+          {/* Title */}
           <div>
-            <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Tournament Name</label>
-            <input
-              type="text"
-              className={inputClass}
-              placeholder="e.g. Summer Sprint Showdown"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              maxLength={80}
-            />
-          </div>
-
-          {/* Book */}
-          <div>
-            <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Book Title</label>
-            <input
-              type="text"
-              className={inputClass}
-              placeholder="The book participants will read"
-              value={bookTitle}
-              onChange={(e) => setBookTitle(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Author <span className={`font-normal ${textMuted}`}>(optional)</span></label>
-            <input
-              type="text"
-              className={inputClass}
-              placeholder="Book author"
-              value={bookAuthor}
-              onChange={(e) => setBookAuthor(e.target.value)}
-            />
+            <label className={`block text-xs mb-1.5 ${textMuted}`}>Tournament Title</label>
+            <input className={inputClass} value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Summer Sprint Challenge" />
           </div>
 
           {/* Format */}
           <div>
-            <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Format</label>
+            <label className={`block text-xs mb-2 ${textMuted}`}>Format</label>
             <div className="space-y-2">
-              {FORMAT_OPTIONS.map((f) => (
+              {formatOptions.map(({ key, label, icon, desc }) => (
                 <button
-                  key={f.value}
-                  onClick={() => setFormat(f.value)}
-                  className={`w-full flex items-start gap-3 p-4 rounded-xl border text-left transition ${
-                    format === f.value
+                  key={key}
+                  onClick={() => setFormat(key)}
+                  className={`w-full text-left px-4 py-3 rounded-lg border transition-colors ${
+                    format === key
                       ? 'border-[#D4A843] bg-[#D4A843]/10'
                       : isDark
                       ? 'border-[#D4A843]/20 hover:border-[#D4A843]/40'
-                      : 'border-[#1B2A4A]/15 hover:border-[#D4A843]/40'
+                      : 'border-[#1B2A4A]/20 hover:border-[#1B2A4A]/40'
                   }`}
                 >
-                  <span className="text-[#D4A843] mt-0.5">{f.icon}</span>
-                  <div>
-                    <p className={`text-sm font-semibold ${textPrimary}`}>{f.label}</p>
-                    <p className={`text-xs ${textMuted}`}>{f.desc}</p>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[#D4A843]">{icon}</span>
+                    <span className={`text-sm font-semibold ${textPrimary}`}>{label}</span>
                   </div>
-                  {format === f.value && (
-                    <span className="ml-auto text-[#D4A843] text-xs font-bold">✓</span>
-                  )}
+                  <p className={`text-xs ${textMuted}`}>{desc}</p>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Entry fee */}
+          {/* Book — Sprint: single searchable */}
+          {format === 'sprint' && (
+            <div>
+              <label className={`block text-xs mb-1.5 ${textMuted}`}>
+                Book <span className="text-red-400">*</span>
+              </label>
+              <BookSearchInput
+                books={books}
+                selected={sprintBook}
+                onSelect={b => setSprintBook([b])}
+                onRemove={() => setSprintBook([])}
+                multi={false}
+                max={1}
+                isDark={isDark}
+                textPrimary={textPrimary}
+                textMuted={textMuted}
+              />
+            </div>
+          )}
+
+          {/* Book — Read-A-Thon: open format, no selection */}
+          {format === 'readathon' && (
+            <div className={`rounded-lg border px-4 py-3 text-sm ${isDark ? 'border-[#D4A843]/20 text-[#F5F0E8]/60' : 'border-[#1B2A4A]/20 text-[#1B2A4A]/60'}`}>
+              📚 Read-A-Thon is open format — participants track pages across any books they choose. No book selection needed.
+            </div>
+          )}
+
+          {/* Book — Elimination: multi searchable up to 3 */}
+          {format === 'elimination' && (
+            <div>
+              <label className={`block text-xs mb-1.5 ${textMuted}`}>
+                Books <span className="text-red-400">*</span>
+                <span className={`ml-2 ${textMuted}`}>(select 2–3 books)</span>
+              </label>
+              <BookSearchInput
+                books={books}
+                selected={elimBooks}
+                onSelect={b => setElimBooks(prev => [...prev, b])}
+                onRemove={id => setElimBooks(prev => prev.filter(b => b.id !== id))}
+                multi={true}
+                max={3}
+                isDark={isDark}
+                textPrimary={textPrimary}
+                textMuted={textMuted}
+              />
+            </div>
+          )}
+
+          {/* Entry Fee */}
           <div>
-            <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Entry Fee</label>
+            <label className={`block text-xs mb-2 ${textMuted}`}>Entry Fee</label>
             <div className="flex gap-2">
-              {ENTRY_FEE_OPTIONS.map((fee) => (
+              {([5, 7, 10] as const).map(fee => (
                 <button
                   key={fee}
                   onClick={() => setEntryFee(fee)}
-                  className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition ${
+                  className={`flex-1 py-2.5 text-sm font-semibold rounded-lg border transition-colors ${
                     entryFee === fee
                       ? 'bg-[#D4A843] text-[#1B2A4A] border-[#D4A843]'
                       : isDark
-                      ? 'border-[#D4A843]/20 text-[#F5F0E8]/70 hover:border-[#D4A843]/40'
-                      : 'border-[#1B2A4A]/20 text-[#1B2A4A]/70 hover:border-[#D4A843]/40'
+                      ? 'border-[#D4A843]/20 text-[#F5F0E8]/60 hover:border-[#D4A843]/40'
+                      : 'border-[#1B2A4A]/20 text-[#1B2A4A]/60 hover:border-[#1B2A4A]/40'
                   }`}
                 >
                   ${fee}
                 </button>
               ))}
             </div>
-            <p className={`text-xs mt-2 ${textMuted}`}>
-              Prize pool = entry fees collected × 75% (platform keeps 25%)
-            </p>
           </div>
 
           {/* Visibility */}
           <div>
-            <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Visibility</label>
+            <label className={`block text-xs mb-2 ${textMuted}`}>Visibility</label>
             <div className="flex gap-2">
-              {[{ val: true, label: 'Public', desc: 'Listed on Competitions page' }, { val: false, label: 'Private', desc: 'Invite code only' }].map((opt) => (
+              {[{ val: true, label: 'Public' }, { val: false, label: 'Private (invite only)' }].map(({ val, label }) => (
                 <button
-                  key={String(opt.val)}
-                  onClick={() => setIsPublic(opt.val)}
-                  className={`flex-1 py-3 px-4 rounded-xl border text-left transition ${
-                    isPublic === opt.val
-                      ? 'border-[#D4A843] bg-[#D4A843]/10'
+                  key={String(val)}
+                  onClick={() => setIsPublic(val)}
+                  className={`flex-1 py-2.5 text-sm font-medium rounded-lg border transition-colors ${
+                    isPublic === val
+                      ? 'bg-[#D4A843] text-[#1B2A4A] border-[#D4A843]'
                       : isDark
-                      ? 'border-[#D4A843]/20 hover:border-[#D4A843]/40'
-                      : 'border-[#1B2A4A]/15 hover:border-[#D4A843]/40'
+                      ? 'border-[#D4A843]/20 text-[#F5F0E8]/60 hover:border-[#D4A843]/40'
+                      : 'border-[#1B2A4A]/20 text-[#1B2A4A]/60 hover:border-[#1B2A4A]/40'
                   }`}
                 >
-                  <p className={`text-sm font-semibold ${textPrimary}`}>{opt.label}</p>
-                  <p className={`text-xs ${textMuted}`}>{opt.desc}</p>
+                  {label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Max participants */}
+          {/* Max Participants */}
           <div>
-            <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
-              Max Participants <span className={`font-normal ${textMuted}`}>(optional)</span>
-            </label>
-            <input
-              type="number"
-              className={inputClass}
-              placeholder="Leave blank for unlimited"
-              value={maxParticipants}
-              onChange={(e) => setMaxParticipants(e.target.value)}
-              min={2}
-              max={1000}
-            />
+            <label className={`block text-xs mb-1.5 ${textMuted}`}>Max Participants <span className={textMuted}>(optional)</span></label>
+            <input className={inputClass} type="number" min="2" value={maxParticipants} onChange={e => setMaxParticipants(e.target.value)} placeholder="Leave blank for unlimited" />
           </div>
 
           {/* Dates */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Start Date</label>
-              <input
-                type="datetime-local"
-                className={inputClass}
-                value={startsAt}
-                onChange={(e) => setStartsAt(e.target.value)}
-              />
+              <label className={`block text-xs mb-1.5 ${textMuted}`}>Start Date</label>
+              <input className={inputClass} type="datetime-local" value={startsAt} onChange={e => setStartsAt(e.target.value)} />
             </div>
             <div>
-              <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>End Date</label>
-              <input
-                type="datetime-local"
-                className={inputClass}
-                value={endsAt}
-                onChange={(e) => setEndsAt(e.target.value)}
-              />
+              <label className={`block text-xs mb-1.5 ${textMuted}`}>End Date</label>
+              <input className={inputClass} type="datetime-local" value={endsAt} onChange={e => setEndsAt(e.target.value)} />
             </div>
           </div>
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && <p className="text-red-400 text-sm">{error}</p>}
 
           <button
-            onClick={handleCreate}
-            disabled={loading}
-            className="w-full py-3 bg-[#D4A843] text-[#1B2A4A] rounded-xl font-semibold text-sm hover:bg-[#c49a3a] disabled:opacity-50 transition"
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="w-full py-3 bg-[#D4A843] text-[#1B2A4A] font-semibold rounded-lg hover:bg-[#c49a3a] transition disabled:opacity-50"
           >
-            {loading ? 'Creating...' : 'Create Tournament'}
+            {submitting ? 'Creating...' : 'Create Tournament'}
           </button>
 
-          <p className={`text-xs text-center ${textMuted}`}>
-            Once created, share your invite code or link. Participants pay the entry fee to join. Prize pool is distributed automatically when the tournament ends.
-          </p>
         </div>
       </div>
     </div>
