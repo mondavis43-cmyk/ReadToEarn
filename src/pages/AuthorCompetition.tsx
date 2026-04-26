@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
-import { Trophy } from 'lucide-react';
+import { Trophy, Info } from 'lucide-react';
+import { BookSearchInput } from '../components/BookSearchInput';
 
 const COMPETITION_TIERS = [
   {
@@ -45,60 +46,87 @@ const COMPETITION_TIERS = [
 const COMPETITION_TYPES = ['Sprint', 'Read-A-Thon', 'Elimination Bracket'];
 
 export const AuthorCompetition = () => {
-  const { navigateTo } = useNavigate();
-  const { isDark, toggleTheme } = useTheme();
+  const { navigateTo }  = useNavigate();
+  const { isDark }      = useTheme();
 
-  const [error, setError] = useState('');
-
+  const [error, setError]           = useState('');
   const [authorName, setAuthorName] = useState('');
-  const [email, setEmail] = useState('');
-  const [bookTitles, setBookTitles] = useState('');
-  const [selectedTier, setSelectedTier] = useState(COMPETITION_TIERS[0]);
-  const [selectedType, setSelectedType] = useState(COMPETITION_TYPES[0]);
-  const [notes, setNotes] = useState('');
+  const [email, setEmail]           = useState('');
+  const [notes, setNotes]           = useState('');
+  const [selectedTier, setSelectedTier]   = useState(COMPETITION_TIERS[0]);
+  const [selectedType, setSelectedType]   = useState(COMPETITION_TYPES[0]);
 
-  const textPrimary = isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]';
-  const textMuted = isDark ? 'text-[#F5F0E8]/70' : 'text-[#1B2A4A]/70';
-  const cardBg = isDark ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20' : 'bg-white border-[#D4A843]/30';
-  const inputClass = `w-full px-4 py-3 rounded-lg border text-sm transition focus:outline-none ${
+  // Single-select (Sprint + Read-A-Thon)
+  const [bookTitle, setBookTitle] = useState('');
+  const [bookId, setBookId]       = useState('');
+
+  // Multi-select (Elimination Bracket)
+  const [bookTitles, setBookTitles] = useState<string[]>([]);
+  const [bookIds, setBookIds]       = useState<string[]>([]);
+
+  const isElimination = selectedType === 'Elimination Bracket';
+  const isReadAThon   = selectedType === 'Read-A-Thon';
+
+  const bookValid = isElimination
+    ? bookTitles.length > 0
+    : bookTitle.trim() !== '';
+
+  const isFormValid = () =>
+    authorName.trim() && email.trim() && bookValid;
+
+  // theme tokens
+  const textPrimary = isDark ? 'text-[#F5F0E8]'    : 'text-[#1B2A4A]';
+  const textMuted   = isDark ? 'text-[#F5F0E8]/70' : 'text-[#1B2A4A]/70';
+  const cardBg      = isDark
+    ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20'
+    : 'bg-white border-[#D4A843]/30';
+  const inputClass  = `w-full px-4 py-3 rounded-lg border text-sm transition focus:outline-none ${
     isDark
       ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20 text-[#F5F0E8] focus:border-[#D4A843]/60 placeholder:text-[#F5F0E8]/30'
       : 'bg-white border-[#1B2A4A]/20 text-[#1B2A4A] focus:border-[#D4A843] placeholder:text-[#1B2A4A]/30'
   }`;
-
-  const isFormValid = () => authorName && email && bookTitles;
+  const divider = isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10';
+  const bg      = isDark ? 'bg-[#0f1623]'        : 'bg-[#F5F0E8]';
+  const calloutBg = isDark
+    ? 'bg-[#D4A843]/10 border-[#D4A843]/30 text-[#D4A843]'
+    : 'bg-[#D4A843]/10 border-[#D4A843]/40 text-[#92700a]';
 
   const handleCheckout = () => {
     if (!isFormValid()) {
-      setError('Please fill out all required fields.');
+      setError('Please fill in all required fields and select a book from the dropdown.');
       return;
     }
     setError('');
 
-    (window as any).__checkoutItem = {
-      type: 'competition',
-      label: `Sponsored Competition — ${selectedTier.label} (${selectedType}) for "${bookTitles}"`,
+    const titlesForSubmission = isElimination
+      ? bookTitles.join(', ')
+      : bookTitle;
+
+    ;(window as any).__checkoutItem = {
+      type:   'competition',
+      label:  `${selectedTier.label} ${selectedType} — "${isElimination ? bookTitles[0] : bookTitle}${bookTitles.length > 1 ? ` +${bookTitles.length - 1} more` : ''}"`,
       amount: selectedTier.cents,
       metadata: {
-        tier: selectedTier.label,
+        tier:             selectedTier.label,
         competition_type: selectedType,
-        prize_pool: selectedTier.prizePool,
+        prize_pool:       selectedTier.prizePool,
       },
     };
 
-    (window as any).__pendingSubmission = {
+    ;(window as any).__pendingSubmission = {
       table: 'author_competition_submissions',
       data: {
-        author_name: authorName,
-        email,
-        book_titles: bookTitles,
-        tier_label: selectedTier.label,
-        price: selectedTier.price,
-        platform_fee: selectedTier.platformFee,
-        prize_pool: selectedTier.prizePool,
+        author_name:      authorName.trim(),
+        email:            email.trim(),
+        book_titles:      titlesForSubmission,
+        book_ids:         isElimination ? bookIds.join(',') : bookId,
+        tier_label:       selectedTier.label,
+        price:            selectedTier.price,
+        platform_fee:     selectedTier.platformFee,
+        prize_pool:       selectedTier.prizePool,
         competition_type: selectedType,
-        notes: notes || null,
-        status: 'active',
+        notes:            notes.trim(),
+        status:           'pending',
       },
     };
 
@@ -107,230 +135,242 @@ export const AuthorCompetition = () => {
   };
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]'}`}>
+    <div className={`min-h-screen ${bg} transition-colors duration-300`}>
 
       {/* Header */}
-      <div className={`border-b transition-colors duration-300 ${isDark ? 'border-[#1B2A4A] bg-[#0f1623]' : 'border-[#D4A843]/30 bg-[#F5F0E8]'}`}>
-        <div className="max-w-3xl mx-auto px-4 py-4 flex justify-between items-center">
+      <div className={`border-b ${divider} px-4 py-4`}>
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
           <button
-            onClick={() => navigateTo('/authors')}
-            className={`font-serif text-lg font-bold transition-colors ${isDark ? 'text-[#D4A843]' : 'text-[#1B2A4A]'}`}
+            onClick={() => navigateTo('/author-submit')}
+            className={`font-serif text-lg font-bold ${isDark ? 'text-[#D4A843]' : 'text-[#1B2A4A]'}`}
           >
-            ← Authors
-          </button>
-          <button
-            onClick={toggleTheme}
-            className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
-              isDark
-                ? 'border-[#D4A843]/40 text-[#D4A843] hover:bg-[#D4A843]/10'
-                : 'border-[#1B2A4A]/30 text-[#1B2A4A] hover:bg-[#1B2A4A]/10'
-            }`}
-          >
-            {isDark ? '☀ Light' : '☾ Dark'}
+            ← Back
           </button>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-16">
+      <div className="max-w-2xl mx-auto px-4 py-12">
 
-        {/* Hero */}
-        <div className="text-center mb-12">
-          <Trophy className="text-[#D4A843] mx-auto mb-4" size={36} />
-          <h1 className={`font-serif text-4xl mb-3 ${textPrimary}`}>Sponsor a Competition</h1>
-          <p className={`text-lg max-w-lg mx-auto ${textMuted}`}>
-            Fund a reading competition around your book. Readers compete, you get visibility. The bigger the prize pool, the more readers show up.
+        {/* Title */}
+        <div className="mb-10">
+          <div className="flex items-center gap-3 mb-3">
+            <Trophy className="text-[#D4A843] w-6 h-6" />
+            <h1 className={`font-serif text-4xl ${textPrimary}`}>Sponsor a Competition</h1>
+          </div>
+          <p className={`text-sm leading-relaxed ${textMuted}`}>
+            Put your book in front of motivated readers. Choose a format, pick a tier, and we'll run the event.
           </p>
         </div>
 
         {/* How it works */}
-        <div className={`rounded-xl border p-6 mb-10 ${cardBg}`}>
+        <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
           <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>How It Works</h2>
-          <div className="space-y-3">
+          <ol className="space-y-3">
             {[
-              { step: '1', text: 'Choose a tier and competition type. We handle scheduling and setup.' },
-              { step: '2', text: 'Your book is featured as the competition title. Readers sign up to compete.' },
-              { step: '3', text: 'Readers race to finish and pass the quiz. Top finishers split the prize pool.' },
-              { step: '4', text: 'Platform keeps its fee. The rest goes to winning readers.' },
-            ].map((item) => (
-              <div key={item.step} className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full bg-[#D4A843] text-[#1B2A4A] font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
-                  {item.step}
+              'Choose a competition format — Sprint, Read-A-Thon, or Elimination Bracket.',
+              'Select a tier — this sets your platform fee and the reader prize pool.',
+              'We schedule and run the event. Readers compete for the prize pool.',
+              'You get visibility, quiz engagement, and real reader data.',
+            ].map((step, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#D4A843]/20 text-[#D4A843] text-xs font-bold flex items-center justify-center mt-0.5">
+                  {i + 1}
+                </span>
+                <p className={`text-sm ${textMuted}`}>{step}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        {/* Competition format */}
+        <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
+          <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Competition Format</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            {COMPETITION_TYPES.map(type => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => {
+                  setSelectedType(type);
+                  // reset book selection on type switch
+                  setBookTitle(''); setBookId('');
+                  setBookTitles([]); setBookIds([]);
+                }}
+                className={`p-4 rounded-xl border text-left transition-colors ${
+                  selectedType === type
+                    ? 'border-[#D4A843] bg-[#D4A843]/10'
+                    : isDark
+                      ? 'border-[#F5F0E8]/10 hover:border-[#D4A843]/40'
+                      : 'border-[#1B2A4A]/10 hover:border-[#D4A843]/40'
+                }`}
+              >
+                <p className={`font-semibold text-sm ${textPrimary}`}>{type}</p>
+                <p className={`text-xs mt-1 ${textMuted}`}>
+                  {type === 'Sprint'
+                    ? 'Readers quiz only on your book within a set time window.'
+                    : type === 'Read-A-Thon'
+                      ? 'Your book is required reading. Readers also quiz freely across the platform.'
+                      : 'Multi-round bracket. Readers advance by passing score thresholds.'}
+                </p>
+              </button>
+            ))}
+          </div>
+
+          {/* Read-A-Thon callout */}
+          {isReadAThon && (
+            <div className={`flex items-start gap-3 rounded-xl border p-4 text-sm ${calloutBg}`}>
+              <Info size={16} className="flex-shrink-0 mt-0.5" />
+              <p className="leading-relaxed">
+                <strong>Read-A-Thon is an open platform event.</strong> Readers are free to quiz on any active book during the event window — the goal is to read and quiz on as many books as possible. Your book is <strong>guaranteed to be included</strong> as required reading, but readers are not limited to your book only. You're buying featured placement, not exclusivity.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Tier picker */}
+        <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
+          <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Select a Tier</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {COMPETITION_TIERS.map(tier => (
+              <button
+                key={tier.label}
+                type="button"
+                onClick={() => setSelectedTier(tier)}
+                className={`p-4 rounded-xl border text-left transition-colors ${
+                  selectedTier.label === tier.label
+                    ? 'border-[#D4A843] bg-[#D4A843]/10'
+                    : isDark
+                      ? 'border-[#F5F0E8]/10 hover:border-[#D4A843]/40'
+                      : 'border-[#1B2A4A]/10 hover:border-[#D4A843]/40'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <p className={`font-bold ${textPrimary}`}>{tier.label}</p>
+                  <p className="text-[#D4A843] font-bold">${tier.price}</p>
                 </div>
-                <p className={`text-sm ${textMuted}`}>{item.text}</p>
+                <p className={`text-xs ${textMuted}`}>{tier.description}</p>
+                <div className="flex gap-4 mt-2">
+                  <span className={`text-xs ${textMuted}`}>Prize pool: <strong className={textPrimary}>${tier.prizePool}</strong></span>
+                  <span className={`text-xs ${textMuted}`}>Platform: <strong className={textPrimary}>${tier.platformFee}</strong></span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Competition summary */}
+        <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
+          <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Competition Summary</h2>
+          <div className="space-y-2">
+            {[
+              ['Tier',          selectedTier.label],
+              ['Format',        isReadAThon
+                ? 'Open platform event — your book is required, all others are reader\'s choice'
+                : selectedType],
+              ['Price',         `$${selectedTier.price}`],
+              ['Platform Fee',  `$${selectedTier.platformFee}`],
+              ['Prize Pool',    `$${selectedTier.prizePool}`],
+            ].map(([label, val]) => (
+              <div key={label} className="flex justify-between items-start gap-4">
+                <span className={`text-sm flex-shrink-0 ${textMuted}`}>{label}</span>
+                <span className={`text-sm font-semibold text-right ${textPrimary}`}>{val}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Tier Picker */}
-        <div className="mb-8">
-          <h2 className={`font-serif text-2xl mb-2 ${textPrimary}`}>Choose a Tier</h2>
-          <p className={`text-sm mb-6 ${textMuted}`}>Platform fee decreases as your investment grows.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {COMPETITION_TIERS.map((tier) => {
-              const isSelected = selectedTier.label === tier.label;
-              return (
-                <button
-                  key={tier.label}
-                  onClick={() => setSelectedTier(tier)}
-                  className={`rounded-xl border p-5 text-left transition ${
-                    isSelected
-                      ? 'bg-[#D4A843] border-[#D4A843] text-[#1B2A4A]'
-                      : isDark
-                        ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20 text-[#F5F0E8] hover:border-[#D4A843]/50'
-                        : 'bg-white border-[#1B2A4A]/20 text-[#1B2A4A] hover:border-[#D4A843]'
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <p className="font-bold text-lg">{tier.label}</p>
-                    <p className="font-bold text-lg">${tier.price}</p>
-                  </div>
-                  <p className={`text-xs mb-3 ${isSelected ? 'text-[#1B2A4A]/70' : textMuted}`}>
-                    {tier.description}
-                  </p>
-                  <div className="flex justify-between text-xs">
-                    <span className={isSelected ? 'text-[#1B2A4A]/70' : textMuted}>
-                      Platform {tier.platformPct}%
-                    </span>
-                    <span className={isSelected ? 'text-[#1B2A4A]' : 'text-green-500'}>
-                      ${tier.prizePool} to readers
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Competition Type */}
-        <div className="mb-8">
-          <h2 className={`font-serif text-2xl mb-2 ${textPrimary}`}>Competition Format</h2>
-          <p className={`text-sm mb-6 ${textMuted}`}>We'll work with you on timing and structure after submission.</p>
-          <div className="grid grid-cols-3 gap-3">
-            {COMPETITION_TYPES.map((type) => {
-              const isSelected = selectedType === type;
-              return (
-                <button
-                  key={type}
-                  onClick={() => setSelectedType(type)}
-                  className={`rounded-lg border p-4 text-center text-sm font-medium transition ${
-                    isSelected
-                      ? 'bg-[#D4A843] border-[#D4A843] text-[#1B2A4A]'
-                      : isDark
-                        ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20 text-[#F5F0E8] hover:border-[#D4A843]/50'
-                        : 'bg-white border-[#1B2A4A]/20 text-[#1B2A4A] hover:border-[#D4A843]'
-                  }`}
-                >
-                  {type}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Live Summary */}
-        <div className={`rounded-xl border p-6 mb-10 ${cardBg}`}>
-          <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Competition Summary</h2>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className={textMuted}>Tier</span>
-              <span className={`font-medium ${textPrimary}`}>{selectedTier.label}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className={textMuted}>Format</span>
-              <span className={`font-medium ${textPrimary}`}>{selectedType}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className={textMuted}>Platform fee ({selectedTier.platformPct}%)</span>
-              <span className={`font-medium ${textPrimary}`}>${selectedTier.platformFee}</span>
-            </div>
-            <div className={`border-t pt-3 mt-3 flex justify-between ${isDark ? 'border-[#D4A843]/20' : 'border-[#1B2A4A]/10'}`}>
-              <span className={`font-medium ${textPrimary}`}>Prize pool to readers</span>
-              <span className="text-[#D4A843] font-bold text-lg">${selectedTier.prizePool}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Author Info */}
-        <div className="mb-10">
-          <h2 className={`font-serif text-2xl mb-6 ${textPrimary}`}>Your Information</h2>
+        {/* Author info */}
+        <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
+          <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Your Information</h2>
           <div className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>
-                  Your Name <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={authorName}
-                  onChange={(e) => setAuthorName(e.target.value)}
-                  className={inputClass}
-                  placeholder="Author or publisher name"
-                />
-              </div>
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>
-                  Email <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={inputClass}
-                  placeholder="Receipt and scheduling details sent here"
-                />
-              </div>
-            </div>
+
             <div>
-              <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>
-                Book Title(s) <span className="text-red-400">*</span>
+              <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>
+                Author Name <span className="text-red-400">*</span>
               </label>
               <input
                 type="text"
-                value={bookTitles}
-                onChange={(e) => setBookTitles(e.target.value)}
+                value={authorName}
+                onChange={e => setAuthorName(e.target.value)}
+                placeholder="Author or publisher name"
                 className={inputClass}
-                placeholder="Must already be listed on Read to Earn"
               />
-              <p className={`text-xs mt-1 ${textMuted}`}>
-                Competitions require books already listed on the platform.{' '}
-                <button
-                  onClick={() => navigateTo('/author-submit')}
-                  className="text-[#D4A843] hover:underline"
-                >
-                  List your book first →
-                </button>
-              </p>
             </div>
+
             <div>
-              <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>
+              <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>
+                Email <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="Payment confirmation sent here"
+                className={inputClass}
+              />
+            </div>
+
+            {/* Book selection — single or multi depending on type */}
+            {isElimination ? (
+              <BookSearchInput
+                label="Books (select all that apply)"
+                required
+                multi
+                multiValue={bookTitles}
+                onMultiChange={(titles, ids) => { setBookTitles(titles); setBookIds(ids); }}
+                placeholder="Search and add books..."
+              />
+            ) : (
+              <BookSearchInput
+                label={isReadAThon ? 'Your Featured Book' : 'Book Title'}
+                required
+                value={bookTitle}
+                onChange={(title, id) => { setBookTitle(title); setBookId(id); }}
+                placeholder="Search your book title..."
+              />
+            )}
+
+            {/* Read-A-Thon reminder under book field */}
+            {isReadAThon && bookTitle && (
+              <p className={`text-xs ${textMuted}`}>
+                <Info size={11} className="inline mr-1 mb-0.5" />
+                Readers will be required to quiz on <strong>{bookTitle}</strong>, but may also quiz on any other active book during the event.
+              </p>
+            )}
+
+            <div>
+              <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>
                 Notes <span className={`font-normal ${textMuted}`}>(optional)</span>
               </label>
               <textarea
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="Preferred dates, special requests, anything else..."
                 rows={3}
-                className={inputClass}
-                placeholder="Preferred dates, special requests, anything we should know"
+                className={`${inputClass} resize-none`}
               />
             </div>
+
           </div>
         </div>
 
+        {/* Error */}
         {error && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
+          <div className="mb-4 p-3 bg-red-900/20 border border-red-900/50 rounded-lg text-red-400 text-sm">
             {error}
           </div>
         )}
 
+        {/* Submit */}
         <button
           onClick={handleCheckout}
-          className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-4 rounded-xl hover:bg-[#c49a3a] transition text-lg"
+          disabled={!isFormValid()}
+          className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-4 rounded-xl hover:bg-[#c49a3a] transition text-lg disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {`Sponsor Competition — Pay $${selectedTier.price}`}
+          Continue to Checkout — ${selectedTier.price}
         </button>
         <p className={`text-xs text-center mt-3 ${textMuted}`}>
-          You'll be taken to secure checkout. Your competition is scheduled immediately after payment.
+          Secure checkout. Your competition will be scheduled after payment is confirmed.
         </p>
 
       </div>
