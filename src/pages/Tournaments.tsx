@@ -204,7 +204,7 @@ export const Tournaments = () => {
 
     if (!title.trim()) { setError('Tournament title is required.'); return; }
     if (format === 'sprint' && sprintBook.length === 0) { setError('Please select a book for Sprint.'); return; }
-    if (format === 'elimination' && elimBooks.length < 2) { setError('Please select at least 2 books for Elimination.'); return; }
+    if (format === 'elimination' && elimBooks.length < 2) { setError('Please select 3 books for Elimination.'); return; }
     if (!startsAt || !endsAt) { setError('Start and end dates are required.'); return; }
 
     const { data: { user } } = await supabase.auth.getUser();
@@ -269,7 +269,7 @@ export const Tournaments = () => {
   const formatOptions: { key: Format; label: string; icon: React.ReactNode; desc: string }[] = [
     { key: 'sprint', label: 'Sprint', icon: <Zap size={15} />, desc: 'One book, fastest accurate readers win. 100% of prize pool to 1st place.' },
     { key: 'readathon', label: 'Read-A-Thon', icon: <BookOpen size={15} />, desc: 'Readers track pages across any books they choose. Top 3 split 50/30/20.' },
-    { key: 'elimination', label: 'Elimination', icon: <Trophy size={15} />, desc: 'Multi-book bracket. Pick 2–3 books. Top 3 split 50/30/20.' },
+    { key: 'elimination', label: 'Elimination', icon: <Trophy size={15} />, desc: 'Multi-book bracket. Pick 3 books. Top 3 split 50/30/20.' },
   ];
 
   if (success) {
@@ -383,7 +383,7 @@ export const Tournaments = () => {
             <div>
               <label className={`block text-xs mb-1.5 ${textMuted}`}>
                 Books <span className="text-red-400">*</span>
-                <span className={`ml-2 ${textMuted}`}>(select 2–3 books)</span>
+                <span className={`ml-2 ${textMuted}`}>(select 3 books)</span>
               </label>
               <BookSearchInput
                 books={books}
