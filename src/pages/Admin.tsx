@@ -1,22 +1,21 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
 import { ArrowLeft, Sun, Moon } from 'lucide-react';
 
-import { AdminBooks } from './admin/AdminBooks';
-import { AdminBounties } from './admin/AdminBounties';
+import { AdminBooks }        from './admin/AdminBooks';
+import { AdminBounties }     from './admin/AdminBounties';
 import { AdminCompetitions } from './admin/AdminCompetitions';
-import { AdminPayouts } from './admin/AdminPayouts';
-import { AdminWaitlist } from './admin/AdminWaitlist';
-import { AdminTropes } from './admin/AdminTropes';
-import { AdminReports } from './admin/AdminReports';
-import { AdminTrivia } from './admin/AdminTrivia';
-import { AdminTournaments } from './admin/AdminTournaments';
-import { AdminEarning } from './admin/AdminEarning';
-import { AdminAMA } from './admin/AdminAMA';
-
-import { useState } from 'react';
+import { AdminPayouts }      from './admin/AdminPayouts';
+import { AdminWaitlist }     from './admin/AdminWaitlist';
+import { AdminTropes }       from './admin/AdminTropes';
+import { AdminReports }      from './admin/AdminReports';
+import { AdminTrivia }       from './admin/AdminTrivia';
+import { AdminTournaments }  from './admin/AdminTournaments';
+import { AdminEarning }      from './admin/AdminEarning';
+import { AdminAMA }          from './admin/AdminAMA';
+import { AdminSubmissions }  from './admin/AdminSubmissions';
 
 export const GENRES = [
   'Action & Adventure', 'Biography & Memoir', 'Business', "Children's", 'Chick Lit',
@@ -40,25 +39,28 @@ type Tab =
   | 'reports'
   | 'trivia'
   | 'tournaments'
-  | 'earning';
+  | 'earning'
+  | 'ama'
+  | 'submissions';
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'books', label: 'Books & Questions' },
-  { key: 'bounties', label: 'Bounties' },
-  { key: 'competitions', label: 'Competitions' },
-  { key: 'payouts', label: 'Payouts' },
-  { key: 'reports', label: 'Reports' },
-  { key: 'trivia', label: 'Daily Trivia' },
-  { key: 'tournaments', label: 'Tournaments' },
-  { key: 'earning', label: 'Earning Tasks' },
-  { key: 'waitlist', label: 'Waitlist' },
-  { key: 'tropes', label: 'Tropes' },
-  { key: 'ama', label: 'AMA' },
+  { key: 'books',        label: 'Books & Questions' },
+  { key: 'bounties',     label: 'Bounties'          },
+  { key: 'competitions', label: 'Competitions'      },
+  { key: 'payouts',      label: 'Payouts'           },
+  { key: 'reports',      label: 'Reports'           },
+  { key: 'trivia',       label: 'Daily Trivia'      },
+  { key: 'tournaments',  label: 'Tournaments'       },
+  { key: 'earning',      label: 'Earning Tasks'     },
+  { key: 'submissions',  label: 'Submissions'       },
+  { key: 'waitlist',     label: 'Waitlist'          },
+  { key: 'tropes',       label: 'Tropes'            },
+  { key: 'ama',          label: 'AMA'               },
 ];
 
 export function Admin() {
-  const { user } = useAuth();
-  const { navigateTo } = useNavigate();
+  const { user }               = useAuth();
+  const { navigateTo }         = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<Tab>('books');
 
@@ -72,6 +74,7 @@ export function Admin() {
 
   return (
     <div className="min-h-screen bg-[#F5F0E8] dark:bg-gray-900 pb-16">
+
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 border-b border-[#e8e0d5] dark:border-gray-700 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -94,6 +97,7 @@ export function Admin() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+
         {/* Tab nav */}
         <div className="flex flex-wrap gap-2">
           {TABS.map(({ key, label }) => (
@@ -112,17 +116,19 @@ export function Admin() {
         </div>
 
         {/* Active tab content */}
-        {activeTab === 'books' && <AdminBooks />}
-        {activeTab === 'bounties' && <AdminBounties />}
+        {activeTab === 'books'        && <AdminBooks />}
+        {activeTab === 'bounties'     && <AdminBounties />}
         {activeTab === 'competitions' && <AdminCompetitions />}
-        {activeTab === 'payouts' && <AdminPayouts />}
-        {activeTab === 'waitlist' && <AdminWaitlist />}
-        {activeTab === 'tropes' && <AdminTropes />}
-        {activeTab === 'reports' && <AdminReports />}
-        {activeTab === 'trivia' && <AdminTrivia />}
-        {activeTab === 'tournaments' && <AdminTournaments />}
-        {activeTab === 'earning' && <AdminEarning />}
-        {activeTab === 'ama' && <AdminAMA />}
+        {activeTab === 'payouts'      && <AdminPayouts />}
+        {activeTab === 'waitlist'     && <AdminWaitlist />}
+        {activeTab === 'tropes'       && <AdminTropes />}
+        {activeTab === 'reports'      && <AdminReports />}
+        {activeTab === 'trivia'       && <AdminTrivia />}
+        {activeTab === 'tournaments'  && <AdminTournaments />}
+        {activeTab === 'earning'      && <AdminEarning />}
+        {activeTab === 'ama'          && <AdminAMA />}
+        {activeTab === 'submissions'  && <AdminSubmissions />}
+
       </div>
     </div>
   );
