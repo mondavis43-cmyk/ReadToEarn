@@ -246,22 +246,44 @@ export const CompetitionDetail = () => {
         )}
 
         {/* Prize breakdown */}
-        <div className={`rounded-xl border p-6 mb-8 ${cardBg}`}>
-          <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Prize Breakdown</h2>
-          <div className="space-y-2">
-            {[
-              { place: '🥇 1st Place', pct: '50%', amount: (competition.prize_pool * 0.5).toFixed(2) },
-              { place: '🥈 2nd Place', pct: '30%', amount: (competition.prize_pool * 0.3).toFixed(2) },
-              { place: '🥉 3rd Place', pct: '20%', amount: (competition.prize_pool * 0.2).toFixed(2) },
-            ].map((row) => (
-              <div key={row.place} className="flex justify-between text-sm">
-                <span className={textMuted}>{row.place}</span>
-                <span className={`font-semibold ${textPrimary}`}>${row.amount} <span className={`font-normal ${textMuted}`}>({row.pct})</span></span>
-              </div>
-            ))}
+<div className={`rounded-xl border p-6 mb-8 ${cardBg}`}>
+  <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Prize Breakdown</h2>
+
+  {competition.format === 'sprint' ? (
+    <>
+      <div className="flex justify-between text-sm mb-3">
+        <span className={textMuted}>🥇 Winner takes all</span>
+        <span className={`font-semibold ${textPrimary}`}>
+          ${competition.prize_pool.toFixed(2)} <span className={`font-normal ${textMuted}`}>(100%)</span>
+        </span>
+      </div>
+      <p className={`text-xs ${textMuted}`}>
+        Sprint competitions have one winner. In the event of a tie, the prize pool is split equally among tied participants.
+      </p>
+    </>
+  ) : (
+    <>
+      <div className="space-y-2 mb-3">
+        {[
+          { place: '🥇 1st Place', pct: 0.5 },
+          { place: '🥈 2nd Place', pct: 0.3 },
+          { place: '🥉 3rd Place', pct: 0.2 },
+        ].map((row) => (
+          <div key={row.place} className="flex justify-between text-sm">
+            <span className={textMuted}>{row.place}</span>
+            <span className={`font-semibold ${textPrimary}`}>
+              ${(competition.prize_pool * row.pct).toFixed(2)}{' '}
+              <span className={`font-normal ${textMuted}`}>({Math.round(row.pct * 100)}%)</span>
+            </span>
           </div>
-          <p className={`text-xs mt-4 ${textMuted}`}>Platform keeps 25% of the prize pool. Payouts processed within 5 business days of competition close.</p>
-        </div>
+        ))}
+      </div>
+      <p className={`text-xs ${textMuted}`}>
+        Platform keeps 25% of the prize pool. Payouts processed within 5 business days of competition close.
+      </p>
+    </>
+  )}
+</div>
 
         {error && (
           <div className="mb-4 p-3 bg-red-900/20 border border-red-900/50 rounded-lg text-red-400 text-sm">
