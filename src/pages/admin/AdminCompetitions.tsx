@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Search } from 'lucide-react';
 
 interface Book {
   id: string;
@@ -28,6 +28,7 @@ interface NewCompetition {
   format: string;
   title: string;
   book_id: string;
+  book_ids: string[];
   starts_at: string;
   ends_at: string;
   entry_fee: string;
@@ -45,6 +46,7 @@ const emptyComp: NewCompetition = {
   format: 'sprint',
   title: '',
   book_id: '',
+  book_ids: [],
   starts_at: '',
   ends_at: '',
   entry_fee: '',
@@ -52,10 +54,132 @@ const emptyComp: NewCompetition = {
   is_sponsored: false,
 };
 
+// ─── Searchable book picker ───────────────────────────────────────────────
+
+const BookSearchInput = ({
+  books,
+  selected,
+  onSelect,
+  onRemove,
+  multi = false,
+  max = 1,
+}: {
+  books: Book[];
+  selected: Book[];
+  onSelect: (book: Book) => void;
+  onRemove: (id: string) => void;
+  multi?: boolean;
+  max?: number;
+}) => {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const selectedIds = selected.map(b => b.id);
+
+  const filtered = books.filter(b => {
+    if (selectedIds.includes(b.id)) return false;
+    if (!query.trim()) return true;
+    const q = query.toLowerCase();
+    return b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q);
+  });
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleSelect = (book: Book) => {
+    onSelect(book);
+    setQuery('');
+    if (!multi) setOpen(false);
+  };
+
+  const atMax = selected.length >= max;
+
+  const inputClass =
+    'w-full px-3 py-2 pl-8 rounded-lg border border-[#e8e0d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none focus:ring-2';
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Selected tags */}
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {selected.map(b => (
+            <span
+              key={b.id}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#D4A843]/20 text-[#D4A843] border border-[#D4A843]/30"
+            >
+              {b.title}
+              <button onClick={() => onRemove(b.id)} className="hover:text-white transition-colors">
+                <X size={10} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Search input */}
+      {(!atMax || multi) && (
+        <div className="relative">
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#6B7280]" />
+          <input
+            className={inputClass}
+            placeholder={
+              atMax
+                ? `Max ${max} book${max > 1 ? 's' : ''} selected`
+                : multi
+                ? `Search books... (${selected.length}/${max} selected)`
+                : 'Search by title or author...'
+            }
+            value={query}
+            onChange={e => { setQuery(e.target.value); setOpen(true); }}
+            onFocus={() => setOpen(true)}
+            disabled={atMax && !multi}
+          />
+        </div>
+      )}
+
+      {/* Dropdown */}
+      {open && !atMax && (
+        <div className="absolute z-50 w-full mt-1 rounded-lg border border-[#e8e0d5] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg overflow-hidden">
+          <div className="max-h-48 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-2.5 text-sm text-[#6B7280] dark:text-gray-400">
+                {query ? `No books found for "${query}" — not in our system yet.` : 'No more books to select.'}
+              </div>
+            ) : (
+              filtered.slice(0, 50).map(b => (
+                <button
+                  key={b.id}
+                  onMouseDown={() => handleSelect(b)}
+                  className="w-full text-left px-3 py-2.5 text-sm border-b border-[#e8e0d5] dark:border-gray-700 last:border-b-0 text-[#1B2A4A] dark:text-[#F5F0E8] hover:bg-[#D4A843]/10 transition-colors"
+                >
+                  <span className="font-medium">{b.title}</span>
+                  <span className="ml-2 text-xs text-[#6B7280] dark:text-gray-400">— {b.author}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Main component ───────────────────────────────────────────────────────
+
 export function AdminCompetitions() {
   const [books, setBooks] = useState<Book[]>([]);
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [newComp, setNewComp] = useState<NewCompetition>(emptyComp);
+  const [sprintBook, setSprintBook] = useState<Book[]>([]);
+  const [elimBooks, setElimBooks] = useState<Book[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -63,9 +187,14 @@ export function AdminCompetitions() {
 
   const inputClass =
     'w-full px-3 py-2 rounded-lg border border-[#e8e0d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none focus:ring-2';
-  const selectClass = inputClass;
 
   useEffect(() => { loadData(); }, []);
+
+  // Reset book selections when format changes
+  useEffect(() => {
+    setSprintBook([]);
+    setElimBooks([]);
+  }, [newComp.format]);
 
   async function loadData() {
     const [{ data: booksData }, { data: compsData }] = await Promise.all([
@@ -81,17 +210,34 @@ export function AdminCompetitions() {
       setError('Title, dates, and entry fee are required.');
       return;
     }
+    if (newComp.format === 'sprint' && sprintBook.length === 0) {
+      setError('Please select a book for Sprint.');
+      return;
+    }
+    if (newComp.format === 'elimination' && elimBooks.length < 3) {
+      setError('Please select exactly 3 books for Elimination.');
+      return;
+    }
+
     setSaving(true);
     setError('');
 
-    // Look up book title/author to store flat (what the page reads)
-    const selectedBook = books.find((b) => b.id === newComp.book_id);
+    let bookTitle: string | null = null;
+    let bookAuthor: string | null = null;
+
+    if (newComp.format === 'sprint' && sprintBook[0]) {
+      bookTitle = sprintBook[0].title;
+      bookAuthor = sprintBook[0].author;
+    } else if (newComp.format === 'elimination') {
+      bookTitle = elimBooks.map(b => b.title).join(', ');
+      bookAuthor = elimBooks.map(b => b.author).join(', ');
+    }
 
     const { error: err } = await supabase.from('competitions').insert({
       format: newComp.format,
       title: newComp.title,
-      book_title: selectedBook?.title ?? null,
-      book_author: selectedBook?.author ?? null,
+      book_title: bookTitle,
+      book_author: bookAuthor,
       entry_fee: parseFloat(newComp.entry_fee),
       prize_pool: parseFloat(newComp.prize_pool) || 0,
       is_sponsored: newComp.is_sponsored,
@@ -104,6 +250,8 @@ export function AdminCompetitions() {
     if (err) { setError('Failed to save: ' + err.message); setSaving(false); return; }
     setSuccess('Competition created!');
     setNewComp(emptyComp);
+    setSprintBook([]);
+    setElimBooks([]);
     setShowForm(false);
     setSaving(false);
     loadData();
@@ -165,7 +313,7 @@ export function AdminCompetitions() {
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Create Competition</h3>
-            <button onClick={() => { setShowForm(false); setNewComp(emptyComp); }} className="text-[#6B7280]">
+            <button onClick={() => { setShowForm(false); setNewComp(emptyComp); setSprintBook([]); setElimBooks([]); }} className="text-[#6B7280]">
               <X size={18} />
             </button>
           </div>
@@ -174,7 +322,7 @@ export function AdminCompetitions() {
           <div>
             <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Format</label>
             <select
-              className={selectClass}
+              className={inputClass}
               value={newComp.format}
               onChange={(e) => setNewComp({ ...newComp, format: e.target.value })}
             >
@@ -195,22 +343,59 @@ export function AdminCompetitions() {
             />
           </div>
 
-          {/* Book (optional for Read-A-Thon) */}
-          <div>
-            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
-              Book {newComp.format === 'readathon' ? '(optional for Read-A-Thon)' : ''}
-            </label>
-            <select
-              className={selectClass}
-              value={newComp.book_id}
-              onChange={(e) => setNewComp({ ...newComp, book_id: e.target.value })}
-            >
-              <option value="">Select a book...</option>
-              {standardBooks.map((b) => (
-                <option key={b.id} value={b.id}>{b.title} — {b.author}</option>
-              ))}
-            </select>
-          </div>
+          {/* Book — Sprint: single searchable */}
+          {newComp.format === 'sprint' && (
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
+                Book <span className="text-red-400">*</span>
+              </label>
+              <BookSearchInput
+                books={standardBooks}
+                selected={sprintBook}
+                onSelect={b => setSprintBook([b])}
+                onRemove={() => setSprintBook([])}
+                multi={false}
+                max={1}
+              />
+            </div>
+          )}
+
+          {/* Book — Read-A-Thon: untouched */}
+          {newComp.format === 'readathon' && (
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
+                Book (optional for Read-A-Thon)
+              </label>
+              <select
+                className={inputClass}
+                value={newComp.book_id}
+                onChange={(e) => setNewComp({ ...newComp, book_id: e.target.value })}
+              >
+                <option value="">Select a book...</option>
+                {standardBooks.map((b) => (
+                  <option key={b.id} value={b.id}>{b.title} — {b.author}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Book — Elimination: multi searchable, exactly 3 */}
+          {newComp.format === 'elimination' && (
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
+                Books <span className="text-red-400">*</span>
+                <span className="ml-1 text-[#6B7280] dark:text-gray-400">({elimBooks.length}/3 selected)</span>
+              </label>
+              <BookSearchInput
+                books={standardBooks}
+                selected={elimBooks}
+                onSelect={b => setElimBooks(prev => [...prev, b])}
+                onRemove={id => setElimBooks(prev => prev.filter(b => b.id !== id))}
+                multi={true}
+                max={3}
+              />
+            </div>
+          )}
 
           {/* Entry fee + Prize pool */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -285,7 +470,7 @@ export function AdminCompetitions() {
               {saving ? 'Saving...' : 'Create Competition'}
             </button>
             <button
-              onClick={() => { setShowForm(false); setNewComp(emptyComp); }}
+              onClick={() => { setShowForm(false); setNewComp(emptyComp); setSprintBook([]); setElimBooks([]); }}
               className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-[#6B7280] hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               Cancel
@@ -294,7 +479,7 @@ export function AdminCompetitions() {
         </div>
       )}
 
-      {/* Competition list */}
+      {/* Competition list — untouched */}
       {competitions.length === 0 ? (
         <p className="text-sm text-[#6B7280] dark:text-gray-400">No competitions yet.</p>
       ) : (
