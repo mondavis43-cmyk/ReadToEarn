@@ -1,58 +1,77 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../contexts/ThemeContext';
+import { BookOpen, Star } from 'lucide-react';
 
 const GENRES = ['Romance', 'Fantasy', 'Mystery', 'Thriller', 'Sci-Fi', 'Young Adult', 'Historical', 'Literary', 'Horror', 'Non-Fiction', 'Other'];
+const SPONSOR_CATEGORIES = ['Reading Accessories', 'Book Subscription Box', 'Coffee & Tea', 'Candles & Ambiance', 'Stationery', 'Apparel', 'Digital Tools', 'Other'];
+
+type Mode = 'author' | 'sponsor';
 
 export const BulletinSubmit = () => {
   const { isDark } = useTheme();
-
-  // State for the current logged-in user
-  const [userId, setUserId] = useState<string | null>(null);
-
-  const [form, setForm] = useState({
-    title: '',
-    author: '',
-    genre: '',
-    release_date: '',
-    blurb: '',
-    contact_email: '',
-    cover_url: '',
-  });
-
-  const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  const [buyLink, setBuyLink] = useState(''); // Correctly initialized
+  const [mode, setMode]         = useState<Mode>('author');
+  const [userId, setUserId]     = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState('');
+  const [submitted, setSubmitted]   = useState(false);
+  const [error, setError]           = useState('');
 
-  // Check for auth session on load
+  // Author form
+  const [authorForm, setAuthorForm] = useState({
+    title: '', author: '', genre: '', release_date: '',
+    blurb: '', contact_email: '', cover_url: '',
+  });
+  const [coverFile, setCoverFile]     = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [buyLink, setBuyLink]         = useState('');
+
+  // Sponsor form
+  const [sponsorForm, setSponsorForm] = useState({
+    brand_name: '', tagline: '', site_url: '',
+    contact_email: '', category: '',
+  });
+  const [sponsorImageFile, setSponsorImageFile]       = useState<File | null>(null);
+  const [sponsorImagePreview, setSponsorImagePreview] = useState<string | null>(null);
+
   useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUserId(session.user.id);
-        setForm(prev => ({ ...prev, contact_email: session.user.email || '' }));
+        setAuthorForm(prev => ({ ...prev, contact_email: session.user.email || '' }));
+        setSponsorForm(prev => ({ ...prev, contact_email: session.user.email || '' }));
       }
-    };
-    getSession();
+    });
   }, []);
 
   // Theme tokens
-  const bg = isDark ? '#0f172a' : '#F5F0E8';
-  const cardBg = isDark ? '#1e293b' : '#FFFFFF';
-  const cardBorder = isDark ? '#334155' : '#e2d9c8';
-  const textPrimary = isDark ? '#f1f5f9' : '#1B2A4A';
+  const bg          = isDark ? '#0f172a'  : '#F5F0E8';
+  const cardBg      = isDark ? '#1e293b'  : '#FFFFFF';
+  const cardBorder  = isDark ? '#334155'  : '#e2d9c8';
+  const textPrimary = isDark ? '#f1f5f9'  : '#1B2A4A';
   const textSecondary = isDark ? '#94a3b8' : '#6b7280';
-  const inputBg = isDark ? '#0f172a' : '#FAFAF8';
-  const inputBorder = isDark ? '#334155' : '#d1c9b8';
-  const accent = '#D4A843';
-  const labelColor = isDark ? '#cbd5e1' : '#374151';
+  const inputBg     = isDark ? '#0f172a'  : '#FAFAF8';
+  const inputBorder = isDark ? '#334155'  : '#d1c9b8';
+  const accent      = '#D4A843';
+  const labelColor  = isDark ? '#cbd5e1'  : '#374151';
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 14px', borderRadius: 8,
+    border: `1px solid ${inputBorder}`, backgroundColor: inputBg,
+    color: textPrimary, fontSize: 14, outline: 'none', boxSizing: 'border-box',
+  };
+  const labelStyle: React.CSSProperties = {
+    display: 'block', fontSize: 12, fontWeight: 600,
+    color: labelColor, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em',
+  };
+
+  const handleAuthorChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    setAuthorForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSponsorChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setSponsorForm(prev => ({ ...prev, [name]: value }));
   };
 
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,169 +81,322 @@ export const BulletinSubmit = () => {
     setCoverPreview(URL.createObjectURL(file));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  const handleSponsorImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSponsorImageFile(file);
+    setSponsorImagePreview(URL.createObjectURL(file));
+  };
 
-    if (!form.title.trim() || !form.author.trim()) {
-      setError('Title and author name are required.');
+  const uploadImage = async (file: File, bucket: string, folder: string): Promise<string | null> => {
+    const ext      = file.name.split('.').pop();
+    const filename = `${folder}/${Date.now()}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from(bucket).upload(filename, file);
+    if (uploadError) throw uploadError;
+    const { data } = supabase.storage.from(bucket).getPublicUrl(filename);
+    return data.publicUrl;
+  };
+
+  const handleAuthorSubmit = async () => {
+    if (!authorForm.title.trim() || !authorForm.author.trim()) {
+      setError('Book title and author name are required.');
       return;
     }
-
+    setError('');
     setSubmitting(true);
-
     try {
-      let final_cover_url = form.cover_url || null;
+      let cover_url = authorForm.cover_url || null;
+      if (coverFile) cover_url = await uploadImage(coverFile, 'book-covers', 'bulletin');
 
-      if (coverFile) {
-        const ext = coverFile.name.split('.').pop();
-        const fileName = `bulletin-${Date.now()}.${ext}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('book-covers')
-          .upload(fileName, coverFile, { upsert: false });
-
-        if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabase.storage
-          .from('book-covers')
-          .getPublicUrl(uploadData.path);
-
-        final_cover_url = urlData.publicUrl;
-      }
-
-      // THE UNIFIED DATA OBJECT
       const { error: insertError } = await supabase.from('books').insert({
-        title: form.title.trim(),
-        author: form.author.trim(),
-        user_id: userId || null,
-        genre: form.genre || null,
-        release_date: form.release_date || null,
-        blurb: form.blurb.trim() || null,
-        buy_link: buyLink.trim() || null, // Correctly linked
-        contact_email: form.contact_email.trim() || null,
-        cover_url: final_cover_url,
-        on_bulletin: true,
-        is_listed: false,
+        title:         authorForm.title.trim(),
+        author:        authorForm.author.trim(),
+        user_id:       userId,
+        genre:         authorForm.genre || null,
+        release_date:  authorForm.release_date || null,
+        blurb:         authorForm.blurb.trim() || null,
+        buy_link:      buyLink.trim() || null,
+        contact_email: authorForm.contact_email.trim() || null,
+        cover_url,
+        on_bulletin:   true,
+        is_listed:     false,
         bounty_amount: 0,
-        page_count: 0,
+        page_count:    0,
       });
-
       if (insertError) throw insertError;
       setSubmitted(true);
     } catch (err: any) {
-      console.error("Submission Error:", err);
-      setError(err.message || 'Submission failed. Please try again.');
+      setError(err.message || 'Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handleSponsorSubmit = async () => {
+    if (!sponsorForm.brand_name.trim() || !sponsorForm.tagline.trim() || !sponsorForm.site_url.trim()) {
+      setError('Brand name, tagline, and site URL are required.');
+      return;
+    }
+    setError('');
+    setSubmitting(true);
+    try {
+      let image_url: string | null = null;
+      if (sponsorImageFile) image_url = await uploadImage(sponsorImageFile, 'book-covers', 'sponsors');
+
+      ;(window as any).__checkoutItem = {
+        type:   'sponsored_pin',
+        label:  `Sponsored Pin — ${sponsorForm.brand_name}`,
+        amount: 5000, // $50.00
+        metadata: { brand_name: sponsorForm.brand_name },
+      };
+
+      ;(window as any).__pendingSubmission = {
+        table: 'sponsored_pins',
+        data: {
+          brand_name:    sponsorForm.brand_name.trim(),
+          tagline:       sponsorForm.tagline.trim(),
+          site_url:      sponsorForm.site_url.trim(),
+          contact_email: sponsorForm.contact_email.trim() || null,
+          category:      sponsorForm.category || null,
+          image_url,
+          status:        'pending',
+          is_active:     false,
+        },
+      };
+
+      window.history.pushState({}, '', '/checkout');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong. Please try again.');
+      setSubmitting(false);
+    }
+  };
+
+  // Success state (author only — sponsor goes to checkout)
   if (submitted) {
     return (
-      <div style={{ backgroundColor: bg, minHeight: '100vh' }} className="flex items-center justify-center px-4">
-        <div className="max-w-md w-full rounded-xl border p-8 text-center" style={{ backgroundColor: cardBg, borderColor: cardBorder }}>
-          <div className="text-5xl mb-4">📌</div>
-          <h2 className="text-2xl font-bold mb-2" style={{ color: textPrimary }}>You are on the board!</h2>
-          <p className="text-sm mb-6" style={{ color: textSecondary }}>Your book has been pinned. If you have an account, it will appear in your dashboard soon.</p>
-          <div className="flex flex-col gap-3">
-            <a href="/bulletin-board" className="block w-full py-2.5 rounded-lg text-sm font-semibold text-center transition hover:opacity-90" style={{ backgroundColor: accent, color: '#1B2A4A' }}>View the Bulletin Board</a>
-          </div>
+      <div style={{ minHeight: '100vh', backgroundColor: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ textAlign: 'center', maxWidth: 400 }}>
+          <p style={{ fontSize: 48, marginBottom: 12 }}>📌</p>
+          <h2 style={{ fontFamily: 'serif', fontSize: 28, color: textPrimary, marginBottom: 8 }}>You're on the board!</h2>
+          <p style={{ color: textSecondary, fontSize: 14, marginBottom: 24 }}>
+            Your book has been submitted and will appear on the Bulletin Board shortly.
+          </p>
+          <button
+            onClick={() => { window.history.pushState({}, '', '/bulletin'); window.dispatchEvent(new PopStateEvent('popstate')); }}
+            style={{ backgroundColor: accent, color: '#1B2A4A', fontWeight: 600, padding: '12px 28px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 14 }}
+          >
+            View Bulletin Board
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ backgroundColor: bg, minHeight: '100vh' }} className="py-12 px-4">
-      <div className="max-w-lg mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2" style={{ color: textPrimary }}>Promote Your New or Upcoming Release for Free.</h1>
-          <p className="text-sm" style={{ color: textSecondary }}>Claim your book later by creating an account with your email. Already have an account? Use the link below to post it from your dashboard.</p>
+    <div style={{ minHeight: '100vh', backgroundColor: bg, transition: 'background 0.3s' }}>
+
+      {/* Header */}
+      <div style={{ borderBottom: `1px solid ${cardBorder}`, padding: '20px 16px' }}>
+        <div style={{ maxWidth: 640, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <button
+            onClick={() => { window.history.pushState({}, '', '/bulletin'); window.dispatchEvent(new PopStateEvent('popstate')); }}
+            style={{ fontFamily: 'serif', fontSize: 16, fontWeight: 700, color: accent, background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            ← Back
+          </button>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: '40px 16px' }}>
+
+        {/* Title */}
+        <div style={{ marginBottom: 28 }}>
+          <h1 style={{ fontFamily: 'serif', fontSize: 36, color: textPrimary, margin: '0 0 8px' }}>Post to the Board</h1>
+          <p style={{ fontSize: 13, color: textSecondary, margin: 0 }}>
+            Promote your new release or get your brand in front of readers.
+          </p>
         </div>
 
-        <div className="rounded-xl border p-6 shadow-sm" style={{ backgroundColor: cardBg, borderColor: cardBorder }}>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-            {/* Title & Author fields remain the same */}
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>Book Title <span style={{ color: '#ef4444' }}>*</span></label>
-              <input type="text" name="title" value={form.title} onChange={handleChange} required className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none" style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }} />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>Author Name <span style={{ color: '#ef4444' }}>*</span></label>
-              <input type="text" name="author" value={form.author} onChange={handleChange} required className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none" style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>Genre</label>
-                <select name="genre" value={form.genre} onChange={handleChange} className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none" style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}>
-                  <option value="">Select genre</option>
-                  {GENRES.map(g => <option key={g} value={g}>{g}</option>)}
-                </select>
+        {/* Mode Toggle */}
+        <div style={{ display: 'flex', gap: 0, marginBottom: 28, borderRadius: 12, overflow: 'hidden', border: `1px solid ${cardBorder}` }}>
+          {([
+            { key: 'author',  label: 'Author / Publisher', icon: <BookOpen size={15} />, sub: 'Free' },
+            { key: 'sponsor', label: 'Brand Sponsor',       icon: <Star size={15} />,    sub: '$50/month' },
+          ] as { key: Mode; label: string; icon: React.ReactNode; sub: string }[]).map(opt => (
+            <button
+              key={opt.key}
+              onClick={() => { setMode(opt.key); setError(''); }}
+              style={{
+                flex: 1,
+                padding: '14px 12px',
+                border: 'none',
+                cursor: 'pointer',
+                backgroundColor: mode === opt.key ? accent : cardBg,
+                color: mode === opt.key ? '#1B2A4A' : textSecondary,
+                transition: 'all 0.15s',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 13 }}>
+                {opt.icon} {opt.label}
               </div>
+              <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.75 }}>{opt.sub}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* ── AUTHOR FORM ── */}
+        {mode === 'author' && (
+          <div style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 16, padding: 28 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>Release Date</label>
-                <input type="date" name="release_date" value={form.release_date} onChange={handleChange} className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none" style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }} />
+                <label style={labelStyle}>Book Title <span style={{ color: '#ef4444' }}>*</span></label>
+                <input name="title" value={authorForm.title} onChange={handleAuthorChange} placeholder="Your book title" style={inputStyle} />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>One-Liner Blurb (max 150)</label>
-              <textarea name="blurb" value={form.blurb} onChange={handleChange} maxLength={150} rows={2} className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none resize-none" style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }} />
-            </div>
+              <div>
+                <label style={labelStyle}>Author Name <span style={{ color: '#ef4444' }}>*</span></label>
+                <input name="author" value={authorForm.author} onChange={handleAuthorChange} placeholder="Author or publisher name" style={inputStyle} />
+              </div>
 
-            {/* STEP C: UI Input Field added here */}
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>
-                Purchase/Pre-order Link
-              </label>
-              <input
-                type="url"
-                placeholder="https://amazon.com/your-book"
-                value={buyLink}
-                onChange={(e) => setBuyLink(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none"
-                style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
-              />
-              <p className="text-[10px] mt-1 opacity-60" style={{ color: textSecondary }}>
-                Include https:// at the start (e.g., https://amazon.com)
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={labelStyle}>Genre</label>
+                  <select name="genre" value={authorForm.genre} onChange={handleAuthorChange} style={inputStyle}>
+                    <option value="">Select genre</option>
+                    {GENRES.map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Release Date</label>
+                  <input name="release_date" type="date" value={authorForm.release_date} onChange={handleAuthorChange} style={inputStyle} />
+                </div>
+              </div>
+
+              <div>
+                <label style={labelStyle}>One-Liner Blurb <span style={{ color: textSecondary, fontWeight: 400, textTransform: 'none' }}>(max 150 chars)</span></label>
+                <textarea
+                  name="blurb" value={authorForm.blurb} onChange={handleAuthorChange}
+                  placeholder="Hook readers in one sentence..."
+                  maxLength={150} rows={2}
+                  style={{ ...inputStyle, resize: 'none' }}
+                />
+                <p style={{ fontSize: 11, color: textSecondary, marginTop: 4 }}>{authorForm.blurb.length}/150</p>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Purchase / Pre-order Link</label>
+                <input type="url" value={buyLink} onChange={e => setBuyLink(e.target.value)} placeholder="https://..." style={inputStyle} />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Cover Image</label>
+                <input type="file" accept="image/*" onChange={handleCoverChange} style={{ fontSize: 13, color: textSecondary }} />
+                {coverPreview && (
+                  <img src={coverPreview} alt="Cover preview" style={{ marginTop: 10, height: 120, borderRadius: 6, objectFit: 'cover' }} />
+                )}
+              </div>
+
+              <div>
+                <label style={labelStyle}>Contact Email <span style={{ color: textSecondary, fontWeight: 400, textTransform: 'none' }}>(optional)</span></label>
+                <input name="contact_email" type="email" value={authorForm.contact_email} onChange={handleAuthorChange} placeholder="your@email.com" style={inputStyle} />
+              </div>
+
+              {error && (
+                <div style={{ padding: '10px 14px', backgroundColor: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, color: '#dc2626', fontSize: 13 }}>
+                  {error}
+                </div>
+              )}
+
+              <button
+                onClick={handleAuthorSubmit}
+                disabled={submitting}
+                style={{ backgroundColor: accent, color: '#1B2A4A', fontWeight: 700, fontSize: 15, padding: '14px', borderRadius: 12, border: 'none', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.6 : 1 }}
+              >
+                {submitting ? 'Submitting...' : '📌 Post to Bulletin Board — Free'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── SPONSOR FORM ── */}
+        {mode === 'sponsor' && (
+          <div style={{ backgroundColor: cardBg, border: `1.5px solid ${accent}`, borderRadius: 16, padding: 28 }}>
+
+            {/* Sponsor callout */}
+            <div style={{ backgroundColor: isDark ? '#1B2A4A' : '#fffbf0', border: `1px solid ${accent}30`, borderRadius: 10, padding: '12px 16px', marginBottom: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <Star size={13} color={accent} fill={accent} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: accent }}>Sponsored Pin — $50/month</span>
+              </div>
+              <p style={{ fontSize: 12, color: textSecondary, margin: 0, lineHeight: 1.5 }}>
+                Your brand stays pinned at the top of the Bulletin Board for the full month. Includes your image, tagline, category badge, and a direct link to your site.
               </p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>Cover Image</label>
-              <div className="flex items-start gap-4">
-                {coverPreview && <img src={coverPreview} className="w-16 h-24 object-cover rounded border" alt="Preview" />}
-                <input type="file" accept="image/*" onChange={handleCoverChange} className="text-sm" style={{ color: textSecondary }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+              <div>
+                <label style={labelStyle}>Brand Name <span style={{ color: '#ef4444' }}>*</span></label>
+                <input name="brand_name" value={sponsorForm.brand_name} onChange={handleSponsorChange} placeholder="e.g. Cozy Reads Co." style={inputStyle} />
               </div>
+
+              <div>
+                <label style={labelStyle}>Tagline <span style={{ color: '#ef4444' }}>*</span></label>
+                <input name="tagline" value={sponsorForm.tagline} onChange={handleSponsorChange} placeholder="One sentence that sells your brand..." style={inputStyle} />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Category</label>
+                <select name="category" value={sponsorForm.category} onChange={handleSponsorChange} style={inputStyle}>
+                  <option value="">Select category</option>
+                  {SPONSOR_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Website URL <span style={{ color: '#ef4444' }}>*</span></label>
+                <input name="site_url" type="url" value={sponsorForm.site_url} onChange={handleSponsorChange} placeholder="https://yourbrand.com" style={inputStyle} />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Brand Image / Product Photo</label>
+                <input type="file" accept="image/*" onChange={handleSponsorImageChange} style={{ fontSize: 13, color: textSecondary }} />
+                {sponsorImagePreview && (
+                  <img src={sponsorImagePreview} alt="Brand preview" style={{ marginTop: 10, height: 100, borderRadius: 6, objectFit: 'cover' }} />
+                )}
+                <p style={{ fontSize: 11, color: textSecondary, marginTop: 4 }}>Recommended: 800×500px or wider. Will be cropped to landscape.</p>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Contact Email <span style={{ color: textSecondary, fontWeight: 400, textTransform: 'none' }}>(optional)</span></label>
+                <input name="contact_email" type="email" value={sponsorForm.contact_email} onChange={handleSponsorChange} placeholder="your@email.com" style={inputStyle} />
+              </div>
+
+              {error && (
+                <div style={{ padding: '10px 14px', backgroundColor: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, color: '#dc2626', fontSize: 13 }}>
+                  {error}
+                </div>
+              )}
+
+              <button
+                onClick={handleSponsorSubmit}
+                disabled={submitting}
+                style={{ backgroundColor: accent, color: '#1B2A4A', fontWeight: 700, fontSize: 15, padding: '14px', borderRadius: 12, border: 'none', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.6 : 1 }}
+              >
+                {submitting ? 'Processing...' : '⭐ Continue to Checkout — $50/month'}
+              </button>
+              <p style={{ fontSize: 11, color: textSecondary, textAlign: 'center', margin: '-12px 0 0' }}>
+                Your pin goes live after payment is confirmed. Reviewed within 24 hours.
+              </p>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: labelColor }}>Your Contact Email (optional)</label>
-              <input type="email" name="contact_email" value={form.contact_email} onChange={handleChange} placeholder="Required to claim listing later" className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none" style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }} />
-            </div>
-
-            {error && <div className="text-sm p-3 rounded bg-red-50 text-red-600">{error}</div>}
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-3 rounded-lg text-sm font-bold transition hover:opacity-90 disabled:opacity-60"
-              style={{ backgroundColor: accent, color: '#1B2A4A' }}
-            >
-              {submitting ? 'Pinning...' : '📌 Pin to Bulletin Board'}
-            </button>
-          </form>
-        </div>
-
-        {/* Re-added: Already have an account? */}
-        <p className="text-center text-sm mt-6" style={{ color: textSecondary }}>
-          Have a ReadToEarn account?{' '}
-          <a href="/author-dashboard" style={{ color: accent }} className="font-medium hover:underline">
-            Post from your author dashboard instead.
-          </a>
-        </p>
+          </div>
+        )}
 
       </div>
     </div>
