@@ -5,11 +5,11 @@ import { CheckCircle, Zap } from 'lucide-react';
 import { BookSearchInput } from '../components/BookSearchInput';
 
 const BOUNTY_POOLS = [
-  { size: 25,  platform: 5,   readerPool: 20,  label: '$25 Pool',  example: '20 readers at $1 each' },
-  { size: 50,  platform: 10,  readerPool: 40,  label: '$50 Pool',  example: '40 readers at $1 each' },
-  { size: 100, platform: 20,  readerPool: 80,  label: '$100 Pool', example: '80 readers at $1 each' },
-  { size: 200, platform: 40,  readerPool: 160, label: '$200 Pool', example: '160 readers at $1 each' },
-  { size: 500, platform: 100, readerPool: 400, label: '$500 Pool', example: '400 readers at $1 — big launch push' },
+  { size: 25,  platform: 5,   readerPool: 20,  label: '$25 Pool'},
+  { size: 50,  platform: 10,  readerPool: 40,  label: '$50 Pool'},
+  { size: 100, platform: 20,  readerPool: 80,  label: '$100 Pool'},
+  { size: 200, platform: 40,  readerPool: 160, label: '$200 Pool'},
+  { size: 500, platform: 100, readerPool: 400, label: '$500 Pool'},
 ];
 
 const PER_PASS_OPTIONS = [0.25, 0.50, 0.75, 1.00, 1.50, 2.00];
