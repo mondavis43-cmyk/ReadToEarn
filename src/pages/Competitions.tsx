@@ -62,32 +62,41 @@ const PublicTournaments = ({
   }, []);
 
   if (loading) return null;
-  if (tournaments.length === 0) return (
-    <div className={`rounded-xl border p-6 text-center transition-colors ${cardBg}`}>
-      <p className={`text-sm ${textMuted}`}>No public tournaments yet. Create the first one!</p>
-    </div>
-  );
+
+  if (tournaments.length === 0) {
+    return (
+      <div className={`rounded-xl border p-6 text-center transition-colors ${cardBg}`}>
+        <p className={`text-sm ${textMuted}`}>No public tournaments yet. Create the first one!</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
       <p className={`text-sm font-semibold ${textPrimary}`}>Open Tournaments</p>
-      {tournaments.map((t) => (
-        <div key={t.id} className={`rounded-xl border p-5 transition-colors ${cardBg}`}>
-          <div className="flex items-center gap-2 mb-2">
-            {t.format === 'sprint' ? <Zap size={13} className="text-[#D4A843]" /> : t.format === 'readathon' ? <BookOpen size={13} className="text-[#D4A843]" /> : <Trophy size={13} className="text-[#D4A843]" />}
-            <span className="text-xs font-semibold text-[#D4A843] uppercase tracking-wide">{formatLabel(t.format)}</span>
-            <span className={`text-xs ml-auto ${textMuted}`}>Entry: ${t.entry_fee}</span>
+      {tournaments.map((t) => {
+        const icon = formatIcon(t.format);
+        const label = formatLabel(t.format);
+        return (
+          <div key={t.id} className={`rounded-xl border p-5 transition-colors ${cardBg}`}>
+            <div className="flex items-center gap-2 mb-2">
+              {icon}
+              <span className="text-xs font-semibold text-[#D4A843] uppercase tracking-wide">{label}</span>
+              <span className={`text-xs ml-auto ${textMuted}`}>Entry: ${t.entry_fee}</span>
+            </div>
+            <h4 className={`font-serif text-base mb-1 ${textPrimary}`}>{t.title}</h4>
+            <p className={`text-xs mb-3 ${textMuted}`}>
+              {t.book_title}{t.book_author ? ` — ${t.book_author}` : ''}
+            </p>
+            <button
+              onClick={() => navigateTo(`/tournament/${t.id}`)}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
+            >
+              View Tournament <ArrowRight size={14} />
+            </button>
           </div>
-          <h4 className={`font-serif text-base mb-1 ${textPrimary}`}>{t.title}</h4>
-          <p className={`text-xs mb-3 ${textMuted}`}>{t.book_title}{t.book_author ? ` — ${t.book_author}` : ''}</p>
-          <button
-            onClick={() => navigateTo(`/tournament/${t.id}`)}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
-          >
-            View Tournament <ArrowRight size={14} />
-          </button>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
