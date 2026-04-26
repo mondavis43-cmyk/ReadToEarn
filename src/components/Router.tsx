@@ -34,6 +34,7 @@ import { Earn } from '../pages/Earn';
 import { AuthorAMA } from '../pages/AuthorAMA';
 import { AMASession } from '../pages/AMASession';
 import Checkout from '../pages/Checkout';
+import { CompetitionDetail } from '../pages/CompetitionDetail';
 
 const WAITLIST_MODE = true;
 
@@ -110,6 +111,7 @@ if (!user) return <Login />;
     KNOWN_ROUTES.includes(route) ||
     route.startsWith('/quiz/') ||
     route.startsWith('/book/');
+    route.startsWith('/competition/');
 
   return (
     <>
@@ -137,6 +139,7 @@ if (!user) return <Login />;
       {route === '/bulletin-submit' && <BulletinSubmit />}
       {route.startsWith('/quiz/') && <Quiz bookId={route.split('/')[2]} />}
       {route.startsWith('/book/') && <BookPage />}
+      {route.startsWith('/competition/') && <CompetitionDetail />}
       {route === '/checkout' && <Checkout />}
       {!isKnownRoute && <Home />}
     </>
