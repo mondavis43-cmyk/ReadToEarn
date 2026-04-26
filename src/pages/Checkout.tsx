@@ -208,10 +208,23 @@ const CheckoutForm = ({ item }: { item: CheckoutItem }) => {
 
         // 5. Insert pending submission if this was a listing purchase
         const pending = (window as any).__pendingSubmission;
-        if (pending && item.type === "listing") {
-          await supabase.from("author_submissions").insert(pending);
-          delete (window as any).__pendingSubmission;
-        }
+        if (pending) {
+  if (item.type === 'listing') {
+    await supabase.from('author_submissions').insert(pending);
+  } else if (item.type === 'competition_entry') {
+    await supabase.from('competition_entries').insert({
+      competition_id: pending.competition_id,
+      user_id: user.id,
+      entry_fee_paid: item.amount / 100,
+      is_late_entry: pending.is_late_entry ?? false,
+      paid_at: new Date().toISOString(),
+      status: 'active',
+    });
+  } else if (pending.table) {
+    await supabase.from(pending.table).insert(pending.data);
+  }
+  delete (window as any).__pendingSubmission;
+}
 
         // 6. Show success + redirect
         setSuccess(true);
