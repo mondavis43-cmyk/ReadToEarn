@@ -211,13 +211,13 @@ export const AuthorSurvey = () => {
             </div>
             <div>
               <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>
-                Book Title <span className="text-red-400">*</span>
+                If this survery focuses on one book, name its title. <span className="text-red-400">*</span>
               </label>
               <input
                 type="text"
                 value={bookTitle}
                 onChange={e => setBookTitle(e.target.value)}
-                placeholder="Title of the book being surveyed"
+                placeholder="Title of the book, your whole backlist, or if there's another focus, type it here."
                 className={`w-full px-4 py-3 rounded-lg border text-sm focus:outline-none transition-colors ${inputBg}`}
               />
             </div>
