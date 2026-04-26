@@ -11,6 +11,7 @@ type LeaderboardEntry = {
   rank: number;
   user_id: string;
   display_name: string;
+  username?: string | null;
   avatar_url?: string | null;
   // Sprint
   accuracy?: number;
@@ -40,11 +41,12 @@ type MonthlyChampion = {
   id: string;
   user_id: string;
   display_name: string;
+  username?: string | null;
   avatar_url?: string | null;
   format: Format;
   competition_title: string;
   prize_won: number;
-  month: string; // e.g. "April 2026"
+  month: string;
   book_title?: string;
 };
 
@@ -73,6 +75,12 @@ const formatTime = (seconds: number) => {
   return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
+// Returns @username if set, otherwise falls back to display_name
+const resolveDisplayName = (username?: string | null, display_name?: string) => {
+  if (username) return `@${username}`;
+  return display_name || 'Anonymous';
+};
+
 export const Leaderboard = () => {
   const { isDark, toggleTheme } = useTheme();
   const { navigateTo } = useNavigate();
@@ -91,14 +99,12 @@ export const Leaderboard = () => {
   const [loadingEntries, setLoadingEntries] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // Get current user for highlighting
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setCurrentUserId(user.id);
     });
   }, []);
 
-  // Load competitions list when tab changes
   useEffect(() => {
     const load = async () => {
       setLoadingComps(true);
@@ -132,7 +138,6 @@ export const Leaderboard = () => {
     load();
   }, [tab]);
 
-  // Load leaderboard entries when selected competition changes
   useEffect(() => {
     if (!selectedId) return;
     const selected = competitions.find((c) => c.id === selectedId);
@@ -142,14 +147,12 @@ export const Leaderboard = () => {
 
   const loadEntries = async (competitionId: string, format: Format) => {
     setLoadingEntries(true);
-
     const { data } = await supabase
       .from('competition_leaderboard')
       .select('*')
       .eq('competition_id', competitionId)
       .order('rank', { ascending: true })
       .limit(50);
-
     setEntries(data ?? []);
     setLoadingEntries(false);
   };
@@ -174,7 +177,6 @@ export const Leaderboard = () => {
         : 'border-[#1B2A4A]/10 hover:border-[#1B2A4A]/20'
     }`;
 
-  // Prize amount for a given rank + format + pool
   const prizeForRank = (rank: number, format: Format, pool: number) => {
     if (format === 'sprint') return rank === 1 ? pool : null;
     if (rank === 1) return pool * 0.5;
@@ -223,15 +225,9 @@ export const Leaderboard = () => {
 
         {/* Tabs */}
         <div className="flex gap-2 mb-8">
-          <button className={tabClass('live')} onClick={() => setTab('live')}>
-            🟢 Live
-          </button>
-          <button className={tabClass('archived')} onClick={() => setTab('archived')}>
-            Archived
-          </button>
-          <button className={tabClass('champions')} onClick={() => setTab('champions')}>
-            🏆 Monthly Champions
-          </button>
+          <button className={tabClass('live')} onClick={() => setTab('live')}>🟢 Live</button>
+          <button className={tabClass('archived')} onClick={() => setTab('archived')}>Archived</button>
+          <button className={tabClass('champions')} onClick={() => setTab('champions')}>🏆 Monthly Champions</button>
         </div>
 
         {/* Monthly Champions View */}
@@ -262,9 +258,13 @@ export const Leaderboard = () => {
                       </span>
                       <span className={`text-xs ${textMuted}`}>· {c.month}</span>
                     </div>
-                    <p className={`font-serif text-base truncate ${textPrimary}`}>{c.display_name}</p>
+                    <p className={`font-serif text-base truncate ${textPrimary}`}>
+                      {resolveDisplayName(c.username, c.display_name)}
+                    </p>
                     {c.competition_title && (
-                      <p className={`text-xs truncate ${textMuted}`}>{c.competition_title}{c.book_title ? ` — ${c.book_title}` : ''}</p>
+                      <p className={`text-xs truncate ${textMuted}`}>
+                        {c.competition_title}{c.book_title ? ` — ${c.book_title}` : ''}
+                      </p>
                     )}
                   </div>
                   <div className="text-right shrink-0">
@@ -399,6 +399,7 @@ export const Leaderboard = () => {
                           const isCurrentUser = entry.user_id === currentUserId;
                           const prize = prizeForRank(entry.rank, selectedComp.format, selectedComp.prize_pool);
                           const isPrizePosition = prize !== null;
+                          const name = resolveDisplayName(entry.username, entry.display_name);
 
                           return (
                             <div
@@ -418,8 +419,8 @@ export const Leaderboard = () => {
 
                               {/* Name */}
                               <div className="flex-1 min-w-0">
-                                <p className={`text-sm font-medium truncate ${textPrimary} ${isCurrentUser ? 'text-[#D4A843]' : ''}`}>
-                                  {entry.display_name}
+                                <p className={`text-sm font-medium truncate ${isCurrentUser ? 'text-[#D4A843]' : textPrimary}`}>
+                                  {name}
                                   {isCurrentUser && <span className="ml-1.5 text-xs font-normal opacity-60">(you)</span>}
                                 </p>
 
