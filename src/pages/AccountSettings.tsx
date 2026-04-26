@@ -19,9 +19,14 @@ export default function AccountSettings() {
   const [legalName, setLegalName] = useState("");
   const [taxSaved, setTaxSaved] = useState(false);
 
+  // Username fields
+  const [username, setUsername] = useState("");
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [usernameChecking, setUsernameChecking] = useState(false);
+  const [usernameSaved, setUsernameSaved] = useState(false);
+
   // Account fields
   const [newEmail, setNewEmail] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [accountMsg, setAccountMsg] = useState("");
@@ -54,6 +59,7 @@ export default function AccountSettings() {
         setProfile(prof);
         setLegalName(prof.legal_name || "");
         setTaxIdType(prof.tax_id_type || "ssn");
+        setUsername(prof.username || "");
         setNotifEarnings(prof.notif_earnings ?? true);
         setNotifCompetitions(prof.notif_competitions ?? true);
         setNotifBounties(prof.notif_bounties ?? true);
@@ -101,6 +107,30 @@ export default function AccountSettings() {
     setTimeout(() => setTaxSaved(false), 3000);
   };
 
+  const checkUsername = async (val: string) => {
+    if (val.length < 3) { setUsernameAvailable(null); return; }
+    setUsernameChecking(true);
+    const { data } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("username", val.toLowerCase())
+      .neq("id", user.id)
+      .maybeSingle();
+    setUsernameAvailable(!data);
+    setUsernameChecking(false);
+  };
+
+  const handleSaveUsername = async () => {
+    if (!username || !usernameAvailable) return;
+    await supabase
+      .from("profiles")
+      .update({ username: username.toLowerCase() })
+      .eq("id", user.id);
+    setProfile((prev: any) => ({ ...prev, username: username.toLowerCase() }));
+    setUsernameSaved(true);
+    setTimeout(() => setUsernameSaved(false), 3000);
+  };
+
   const handleChangeEmail = async () => {
     if (!newEmail) return;
     const { error } = await supabase.auth.updateUser({ email: newEmail });
@@ -115,7 +145,6 @@ export default function AccountSettings() {
     }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setAccountMsg(error ? `Error: ${error.message}` : "Password updated successfully.");
-    setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
   };
@@ -140,7 +169,6 @@ export default function AccountSettings() {
       setDeleteError('Type "DELETE" to confirm.');
       return;
     }
-    // Soft delete — mark account as deleted, auth deletion requires admin SDK
     await supabase
       .from("profiles")
       .update({ account_deleted: true, deleted_at: new Date().toISOString() })
@@ -169,7 +197,9 @@ export default function AccountSettings() {
             ← Back to Profile
           </button>
           <h1 className="text-2xl font-bold">Account Settings</h1>
-          <p className="text-white/50 text-sm mt-1">Manage your payout, tax info, and account preferences</p>
+          <p className="text-white/50 text-sm mt-1">
+            Manage your payout, tax info, and account preferences
+          </p>
         </div>
       </div>
 
@@ -289,7 +319,9 @@ export default function AccountSettings() {
 
               <div className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">Legal Name (as it appears on your tax return)</label>
+                  <label className="block text-sm font-medium text-white/70 mb-2">
+                    Legal Name (as it appears on your tax return)
+                  </label>
                   <input
                     type="text"
                     value={legalName}
@@ -329,7 +361,9 @@ export default function AccountSettings() {
                     placeholder={taxIdType === "ssn" ? "XXX-XX-XXXX" : "XX-XXXXXXX"}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-[#7c3aed]"
                   />
-                  <p className="text-white/40 text-xs mt-1">Stored encrypted. Never shown again after submission.</p>
+                  <p className="text-white/40 text-xs mt-1">
+                    Stored encrypted. Never shown again after submission.
+                  </p>
                 </div>
 
                 <button
@@ -345,8 +379,11 @@ export default function AccountSettings() {
 
           {/* ── ACCOUNT ── */}
           {activeTab === "account" && (
-            <div className="space-y-8">
-              <h2 className="text-xl font-bold mb-1">Account</h2>
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-bold mb-1">Account</h2>
+                <p className="text-white/50 text-sm">Manage your username, email, and password.</p>
+              </div>
 
               {accountMsg && (
                 <div className="bg-[#7c3aed]/10 border border-[#7c3aed]/30 rounded-xl p-4 text-sm text-[#a78bfa]">
@@ -354,7 +391,55 @@ export default function AccountSettings() {
                 </div>
               )}
 
-              {/* Change Email */}
+              {/* ── Username ── */}
+              <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+                <h3 className="font-semibold mb-1">Username</h3>
+                <p className="text-white/50 text-sm mb-4">
+                  Your public display name on leaderboards and Author AMA. Lowercase only, no spaces.
+                </p>
+                {profile?.username && (
+                  <p className="text-white/40 text-xs mb-3">Current: @{profile.username}</p>
+                )}
+                <div className="flex gap-3 items-center mb-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-sm">@</span>
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^a-z0-9_]/g, "");
+                        setUsername(val);
+                        setUsernameAvailable(null);
+                      }}
+                      onBlur={() => checkUsername(username)}
+                      placeholder="yourname"
+                      maxLength={20}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg pl-8 pr-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-[#7c3aed]"
+                    />
+                  </div>
+                  <button
+                    onClick={handleSaveUsername}
+                    disabled={!username || !usernameAvailable}
+                    className="bg-[#7c3aed] hover:bg-[#6d28d9] disabled:opacity-40 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap"
+                  >
+                    {usernameSaved ? "✓ Saved" : "Save Username"}
+                  </button>
+                </div>
+                {usernameChecking && (
+                  <p className="text-white/40 text-xs">Checking availability...</p>
+                )}
+                {!usernameChecking && usernameAvailable === true && username.length >= 3 && (
+                  <p className="text-green-400 text-xs">✓ @{username} is available</p>
+                )}
+                {!usernameChecking && usernameAvailable === false && (
+                  <p className="text-red-400 text-xs">✗ @{username} is already taken</p>
+                )}
+                <p className="text-white/30 text-xs mt-2">
+                  3–20 characters. Letters, numbers, and underscores only.
+                </p>
+              </div>
+
+              {/* ── Change Email ── */}
               <div className="bg-white/5 border border-white/10 rounded-xl p-6">
                 <h3 className="font-semibold mb-1">Change Email</h3>
                 <p className="text-white/50 text-sm mb-4">Current: {user?.email}</p>
@@ -376,7 +461,7 @@ export default function AccountSettings() {
                 </div>
               </div>
 
-              {/* Change Password */}
+              {/* ── Change Password ── */}
               <div className="bg-white/5 border border-white/10 rounded-xl p-6">
                 <h3 className="font-semibold mb-4">Change Password</h3>
                 <div className="space-y-3">
@@ -410,15 +495,42 @@ export default function AccountSettings() {
           {activeTab === "notifications" && (
             <div>
               <h2 className="text-xl font-bold mb-1">Notifications</h2>
-              <p className="text-white/50 text-sm mb-6">Choose which emails you receive from Read to Earn.</p>
+              <p className="text-white/50 text-sm mb-6">
+                Choose which emails you receive from Read to Earn.
+              </p>
 
               <div className="space-y-3 mb-6">
                 {[
-                  { label: "Earnings & payouts", desc: "When you earn money or a payout is processed", val: notifEarnings, set: setNotifEarnings },
-                  { label: "Competition updates", desc: "Results, new competitions, and leaderboard changes", val: notifCompetitions, set: setNotifCompetitions },
-                  { label: "Bounty alerts", desc: "New bounties matching your reading preferences", val: notifBounties, set: setNotifBounties },
-                  { label: "New books added", desc: "When new books are added to the library", val: notifNewBooks, set: setNotifNewBooks },
-                  { label: "Marketing & promotions", desc: "Platform news, feature announcements, and offers", val: notifMarketing, set: setNotifMarketing },
+                  {
+                    label: "Earnings & payouts",
+                    desc: "When you earn money or a payout is processed",
+                    val: notifEarnings,
+                    set: setNotifEarnings,
+                  },
+                  {
+                    label: "Competition updates",
+                    desc: "Results, new competitions, and leaderboard changes",
+                    val: notifCompetitions,
+                    set: setNotifCompetitions,
+                  },
+                  {
+                    label: "Bounty alerts",
+                    desc: "New bounties matching your reading preferences",
+                    val: notifBounties,
+                    set: setNotifBounties,
+                  },
+                  {
+                    label: "New books added",
+                    desc: "When new books are added to the library",
+                    val: notifNewBooks,
+                    set: setNotifNewBooks,
+                  },
+                  {
+                    label: "Marketing & promotions",
+                    desc: "Platform news, feature announcements, and offers",
+                    val: notifMarketing,
+                    set: setNotifMarketing,
+                  },
                 ].map((item) => (
                   <div
                     key={item.label}
@@ -430,7 +542,7 @@ export default function AccountSettings() {
                     </div>
                     <button
                       onClick={() => item.set(!item.val)}
-                      className={`w-11 h-6 rounded-full transition-colors relative ${
+                      className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${
                         item.val ? "bg-[#7c3aed]" : "bg-white/20"
                       }`}
                     >
