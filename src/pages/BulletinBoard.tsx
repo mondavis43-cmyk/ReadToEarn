@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../contexts/ThemeContext';
-import { ExternalLink } from 'lucide-react'; // Ensure lucide-react is installed
+import { ExternalLink, Star } from 'lucide-react';
 
 interface BulletinBook {
   id: string;
@@ -12,47 +12,49 @@ interface BulletinBook {
   release_date: string | null;
   blurb: string | null;
   is_listed: boolean;
-  buy_link?: string | null; // Added buy_link to interface
+  buy_link?: string | null;
+}
+
+interface SponsoredPin {
+  id: string;
+  brand_name: string;
+  tagline: string;
+  image_url: string | null;
+  site_url: string;
+  category: string | null;
 }
 
 const GENRES = ['All', 'Romance', 'Fantasy', 'Mystery', 'Thriller', 'Sci-Fi', 'Young Adult', 'Historical', 'Literary', 'Horror', 'Non-Fiction', 'Other'];
 
 const ROTATIONS = [
-  'rotate-[-1.5deg]',
-  'rotate-[1deg]',
-  'rotate-[-0.5deg]',
-  'rotate-[2deg]',
-  'rotate-[-2deg]',
-  'rotate-[0.5deg]',
-  'rotate-[1.5deg]',
-  'rotate-[-1deg]',
+  'rotate-[-1.5deg]', 'rotate-[1deg]', 'rotate-[-0.5deg]', 'rotate-[2deg]',
+  'rotate-[-2deg]', 'rotate-[0.5deg]', 'rotate-[1.5deg]', 'rotate-[-1deg]',
 ];
 
 export const BulletinBoard = () => {
   const { isDark } = useTheme();
-  const [books, setBooks] = useState<BulletinBook[]>([]);
-  const [filtered, setFiltered] = useState<BulletinBook[]>([]);
+  const [books, setBooks]           = useState<BulletinBook[]>([]);
+  const [filtered, setFiltered]     = useState<BulletinBook[]>([]);
+  const [sponsored, setSponsored]   = useState<SponsoredPin[]>([]);
   const [activeGenre, setActiveGenre] = useState('All');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]       = useState(true);
 
-  // Theme tokens
-  const bg = isDark ? '#0f172a' : '#F5F0E8';
-  const cardBg = isDark ? '#1e293b' : '#FFFDF7';
-  const cardBorder = isDark ? '#334155' : '#e8e0d0';
-  const textPrimary = isDark ? '#f1f5f9' : '#1B2A4A';
-  const textSecondary = isDark ? '#94a3b8' : '#6b7280';
-  const accent = '#D4A843';
-  const tabActiveBg = isDark ? '#D4A843' : '#1B2A4A';
-  const tabActiveText = '#FFFFFF';
-  const tabInactiveBg = isDark ? '#1e293b' : '#FFFFFF';
+  const bg             = isDark ? '#0f172a'  : '#F5F0E8';
+  const cardBg         = isDark ? '#1e293b'  : '#FFFDF7';
+  const cardBorder     = isDark ? '#334155'  : '#e8e0d0';
+  const textPrimary    = isDark ? '#f1f5f9'  : '#1B2A4A';
+  const textSecondary  = isDark ? '#94a3b8'  : '#6b7280';
+  const accent         = '#D4A843';
+  const tabActiveBg    = isDark ? '#D4A843'  : '#1B2A4A';
+  const tabActiveText  = '#FFFFFF';
+  const tabInactiveBg  = isDark ? '#1e293b'  : '#FFFFFF';
   const tabInactiveText = isDark ? '#94a3b8' : '#6b7280';
-  const tabBorder = isDark ? '#334155' : '#e2d9c8';
-  const badgeBg = isDark ? '#1B2A4A' : '#1B2A4A';
-  const pinColor = isDark ? '#ef4444' : '#dc2626';
+  const tabBorder      = isDark ? '#334155'  : '#e2d9c8';
+  const pinColor       = isDark ? '#ef4444'  : '#dc2626';
+  const sponsorBg      = isDark ? '#1e293b'  : '#fffbf0';
+  const sponsorBorder  = isDark ? '#D4A843'  : '#D4A843';
 
-  useEffect(() => {
-    loadBooks();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   useEffect(() => {
     if (activeGenre === 'All') {
@@ -62,186 +64,255 @@ export const BulletinBoard = () => {
     }
   }, [activeGenre, books]);
 
-  const loadBooks = async () => {
-    setLoading(true);
-    
-    const ninetyDaysAgo = new Date();
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-    const dateLimit = ninetyDaysAgo.toISOString().split('T')[0];
+  const loadData = async () => {
+    const dateLimit = new Date();
+    dateLimit.setDate(dateLimit.getDate() - 90);
 
-    const { data, error } = await supabase
-      .from('books')
-      .select('id, title, author, cover_url, genre, release_date, blurb, is_listed, buy_link') // Added buy_link to select
-      .eq('on_bulletin', true)
-      .gte('release_date', dateLimit) 
-      .order('release_date', { ascending: false });
+    const [{ data: booksData }, { data: sponsoredData }] = await Promise.all([
+      supabase
+        .from('books')
+        .select('id, title, author, cover_url, genre, release_date, blurb, is_listed, buy_link')
+        .eq('on_bulletin', true)
+        .gte('release_date', dateLimit.toISOString().split('T')[0])
+        .order('release_date', { ascending: false }),
+      supabase
+        .from('sponsored_pins')
+        .select('id, brand_name, tagline, image_url, site_url, category')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false }),
+    ]);
 
-    if (!error && data) {
-      setBooks(data);
-      setFiltered(data);
-    }
+    setBooks(booksData || []);
+    setSponsored(sponsoredData || []);
     setLoading(false);
   };
 
-  const formatReleaseDate = (dateStr: string | null) => {
-    if (!dateStr) return 'Coming Soon';
-    const date = new Date(dateStr + 'T00:00:00');
-    const isFuture = new Date(dateStr) > new Date();
-    const prefix = isFuture ? 'Releasing: ' : '';
-    return prefix + date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  return (
-    <div style={{ backgroundColor: bg, minHeight: '100vh' }} className="pb-16">
-      <div className="max-w-6xl mx-auto px-4 pt-10 pb-6">
-        <div className="flex flex-col items-center text-center mb-2">
-          <div className="flex gap-3 mb-4">
-            {['#ef4444', '#3b82f6', '#22c55e', '#f59e0b'].map((color, i) => (
-              <svg key={i} width="14" height="20" viewBox="0 0 14 20" fill="none">
-                <circle cx="7" cy="5" r="5" fill={color} />
-                <rect x="6" y="9" width="2" height="11" rx="1" fill={color} opacity="0.6" />
-              </svg>
-            ))}
-          </div>
-          <h1 className="text-4xl font-bold mb-2" style={{ color: textPrimary }}>
-            Bulletin Board
-          </h1>
-          <p className="text-base max-w-md" style={{ color: textSecondary }}>
-            Fresh finds and upcoming releases. Browse what's new in books from the last 90 days.
-          </p>
-        </div>
+  const isFuture = (dateStr: string) =>
+    new Date(dateStr + 'T00:00:00') > new Date();
 
-        <div className="flex justify-center mt-4">
-          <a
-            href="/bulletin-submit"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all hover:opacity-90 shadow-sm"
-            style={{ backgroundColor: accent, color: '#1B2A4A' }}
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: bg, transition: 'background 0.3s' }}>
+
+      {/* Header */}
+      <div style={{ borderBottom: `1px solid ${cardBorder}`, padding: '24px 16px' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ fontSize: 20 }}>📌</span>
+              <h1 style={{ fontFamily: 'serif', fontSize: 28, fontWeight: 700, color: textPrimary, margin: 0 }}>
+                Bulletin Board
+              </h1>
+              <span style={{ fontSize: 20 }}>📌</span>
+            </div>
+            <p style={{ fontSize: 13, color: textSecondary, margin: 0 }}>
+              New releases, upcoming books, and featured brands — all in one place.
+            </p>
+          </div>
+          <button
+            onClick={() => { window.history.pushState({}, '', '/bulletin-submit'); window.dispatchEvent(new PopStateEvent('popstate')); }}
+            style={{ backgroundColor: accent, color: '#1B2A4A', fontWeight: 600, fontSize: 13, padding: '10px 20px', borderRadius: 10, border: 'none', cursor: 'pointer' }}
           >
-            📌 Post Your New Release — Free
-          </a>
+            + Post to Board
+          </button>
         </div>
       </div>
 
+      {/* Sponsored Pins Row */}
+      {sponsored.length > 0 && (
+        <div style={{ borderBottom: `1px solid ${cardBorder}`, padding: '16px', backgroundColor: isDark ? '#0f172a' : '#fffdf5' }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+              <Star size={13} color={accent} fill={accent} />
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: accent }}>
+                Featured Sponsors
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }}>
+              {sponsored.map(pin => (
+                <a
+                  key={pin.id}
+                  href={pin.site_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    flexShrink: 0,
+                    width: 200,
+                    backgroundColor: sponsorBg,
+                    border: `1.5px solid ${sponsorBorder}`,
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                    textDecoration: 'none',
+                    display: 'block',
+                    transition: 'transform 0.15s, box-shadow 0.15s',
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
+                    (e.currentTarget as HTMLElement).style.boxShadow = `0 6px 20px ${accent}30`;
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+                    (e.currentTarget as HTMLElement).style.boxShadow = 'none';
+                  }}
+                >
+                  {/* Sponsor image */}
+                  <div style={{ width: '100%', height: 110, backgroundColor: isDark ? '#334155' : '#f0ebe0', overflow: 'hidden' }}>
+                    {pin.image_url ? (
+                      <img
+                        src={pin.image_url}
+                        alt={pin.brand_name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>
+                        🛍️
+                      </div>
+                    )}
+                  </div>
+                  {/* Sponsor info */}
+                  <div style={{ padding: '10px 12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 130 }}>
+                        {pin.brand_name}
+                      </span>
+                      <ExternalLink size={11} color={accent} />
+                    </div>
+                    {pin.category && (
+                      <span style={{ fontSize: 10, fontWeight: 600, color: accent, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        {pin.category}
+                      </span>
+                    )}
+                    <p style={{ fontSize: 11, color: textSecondary, margin: '4px 0 0', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {pin.tagline}
+                    </p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Genre Tabs */}
-      <div className="max-w-6xl mx-auto px-4 mb-8">
-        <div className="flex flex-wrap gap-2 justify-center">
-          {GENRES.map(genre => (
+      <div style={{ padding: '16px 16px 0', borderBottom: `1px solid ${cardBorder}` }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 12 }}>
+          {GENRES.map(g => (
             <button
-              key={genre}
-              onClick={() => setActiveGenre(genre)}
-              className="px-4 py-1.5 rounded-full text-sm font-medium border transition-all"
+              key={g}
+              onClick={() => setActiveGenre(g)}
               style={{
-                backgroundColor: activeGenre === genre ? tabActiveBg : tabInactiveBg,
-                color: activeGenre === genre ? tabActiveText : tabInactiveText,
-                borderColor: activeGenre === genre ? tabActiveBg : tabBorder,
+                flexShrink: 0,
+                padding: '6px 14px',
+                borderRadius: 20,
+                border: `1px solid ${tabBorder}`,
+                backgroundColor: activeGenre === g ? tabActiveBg : tabInactiveBg,
+                color: activeGenre === g ? tabActiveText : tabInactiveText,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s',
               }}
             >
-              {genre}
+              {g}
             </button>
           ))}
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: accent, borderTopColor: 'transparent' }} />
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center py-20 gap-3">
-          <span className="text-5xl">📌</span>
-          <p className="text-lg font-medium" style={{ color: textPrimary }}>Nothing pinned yet</p>
-          <p className="text-sm text-center max-w-xs" style={{ color: textSecondary }}>
-            {activeGenre !== 'All' 
-              ? `No ${activeGenre} books have been posted in the last 90 days.` 
-              : 'Be the first to share your upcoming or recent release with our community.'}
-          </p>
-        </div>
-      ) : (
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-5" style={{ columnGap: '20px' }}>
-            {filtered.map((book, index) => (
-              <div
-                key={book.id}
-                className={`break-inside-avoid mb-5 inline-block w-full ${ROTATIONS[index % ROTATIONS.length]} transition-transform hover:rotate-0 hover:scale-[1.02]`}
-                style={{ transformOrigin: 'top center' }}
-              >
+      {/* Board */}
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 16px' }}>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '80px 0', color: textSecondary }}>Loading board...</div>
+        ) : filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '80px 0' }}>
+            <p style={{ fontSize: 32, marginBottom: 8 }}>📌</p>
+            <p style={{ color: textSecondary, fontSize: 14 }}>No books in this genre yet.</p>
+          </div>
+        ) : (
+          <div style={{
+            columns: '4 220px',
+            columnGap: 16,
+          }}>
+            {filtered.map((book, i) => {
+              const rotation = ROTATIONS[i % ROTATIONS.length];
+              return (
                 <div
-                  className="relative rounded-sm shadow-md border overflow-hidden"
+                  key={book.id}
+                  className={`${rotation} hover:rotate-0`}
                   style={{
+                    breakInside: 'avoid',
+                    marginBottom: 20,
                     backgroundColor: cardBg,
-                    borderColor: cardBorder,
+                    border: `1px solid ${cardBorder}`,
+                    borderRadius: 12,
+                    overflow: 'hidden',
                     boxShadow: isDark
-                      ? '0 2px 8px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.03)'
-                      : '0 2px 8px rgba(0,0,0,0.12), inset 0 0 0 1px rgba(0,0,0,0.04)',
+                      ? '0 4px 16px rgba(0,0,0,0.4)'
+                      : '0 4px 16px rgba(0,0,0,0.08)',
+                    transition: 'transform 0.2s, box-shadow 0.2s',
+                    cursor: book.buy_link ? 'pointer' : 'default',
                   }}
                 >
-                  <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center">
-                    <svg width="16" height="22" viewBox="0 0 16 22" fill="none">
-                      <circle cx="8" cy="6" r="6" fill={pinColor} />
-                      <circle cx="8" cy="6" r="3" fill="rgba(255,255,255,0.3)" />
-                      <rect x="7" y="11" width="2" height="11" rx="1" fill={pinColor} opacity="0.7" />
-                    </svg>
+                  {/* Pin */}
+                  <div style={{ textAlign: 'center', paddingTop: 10 }}>
+                    <span style={{ fontSize: 18, color: pinColor }}>📌</span>
                   </div>
 
-                  {/* Wrapper for Clickable Image */}
-                  <a 
-                    href={book.buy_link || '#'} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className={`block w-full pt-6 ${!book.buy_link ? 'cursor-default' : 'cursor-pointer'}`}
+                  {/* Cover */}
+                  <div
+                    style={{ margin: '8px 12px', borderRadius: 8, overflow: 'hidden', aspectRatio: '2/3', backgroundColor: isDark ? '#334155' : '#f0ebe0', cursor: book.buy_link ? 'pointer' : 'default' }}
+                    onClick={() => book.buy_link && window.open(book.buy_link, '_blank')}
                   >
                     {book.cover_url ? (
-                      <div className="w-full" style={{ aspectRatio: '2/3', maxHeight: '220px', overflow: 'hidden' }}>
-                        <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover transition-opacity hover:opacity-90" />
-                      </div>
+                      <img src={book.cover_url} alt={book.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                      <div className="w-full flex items-center justify-center" style={{ height: '160px', backgroundColor: isDark ? '#0f172a' : '#e8e0d0' }}>
-                        <span className="text-4xl">📖</span>
-                      </div>
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>📚</div>
                     )}
-                  </a>
+                  </div>
 
-                  <div className="p-3 pt-2">
+                  {/* Info */}
+                  <div style={{ padding: '10px 12px 14px' }}>
                     {book.genre && (
-                      <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full mb-1.5" style={{ backgroundColor: accent + '22', color: accent }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: accent, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                         {book.genre}
                       </span>
                     )}
-
-                    {/* Wrapper for Clickable Title */}
-                    <a 
-                      href={book.buy_link || '#'} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className={`block group/title ${!book.buy_link ? 'cursor-default' : 'cursor-pointer'}`}
+                    <div
+                      style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, cursor: book.buy_link ? 'pointer' : 'default' }}
+                      onClick={() => book.buy_link && window.open(book.buy_link, '_blank')}
                     >
-                      <h3 className="font-bold text-sm leading-snug mb-0.5 transition-colors group-hover/title:text-[#D4A843]" style={{ color: textPrimary }}>
+                      <p style={{ fontFamily: 'serif', fontSize: 14, fontWeight: 700, color: textPrimary, margin: 0, lineHeight: 1.3 }}>
                         {book.title}
-                        {book.buy_link && <ExternalLink className="inline-block ml-1 w-2.5 h-2.5 opacity-0 group-hover/title:opacity-100 transition-opacity" />}
-                      </h3>
-                    </a>
-
-                    <p className="text-xs mb-1.5" style={{ color: textSecondary }}>by {book.author}</p>
-                    {book.blurb && <p className="text-xs leading-relaxed mb-2 line-clamp-3" style={{ color: textSecondary }}>{book.blurb}</p>}
-                    
-                    <div className="flex items-center justify-between mt-1 flex-wrap gap-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: accent }}>
-                        {formatReleaseDate(book.release_date)}
-                      </span>
-
-                      {book.is_listed && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: badgeBg, color: '#D4A843', border: '1px solid #D4A843' }}>
-                          READ TO EARN
-                        </span>
-                      )}
+                      </p>
+                      {book.buy_link && <ExternalLink size={11} color={accent} style={{ flexShrink: 0 }} />}
                     </div>
+                    <p style={{ fontSize: 12, color: textSecondary, margin: '2px 0 6px' }}>{book.author}</p>
+                    {book.blurb && (
+                      <p style={{ fontSize: 12, color: textSecondary, margin: '0 0 6px', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {book.blurb}
+                      </p>
+                    )}
+                    {book.release_date && (
+                      <p style={{ fontSize: 11, color: accent, margin: 0, fontWeight: 600 }}>
+                        {isFuture(book.release_date) ? 'Releasing: ' : ''}{formatDate(book.release_date)}
+                      </p>
+                    )}
+                    {book.is_listed && (
+                      <span style={{ display: 'inline-block', marginTop: 6, fontSize: 9, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', backgroundColor: accent, color: '#1B2A4A', padding: '2px 7px', borderRadius: 20 }}>
+                        READ TO EARN
+                      </span>
+                    )}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
