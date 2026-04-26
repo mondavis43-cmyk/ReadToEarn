@@ -4,15 +4,36 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Copy, Check, Gift, Lock } from 'lucide-react';
 
+const PLANS = [
+  {
+    key: 'monthly',
+    label: 'Monthly',
+    price: 4.99,
+    cents: 499,
+    period: '/month',
+    description: 'Billed monthly. Cancel anytime.',
+  },
+  {
+    key: 'annual',
+    label: 'Annual',
+    price: 49.90,
+    cents: 4990,
+    period: '/year',
+    description: 'Billed once a year. Save ~17%.',
+    badge: 'Best Value',
+  },
+];
+
 export const Refer = () => {
-  const { user } = useAuth();
+  const { user }   = useAuth();
   const { isDark } = useTheme();
 
-  const [referralCode, setReferralCode]     = useState('');
-  const [copied, setCopied]                 = useState(false);
-  const [activeReferrals, setActiveReferrals] = useState(0);
+  const [referralCode, setReferralCode]         = useState('');
+  const [copied, setCopied]                     = useState(false);
+  const [activeReferrals, setActiveReferrals]   = useState(0);
   const [isPaidSubscriber, setIsPaidSubscriber] = useState(false);
-  const [loading, setLoading]               = useState(true);
+  const [loading, setLoading]                   = useState(true);
+  const [selectedPlan, setSelectedPlan]         = useState(PLANS[0]);
 
   useEffect(() => { loadReferralData(); }, [user]);
 
@@ -32,7 +53,6 @@ export const Refer = () => {
     if (profile.referral_code) {
       setReferralCode(profile.referral_code);
 
-      // Count referred users who are currently active paid subscribers
       const { count } = await supabase
         .from('profiles')
         .select('id', { count: 'exact' })
@@ -49,7 +69,6 @@ export const Refer = () => {
     ? `${window.location.origin}?ref=${referralCode}`
     : '';
 
-  // $0.50/month per active referred subscriber
   const monthlyEarnings = activeReferrals * 0.5;
 
   const copyLink = () => {
@@ -58,217 +77,229 @@ export const Refer = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // ── Shared styles ──────────────────────────────────────────────────────────
-  const bg       = isDark ? '#0f172a' : '#F5F0E8';
-  const cardBg   = isDark ? '#1e293b' : '#ffffff';
-  const cardBorder = isDark ? '#334155' : '#e2d9c8';
-  const textPrimary   = isDark ? '#F5F0E8' : '#1B2A4A';
-  const textSecondary = isDark ? '#94a3b8' : '#6b7280';
+  const handleUpgrade = () => {
+    ;(window as any).__checkoutItem = {
+      type:   'subscription',
+      label:  `RTE ${selectedPlan.label} Subscription`,
+      amount: selectedPlan.cents,
+      metadata: {
+        plan:    selectedPlan.key,
+        user_id: user?.id,
+      },
+    };
+
+    ;(window as any).__pendingSubmission = {
+      table: 'profiles',
+      data: {
+        id:          user?.id,
+        is_upgraded: true,
+        plan:        selectedPlan.key,
+      },
+      upsert: true,
+    };
+
+    window.history.pushState({}, '', '/checkout');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+
+  // theme tokens
+  const textPrimary = isDark ? 'text-[#F5F0E8]'    : 'text-[#1B2A4A]';
+  const textMuted   = isDark ? 'text-[#F5F0E8]/70' : 'text-[#1B2A4A]/70';
+  const cardBg      = isDark
+    ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20'
+    : 'bg-white border-[#D4A843]/30';
+  const bg          = isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]';
+  const divider     = isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10';
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: bg }}>
-        <div style={{ color: textPrimary }}>Loading...</div>
+      <div className={`min-h-screen ${bg} flex items-center justify-center`}>
+        <p className={`text-sm ${textMuted}`}>Loading...</p>
       </div>
     );
   }
 
-  // ── Locked state (free users) ──────────────────────────────────────────────
+  // ── LOCKED STATE ─────────────────────────────────────────────────────────────
   if (!isPaidSubscriber) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: bg }}>
-        <div className="max-w-2xl mx-auto px-4 py-12">
-          <div className="text-center mb-8">
-            <Lock className="w-12 h-12 mx-auto mb-4" style={{ color: '#D4A843' }} />
-            <h1 className="font-serif text-3xl mb-2" style={{ color: textPrimary }}>
-              Refer a Friend
-            </h1>
-            <p style={{ color: textSecondary }}>
+      <div className={`min-h-screen ${bg} transition-colors duration-300`}>
+        <div className="max-w-2xl mx-auto px-4 py-16">
+
+          {/* Title */}
+          <div className="text-center mb-10">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 rounded-full bg-[#D4A843]/15 flex items-center justify-center">
+                <Lock className="text-[#D4A843] w-7 h-7" />
+              </div>
+            </div>
+            <h1 className={`font-serif text-4xl mb-3 ${textPrimary}`}>Refer a Friend</h1>
+            <p className={`text-sm ${textMuted}`}>
               The referral program is available to paid subscribers only.
+              Upgrade to unlock your referral link and earn $0.50/month per active referral.
             </p>
           </div>
 
-          <div
-            className="rounded-lg border p-8 text-center"
-            style={{ backgroundColor: cardBg, borderColor: cardBorder }}
-          >
-            <p className="text-sm mb-2" style={{ color: textSecondary }}>
-              Upgrade to a paid plan to unlock your referral link and earn
-            </p>
-            <p className="text-2xl font-semibold mb-1" style={{ color: '#D4A843' }}>
-              $0.50 / month
-            </p>
-            <p className="text-sm mb-6" style={{ color: textSecondary }}>
-              for every friend who subscribes and stays active
-            </p>
-            <button
-              onClick={() => window.location.href = '/subscribe'}
-              className="px-6 py-3 rounded-lg text-sm font-semibold transition"
-              style={{ backgroundColor: '#D4A843', color: '#1B2A4A' }}
-            >
-              Upgrade to Unlock
-            </button>
-
-            {/* Preview of what they get */}
-            <div className="mt-8 text-left space-y-3">
-              <p className="text-xs font-medium uppercase tracking-wide" style={{ color: textSecondary }}>
-                How it works
-              </p>
-              {[
-                'Get your unique referral link when you subscribe',
-                'Share it — anyone who signs up with your link is tracked',
-                'When they subscribe to a paid plan and stay active for 30 days, you earn $0.50/month',
-                'You keep earning every month they stay subscribed',
-                'No cap — refer as many people as you want',
-              ].map((step, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div
-                    className="w-5 h-5 rounded-full text-xs flex items-center justify-center flex-shrink-0 mt-0.5"
-                    style={{ backgroundColor: 'rgba(212,168,67,0.15)', color: '#D4A843' }}
-                  >
-                    {i + 1}
-                  </div>
-                  <p className="text-sm" style={{ color: textSecondary }}>{step}</p>
-                </div>
+          {/* Plan picker */}
+          <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
+            <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Choose a Plan</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+              {PLANS.map(plan => (
+                <button
+                  key={plan.key}
+                  type="button"
+                  onClick={() => setSelectedPlan(plan)}
+                  className={`relative p-5 rounded-xl border text-left transition-colors ${
+                    selectedPlan.key === plan.key
+                      ? 'border-[#D4A843] bg-[#D4A843]/10'
+                      : isDark
+                        ? 'border-[#F5F0E8]/10 hover:border-[#D4A843]/40'
+                        : 'border-[#1B2A4A]/10 hover:border-[#D4A843]/40'
+                  }`}
+                >
+                  {plan.badge && (
+                    <span className="absolute top-3 right-3 text-[10px] font-bold uppercase tracking-wide bg-[#D4A843] text-[#1B2A4A] px-2 py-0.5 rounded-full">
+                      {plan.badge}
+                    </span>
+                  )}
+                  <p className={`font-bold text-lg ${textPrimary}`}>
+                    ${plan.price.toFixed(2)}
+                    <span className={`text-sm font-normal ml-1 ${textMuted}`}>{plan.period}</span>
+                  </p>
+                  <p className={`text-sm font-semibold mt-0.5 ${textPrimary}`}>{plan.label}</p>
+                  <p className={`text-xs mt-1 ${textMuted}`}>{plan.description}</p>
+                </button>
               ))}
             </div>
+
+            <button
+              onClick={handleUpgrade}
+              className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-4 rounded-xl hover:bg-[#c49a3a] transition text-base"
+            >
+              Upgrade to Unlock — ${selectedPlan.price.toFixed(2)}{selectedPlan.period}
+            </button>
+            <p className={`text-xs text-center mt-3 ${textMuted}`}>
+              Secure checkout. Your referral dashboard unlocks immediately after payment.
+            </p>
           </div>
+
+          {/* How it works preview */}
+          <div className={`rounded-xl border p-6 ${cardBg}`}>
+            <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>How It Works</h2>
+            <ol className="space-y-3">
+              {[
+                'Upgrade to a paid subscription to unlock your unique referral link.',
+                'Share your link with friends, readers, and your community.',
+                'When someone signs up and subscribes using your link, you earn $0.50/month.',
+                'Earnings are recurring — as long as they stay subscribed, you keep earning.',
+                'Payouts are processed monthly to your connected account.',
+                'No cap on referrals. The more you refer, the more you earn.',
+              ].map((step, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#D4A843]/20 text-[#D4A843] text-xs font-bold flex items-center justify-center mt-0.5">
+                    {i + 1}
+                  </span>
+                  <p className={`text-sm ${textMuted}`}>{step}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+
         </div>
       </div>
     );
   }
 
-  // ── Active subscriber view ─────────────────────────────────────────────────
+  // ── ACTIVE SUBSCRIBER VIEW ────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen" style={{ backgroundColor: bg }}>
+    <div className={`min-h-screen ${bg} transition-colors duration-300`}>
       <div className="max-w-2xl mx-auto px-4 py-12">
 
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <Gift className="w-12 h-12 mx-auto mb-4" style={{ color: '#D4A843' }} />
-          <h1 className="font-serif text-3xl mb-2" style={{ color: textPrimary }}>
-            Refer a Friend
-          </h1>
-          <p style={{ color: textSecondary }}>
-            Earn{' '}
-            <span className="font-medium" style={{ color: '#D4A843' }}>$0.50/month</span>
-            {' '}for every friend who subscribes and stays active.
+        {/* Title */}
+        <div className="mb-10">
+          <div className="flex items-center gap-3 mb-3">
+            <Gift className="text-[#D4A843] w-6 h-6" />
+            <h1 className={`font-serif text-4xl ${textPrimary}`}>Refer a Friend</h1>
+          </div>
+          <p className={`text-sm ${textMuted}`}>
+            Earn $0.50/month for every active subscriber you refer. No cap.
           </p>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          <div
-            className="rounded-lg p-5 text-center border"
-            style={{ backgroundColor: cardBg, borderColor: cardBorder }}
-          >
-            <div className="text-3xl font-serif mb-1" style={{ color: textPrimary }}>
-              {activeReferrals}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          {[
+            { label: 'Active Referrals', value: activeReferrals },
+            { label: 'Monthly Earnings', value: `$${monthlyEarnings.toFixed(2)}` },
+          ].map(({ label, value }) => (
+            <div key={label} className={`rounded-xl border p-5 ${cardBg}`}>
+              <p className={`text-xs uppercase tracking-wide font-semibold mb-1 ${textMuted}`}>{label}</p>
+              <p className={`font-serif text-3xl font-bold ${textPrimary}`}>{value}</p>
             </div>
-            <div className="text-sm" style={{ color: textSecondary }}>
-              active referred subscribers
-            </div>
-          </div>
-          <div
-            className="rounded-lg p-5 text-center border"
-            style={{ backgroundColor: cardBg, borderColor: cardBorder }}
-          >
-            <div className="text-3xl font-serif mb-1" style={{ color: '#D4A843' }}>
-              ${monthlyEarnings.toFixed(2)}
-            </div>
-            <div className="text-sm" style={{ color: textSecondary }}>
-              earned per month
-            </div>
-          </div>
+          ))}
         </div>
 
         {/* Referral link */}
-        <div
-          className="rounded-lg p-6 border mb-6"
-          style={{ backgroundColor: cardBg, borderColor: cardBorder }}
-        >
-          <label className="block text-sm mb-3" style={{ color: textSecondary }}>
-            Your referral link
-          </label>
-          <div className="flex gap-2">
-            <div
-              className="flex-1 rounded-lg px-4 py-2.5 text-sm font-mono truncate border"
-              style={{
-                backgroundColor: isDark ? '#0f172a' : '#F5F0E8',
-                borderColor: isDark ? '#475569' : '#d1c9b8',
-                color: textSecondary,
-              }}
-            >
-              {referralLink}
-            </div>
+        <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
+          <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Your Referral Link</h2>
+          <div className={`flex items-center gap-2 rounded-lg border px-4 py-3 ${
+            isDark ? 'bg-[#0f1623] border-[#F5F0E8]/10' : 'bg-[#F5F0E8] border-[#1B2A4A]/10'
+          }`}>
+            <p className={`flex-1 text-sm truncate ${textMuted}`}>{referralLink}</p>
             <button
               onClick={copyLink}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg transition text-sm font-medium whitespace-nowrap"
-              style={{ backgroundColor: '#1B2A4A', color: '#F5F0E8' }}
+              className="flex-shrink-0 flex items-center gap-1.5 text-[#D4A843] text-sm font-semibold hover:opacity-80 transition-opacity"
             >
-              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copied ? <Check size={15} /> : <Copy size={15} />}
               {copied ? 'Copied!' : 'Copy'}
             </button>
           </div>
         </div>
 
         {/* Payout rules */}
-        <div
-          className="rounded-lg p-6 border mb-6"
-          style={{ backgroundColor: cardBg, borderColor: cardBorder }}
-        >
-          <h2 className="font-medium mb-4" style={{ color: textPrimary }}>
-            Payout rules
-          </h2>
+        <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
+          <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Payout Rules</h2>
           <div className="space-y-3">
             {[
-              { label: 'Earnings per referral', value: '$0.50 / month' },
-              { label: 'First payout trigger', value: 'Friend active for 30 days' },
-              { label: 'Recurring', value: 'Every month friend renews' },
-              { label: 'Stops when', value: 'Friend cancels their subscription' },
-              { label: 'Fraud hold', value: '30-day review before first credit' },
-              { label: 'Referral cap', value: 'None — refer as many as you want' },
-            ].map(({ label, value }) => (
+              ['Earnings',    '$0.50/month per active referred subscriber'],
+              ['Trigger',     'Referral must sign up and become a paid subscriber'],
+              ['Recurring',   'Earnings continue each month they stay subscribed'],
+              ['Cancellation','Earnings stop if the referred user cancels'],
+              ['Fraud Hold',  'Suspicious referrals are held for 30 days before payout'],
+              ['Cap',         'No cap — refer as many as you want'],
+            ].map(([rule, detail], i) => (
               <div
-                key={label}
-                className="flex items-center justify-between py-2 px-3 rounded-lg"
-                style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }}
+                key={rule}
+                className={`flex justify-between items-start gap-4 py-2 ${
+                  i < 5 ? `border-b ${divider}` : ''
+                }`}
               >
-                <span className="text-sm" style={{ color: textSecondary }}>{label}</span>
-                <span className="text-sm font-medium" style={{ color: textPrimary }}>{value}</span>
+                <span className={`text-sm font-semibold flex-shrink-0 ${textPrimary}`}>{rule}</span>
+                <span className={`text-sm text-right ${textMuted}`}>{detail}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* How it works */}
-        <div
-          className="rounded-lg p-6 border"
-          style={{ backgroundColor: cardBg, borderColor: cardBorder }}
-        >
-          <h2 className="font-medium mb-4" style={{ color: textPrimary }}>
-            How it works
-          </h2>
-          <div className="space-y-3">
+        <div className={`rounded-xl border p-6 ${cardBg}`}>
+          <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>How It Works</h2>
+          <ol className="space-y-3">
             {[
-              'Share your unique link with a friend',
-              'They sign up using your link — their account is tagged to you',
-              'When they subscribe to a paid plan and stay active for 30 days, your first $0.50 credit is applied',
-              'You earn $0.50 every month they renew',
-              'If they cancel, earnings from that referral stop',
-              'No limit — refer as many friends as you want',
+              'Share your unique referral link with friends and your community.',
+              'When someone clicks your link, their signup is tracked to you.',
+              'Once they become a paid subscriber, you start earning $0.50/month.',
+              'Earnings are recurring — as long as they stay subscribed, you keep earning.',
+              'Payouts are processed monthly to your connected account.',
+              'No cap on referrals. The more you refer, the more you earn.',
             ].map((step, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <div
-                  className="w-5 h-5 rounded-full text-xs flex items-center justify-center flex-shrink-0 mt-0.5"
-                  style={{ backgroundColor: 'rgba(212,168,67,0.15)', color: '#D4A843' }}
-                >
+              <li key={i} className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#D4A843]/20 text-[#D4A843] text-xs font-bold flex items-center justify-center mt-0.5">
                   {i + 1}
-                </div>
-                <p className="text-sm" style={{ color: textSecondary }}>{step}</p>
-              </div>
+                </span>
+                <p className={`text-sm ${textMuted}`}>{step}</p>
+              </li>
             ))}
-          </div>
+          </ol>
         </div>
 
       </div>
