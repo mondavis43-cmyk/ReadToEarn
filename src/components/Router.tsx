@@ -36,6 +36,7 @@ import { AMASession } from '../pages/AMASession';
 import Checkout from '../pages/Checkout';
 import { CompetitionDetail } from '../pages/CompetitionDetail';
 import { TimeBoosts } from '../pages/TimeBoosts';
+import { Leaderboard } from '../pages/Leaderboard';
 
 const WAITLIST_MODE = true;
 
@@ -107,6 +108,7 @@ if (!user) return <Login />;
     '/faq',
     '/checkout',
     '/time-boosts',
+    '/leaderboard',
   ];
 
   const isKnownRoute =
@@ -138,6 +140,7 @@ if (!user) return <Login />;
       {route === '/author-beta-readers' && <AuthorBetaReaders />}
       {route === '/author-sensitivity-readers' && <AuthorSensitivityReaders />}
       {route === '/time-boosts' && <TimeBoosts />}
+      {route === '/leaderboard' && <Leaderboard />}
       {route === '/bulletin-board' && <BulletinBoard />}
       {route === '/bulletin-submit' && <BulletinSubmit />}
       {route.startsWith('/quiz/') && <Quiz bookId={route.split('/')[2]} />}
