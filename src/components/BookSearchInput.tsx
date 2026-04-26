@@ -70,12 +70,13 @@ export const BookSearchInput = ({
     const timer = setTimeout(async () => {
       setLoading(true);
       const { data } = await supabase
-        .from('books')
-        .select('id, title, author, genre')
-        .eq('listing_type', 'standard')
-        .ilike('title', `%${query.trim()}%`)
-        .order('title', { ascending: true })
-        .limit(20);
+        const { data } = await supabase
+  .from('books')
+  .select('id, title, author, genre')
+  .neq('book_type', 'bulletin_board')
+  .ilike('title', `%${query.trim()}%`)
+  .order('title', { ascending: true })
+  .limit(20);
       setResults(data || []);
       setLoading(false);
       setOpen(true);
