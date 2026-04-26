@@ -180,15 +180,37 @@ export const Profile = () => {
               </div>
               <p className={`text-xs ${subColor}`}>
                 {profile?.is_upgraded 
-                  ? 'Active: Enjoy ad-free reading, priority survey access, and 30% off entries.' 
-                  : 'Upgrade for $4.99/mo to unlock priority survey queues and entry discounts.'}
+                  ? 'Active: Enjoy ad-free reading, priority survey access, 30% off entries, and more.' 
+                  : 'Upgrade for $4.99/mo to unlock priority survey queues, entry discounts, referral program, and more.'}
               </p>
             </div>
             {!profile?.is_upgraded && (
-              <button onClick={() => navigateTo('/upgrade')} className="bg-[#1B2A4A] text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-black transition">Upgrade</button>
-            )}
-          </div>
-        </div>
+  <button
+    onClick={() => {
+      (window as any).__checkoutItem = {
+        type: 'subscription',
+        label: 'Membership — Monthly',
+        amount: 499,
+        metadata: {
+          plan: 'monthly',
+        },
+      };
+      (window as any).__pendingSubmission = {
+        table: 'subscriptions',
+        data: {
+          user_id: user?.id,
+          plan: 'monthly',
+          status: 'active',
+        },
+      };
+      window.history.pushState({}, '', '/checkout');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }}
+    className="bg-[#1B2A4A] text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-black transition"
+  >
+    Upgrade
+  </button>
+)}
 
         {/* Birthday & Streak (Combined for space) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
