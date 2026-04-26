@@ -37,6 +37,9 @@ import Checkout from '../pages/Checkout';
 import { CompetitionDetail } from '../pages/CompetitionDetail';
 import { TimeBoosts } from '../pages/TimeBoosts';
 import { Leaderboard } from '../pages/Leaderboard';
+import { AccountSettings } from '../pages/AccountSettings';
+import { Tournaments } from '../pages/Tournaments';
+import { TournamentDetail } from '../pages/TournamentDetail';
 
 const WAITLIST_MODE = true;
 
@@ -51,7 +54,14 @@ export const Router = () => {
   }, []);
 
   useEffect(() => {
-    if (!loading && !user && route !== '/login' && route !== '/signup' && route !== '/admin' && route !== '/reset-password') {
+    if (
+      !loading &&
+      !user &&
+      route !== '/login' &&
+      route !== '/signup' &&
+      route !== '/admin' &&
+      route !== '/reset-password'
+    ) {
       if (!WAITLIST_MODE) {
         window.history.pushState({}, '', '/login');
         setRoute('/login');
@@ -67,21 +77,35 @@ export const Router = () => {
     );
   }
 
+  // Public routes — no auth required
   if (route === '/admin') return <Admin />;
-if (route === '/reset-password') return <ResetPassword />;
-if (route === '/terms') return <TermsOfService />;
-if (route === '/privacy') return <PrivacyPolicy />;
+  if (route === '/reset-password') return <ResetPassword />;
+  if (route === '/terms') return <TermsOfService />;
+  if (route === '/privacy') return <PrivacyPolicy />;
 
-if (route === '/ama') return <AuthorAMA />;
-if (route.startsWith('/ama/')) {
-  const sessionId = route.replace('/ama/', '');
-  return <AMASession sessionId={sessionId} />;
-}
+  if (route === '/ama') return <AuthorAMA />;
+  if (route.startsWith('/ama/')) {
+    const sessionId = route.replace('/ama/', '');
+    return <AMASession sessionId={sessionId} />;
+  }
 
-if (WAITLIST_MODE && !user) return <Waitlist />;
+  if (WAITLIST_MODE && !user) return <Waitlist />;
 
-if (!user && route === '/signup') return <Signup />;
-if (!user) return <Login />;
+  if (!user && route === '/signup') return <Signup />;
+  if (!user) return <Login />;
+
+  // Dynamic routes that need no NavBar — handle before the NavBar wrapper
+  if (route.startsWith('/competition/')) {
+    const competitionId = route.replace('/competition/', '');
+    return <CompetitionDetail competitionId={competitionId} />;
+  }
+
+  if (route.startsWith('/tournament/')) {
+    const tournamentId = route.replace('/tournament/', '');
+    return <TournamentDetail tournamentId={tournamentId} />;
+  }
+
+  if (route === '/tournaments/create') return <Tournaments />;
 
   const KNOWN_ROUTES = [
     '/',
@@ -109,13 +133,16 @@ if (!user) return <Login />;
     '/checkout',
     '/time-boosts',
     '/leaderboard',
+    '/account-settings',
+    '/tournaments/create',
   ];
 
   const isKnownRoute =
     KNOWN_ROUTES.includes(route) ||
     route.startsWith('/quiz/') ||
-    route.startsWith('/book/');
-    route.startsWith('/competition/');
+    route.startsWith('/book/') ||
+    route.startsWith('/competition/') ||
+    route.startsWith('/tournament/');
 
   return (
     <>
@@ -143,10 +170,10 @@ if (!user) return <Login />;
       {route === '/leaderboard' && <Leaderboard />}
       {route === '/bulletin-board' && <BulletinBoard />}
       {route === '/bulletin-submit' && <BulletinSubmit />}
+      {route === '/account-settings' && <AccountSettings />}
+      {route === '/checkout' && <Checkout />}
       {route.startsWith('/quiz/') && <Quiz bookId={route.split('/')[2]} />}
       {route.startsWith('/book/') && <BookPage />}
-      {route.startsWith('/competition/') && <CompetitionDetail />}
-      {route === '/checkout' && <Checkout />}
       {!isKnownRoute && <Home />}
     </>
   );
