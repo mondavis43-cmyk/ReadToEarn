@@ -132,6 +132,22 @@ export const Quiz = ({ bookId, competitionId, competitionRound }: QuizProps) => 
   const loadQuiz = async () => {
   if (!user) return;
 
+    // ── BOUNTY ACTIVE CHECK ──────────────────────────────────────────────
+if (!isCompetitionQuiz && book?.book_type === 'sponsored') {
+  const { data: bounty } = await supabase
+    .from('bounties')
+    .select('status, reader_pool')
+    .eq('book_id', bookId)
+    .maybeSingle();
+
+  if (!bounty || bounty.status !== 'active' || bounty.reader_pool <= 0) {
+    // Bounty is exhausted — redirect to library
+    navigateTo('/library');
+    return;
+  }
+}
+// ────────────────────────────────────────────────────────────────────
+    
   // ── PAYMENT GATE (competition quizzes only) ──────────────────────────
 if (isCompetitionQuiz) {
   const { data: entry, error: entryError } = await supabase
@@ -312,28 +328,56 @@ if (isCompetitionQuiz) {
             }
 
             const payout = calculatePayout(
-              book.book_type,
-              book.page_count,
-              (profileData.subscription_tier ?? 'free') as SubscriptionTier
-            );
-            setEarnedAmount(payout);
+  book.book_type,
+  book.page_count,
+  (profileData.subscription_tier ?? 'free') as SubscriptionTier
+);
 
-            const projectedBalance = profileData.available_balance + payout + bonus;
-            const shouldFlag = projectedBalance >= 500;
+if (book.book_type === 'sponsored') {
+  // Bounty book — atomic RPC handles pool decrement + auto-deactivation
+  const { data: result } = await supabase.rpc('claim_bounty_payout', {
+    p_book_id: bookId,
+    p_user_id: user.id,
+    p_amount: payout,
+  });
 
-            await supabase.from('profiles').update({
-              available_balance: projectedBalance,
-              streak_count: newStreak,
-              last_quiz_date: today,
-              requires_tax_review: profileData.requires_tax_review || shouldFlag,
-            }).eq('id', user.id);
-
-            await supabase.from('payout_logs').insert({
-              user_id: user.id,
-              amount: payout + bonus,
-              status: shouldFlag ? 'pending_review' : 'completed',
-              reason: shouldFlag ? '1099_threshold' : null,
-            });
+  if (result === 'ok') {
+    setEarnedAmount(payout);
+    const projectedBalance = profileData.available_balance + payout + bonus;
+    const shouldFlag = projectedBalance >= 500;
+    await supabase.from('profiles').update({
+      streak_count: newStreak,
+      last_quiz_date: today,
+      requires_tax_review: profileData.requires_tax_review || shouldFlag,
+    }).eq('id', user.id);
+    await supabase.from('payout_logs').insert({
+      user_id: user.id,
+      amount: payout + bonus,
+      status: shouldFlag ? 'pending_review' : 'completed',
+      reason: shouldFlag ? '1099_threshold' : null,
+    });
+  } else {
+    // Pool ran out between the gate check and submission — no payout
+    setEarnedAmount(0);
+  }
+} else {
+  // Standard platform book — original flow unchanged
+  setEarnedAmount(payout);
+  const projectedBalance = profileData.available_balance + payout + bonus;
+  const shouldFlag = projectedBalance >= 500;
+  await supabase.from('profiles').update({
+    available_balance: projectedBalance,
+    streak_count: newStreak,
+    last_quiz_date: today,
+    requires_tax_review: profileData.requires_tax_review || shouldFlag,
+  }).eq('id', user.id);
+  await supabase.from('payout_logs').insert({
+    user_id: user.id,
+    amount: payout + bonus,
+    status: shouldFlag ? 'pending_review' : 'completed',
+    reason: shouldFlag ? '1099_threshold' : null,
+  });
+}
 
             if (profileData.referred_by) {
               const { data: ref } = await supabase
