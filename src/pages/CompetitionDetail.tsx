@@ -137,7 +137,6 @@ if (preReg) setPreRegistered(true);
   if (!competition) return;
   setError('');
 
-  // Check if user pre-registered — if so, always use base fee
   const { data: preReg } = await supabase
     .from('pre_registrations')
     .select('id')
@@ -181,37 +180,8 @@ if (preReg) setPreRegistered(true);
   window.history.pushState({}, '', '/checkout');
   window.dispatchEvent(new PopStateEvent('popstate'));
 };
-    (window as any).__checkoutItem = {
-    type: 'competition_entry',
-    label: isLate
-      ? `Competition Entry (Late Fee) — ${competition.title}`
-      : `Competition Entry — ${competition.title}`,
-    amount: amountCents,
-    metadata: {
-      competition_id: competition.id,
-      format: competition.type,
-      title: competition.title,
-      is_late_entry: isLate ? 'true' : 'false',
-    },
-  };
 
-  (window as any).__pendingSubmission = {
-    competition_id: competition.id,
-    is_late_entry: isLate,
-  };
-
-  // Mark pre-registration as converted
-  if (preReg) {
-    await supabase
-      .from('pre_registrations')
-      .update({ converted: true })
-      .eq('id', preReg.id);
-  }
-
-  window.history.pushState({}, '', '/checkout');
-};
-
-    const handlePreRegister = async () => {
+const handlePreRegister = async () => {
   if (!userId) { navigateTo('/signup'); return; }
   if (!competition) return;
   setPreRegLoading(true);
@@ -229,7 +199,6 @@ if (preReg) setPreRegistered(true);
     setError('Could not pre-register. Please try again.');
   } else {
     setPreRegistered(true);
-    // Increment the display count
     await supabase
       .from('competitions')
       .update({ pre_registration_count: (competition.pre_registration_count ?? 0) + 1 })
