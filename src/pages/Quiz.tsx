@@ -133,22 +133,38 @@ export const Quiz = ({ bookId, competitionId, competitionRound }: QuizProps) => 
   if (!user) return;
 
   // ── PAYMENT GATE (competition quizzes only) ──────────────────────────
-  if (isCompetitionQuiz) {
-    const { data: entry, error: entryError } = await supabase
-      .from('competition_entries')
-      .select('id')
+if (isCompetitionQuiz) {
+  const { data: entry, error: entryError } = await supabase
+    .from('competition_entries')
+    .select('id')
+    .eq('competition_id', competitionId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (entryError || !entry) {
+    navigateTo(`/competition/${competitionId}`);
+    return;
+  }
+
+  // ── ROUND GATING ──────────────────────────────────────────────────
+  if (competitionRound && competitionRound > 1) {
+    const { data: prevRound } = await supabase
+      .from('elimination_progress')
+      .select('passed')
       .eq('competition_id', competitionId)
       .eq('user_id', user.id)
+      .eq('round', competitionRound - 1)
       .maybeSingle();
 
-    if (entryError || !entry) {
-      // No paid entry found — redirect back to competition page
+    if (!prevRound?.passed) {
+      // Didn't pass previous round — kick back to competition page
       navigateTo(`/competition/${competitionId}`);
       return;
     }
   }
-  // ────────────────────────────────────────────────────────────────────
-
+  // ──────────────────────────────────────────────────────────────────
+}
+// ────────────────────────────────────────────────────────────────────
   // For competition quizzes check elimination_progress instead of completed_books
   const completedCheck = isCompetitionQuiz
     ? supabase
