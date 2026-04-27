@@ -132,6 +132,11 @@ if (preReg) setPreRegistered(true);
     return elimProgress.some(r => r.round === 3);
   };
 
+  const handleEnter = async () => {
+  if (!userId) { navigateTo('/signup'); return; }
+  if (!competition) return;
+  setError('');
+
   // Check if user pre-registered — if so, always use base fee
   const { data: preReg } = await supabase
     .from('pre_registrations')
@@ -140,12 +145,42 @@ if (preReg) setPreRegistered(true);
     .eq('user_id', userId)
     .maybeSingle();
 
-// pre-registered users are never "late"
+  const now = new Date();
+  const starts = new Date(competition.start_date);
+  const isLate = now > starts && !preReg;
   const baseFee = competition.entry_fee;
   const actualFee = isLate ? baseFee * LATE_FEE_MULTIPLIER : baseFee;
   const amountCents = Math.round(actualFee * 100);
 
   (window as any).__checkoutItem = {
+    type: 'competition_entry',
+    label: isLate
+      ? `Competition Entry (Late Fee) — ${competition.title}`
+      : `Competition Entry — ${competition.title}`,
+    amount: amountCents,
+    metadata: {
+      competition_id: competition.id,
+      format: competition.type,
+      title: competition.title,
+      is_late_entry: isLate ? 'true' : 'false',
+    },
+  };
+
+  (window as any).__pendingSubmission = {
+    competition_id: competition.id,
+    is_late_entry: isLate,
+  };
+
+  if (preReg) {
+    await supabase
+      .from('pre_registrations')
+      .update({ converted: true })
+      .eq('id', preReg.id);
+  }
+
+  window.history.pushState({}, '', '/checkout');
+  window.dispatchEvent(new PopStateEvent('popstate'));
+};
     type: 'competition_entry',
     label: isLate
       ? `Competition Entry (Late Fee) — ${competition.title}`
