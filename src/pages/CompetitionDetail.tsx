@@ -132,11 +132,6 @@ if (preReg) setPreRegistered(true);
     return elimProgress.some(r => r.round === 3);
   };
 
-  const handleEnter = async () => {
-  if (!userId) { navigateTo('/signup'); return; }
-  if (!competition) return;
-  setError('');
-
   // Check if user pre-registered — if so, always use base fee
   const { data: preReg } = await supabase
     .from('pre_registrations')
@@ -145,9 +140,7 @@ if (preReg) setPreRegistered(true);
     .eq('user_id', userId)
     .maybeSingle();
 
-  const now = new Date();
-  const starts = new Date(competition.start_date);
-  const isLate = now > starts && !preReg; // pre-registered users are never "late"
+// pre-registered users are never "late"
   const baseFee = competition.entry_fee;
   const actualFee = isLate ? baseFee * LATE_FEE_MULTIPLIER : baseFee;
   const amountCents = Math.round(actualFee * 100);
@@ -180,7 +173,6 @@ if (preReg) setPreRegistered(true);
   }
 
   window.history.pushState({}, '', '/checkout');
-  window.dispatchEvent(new PopStateEvent('popstate'));
 };
 
     const handlePreRegister = async () => {
