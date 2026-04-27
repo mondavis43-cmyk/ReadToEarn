@@ -1052,4 +1052,3 @@ const [linkCopied, setLinkCopied] = useState(false);
 
     </div>
   );
-};
