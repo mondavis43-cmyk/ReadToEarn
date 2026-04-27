@@ -42,6 +42,7 @@ import { AccountSettings } from '../pages/AccountSettings';
 import { Tournaments } from '../pages/Tournaments';
 import { TournamentDetail } from '../pages/TournamentDetail';
 import { AMARequest } from '../pages/AMARequest';
+import { AdminRoute } from './AdminRoute';
 
 const WAITLIST_MODE = true;
 
@@ -81,8 +82,8 @@ export const Router = () => {
   }
 
   // Public routes — no NavBar, no auth required
-  if (route === '/admin') return <Admin />;
-  if (route === '/admin/submissions') return <AdminSubmissions />;
+  if (route === '/admin') return <AdminRoute><Admin /></AdminRoute>;
+  if (route === '/admin/submissions') return <AdminRoute><AdminSubmissions /></AdminRoute>;
   if (route === '/reset-password') return <ResetPassword />;
   if (route === '/terms') return <TermsOfService />;
   if (route === '/privacy') return <PrivacyPolicy />;
