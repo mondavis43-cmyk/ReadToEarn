@@ -1050,7 +1050,8 @@ const [linkCopied, setLinkCopied] = useState(false);
         </div>
       )}
 
-    </div>
   );
+  };
 };
+
 export default AuthorDashboard;
