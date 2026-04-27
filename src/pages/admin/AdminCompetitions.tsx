@@ -233,7 +233,7 @@ export function AdminCompetitions() {
       bookAuthor = elimBooks.map(b => b.author).join(', ');
     }
 
-    const { error: err } = await supabase.from('competitions').insert({
+    const { data: newCompRow, error: err } = await supabase.from('competitions').insert({
       format: newComp.format,
       title: newComp.title,
       book_title: bookTitle,
@@ -245,9 +245,19 @@ export function AdminCompetitions() {
       ends_at: newComp.ends_at,
       status: 'upcoming',
       pre_registration_count: 0,
-    });
+    }).select('id, title').single();
 
     if (err) { setError('Failed to save: ' + err.message); setSaving(false); return; }
+
+    // #11: notify subscribers
+    if (newCompRow) {
+      await supabase.rpc('notify_subscribers_new_earning', {
+        p_type:  'competition',
+        p_title: newCompRow.title,
+        p_id:    newCompRow.id,
+      });
+    }
+
     setSuccess('Competition created!');
     setNewComp(emptyComp);
     setSprintBook([]);
