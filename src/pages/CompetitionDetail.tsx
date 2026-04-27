@@ -61,7 +61,6 @@ export const CompetitionDetail = () => {
   const [error, setError] = useState('');
   const [preRegistered, setPreRegistered] = useState(false);
   const [preRegLoading, setPreRegLoading] = useState(false);
-  // Elimination-specific
   const [elimProgress, setElimProgress] = useState<EliminationRound[]>([]);
 
   useEffect(() => {
@@ -80,16 +79,14 @@ export const CompetitionDetail = () => {
           .maybeSingle();
         if (entry) setAlreadyEntered(true);
 
-        // Check if user already pre-registered
-const { data: preReg } = await supabase
-  .from('pre_registrations')
-  .select('id')
-  .eq('competition_id', id)
-  .eq('user_id', user.id)
-  .maybeSingle();
-if (preReg) setPreRegistered(true);
+        const { data: preReg } = await supabase
+          .from('pre_registrations')
+          .select('id')
+          .eq('competition_id', id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (preReg) setPreRegistered(true);
 
-        // Load elimination progress if any
         const { data: progress } = await supabase
           .from('elimination_progress')
           .select('round, score, passed, submitted_at')
@@ -116,11 +113,10 @@ if (preReg) setPreRegistered(true);
     load();
   }, [id]);
 
-  // Determine which round the user is on for elimination
   const getCurrentElimRound = (): number => {
     if (!elimProgress.length) return 1;
     const lastPassed = [...elimProgress].reverse().find(r => r.passed);
-    if (!lastPassed) return 1; // failed round 1, can't advance
+    if (!lastPassed) return 1;
     return Math.min(lastPassed.round + 1, 3);
   };
 
@@ -133,83 +129,20 @@ if (preReg) setPreRegistered(true);
   };
 
   const handleEnter = async () => {
-  if (!userId) { navigateTo('/signup'); return; }
-  if (!competition) return;
-  setError('');
+    if (!userId) { navigateTo('/signup'); return; }
+    if (!competition) return;
+    setError('');
 
-  const { data: preReg } = await supabase
-    .from('pre_registrations')
-    .select('id')
-    .eq('competition_id', competition.id)
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  const now = new Date();
-  const starts = new Date(competition.start_date);
-  const isLate = now > starts && !preReg;
-  const baseFee = competition.entry_fee;
-  const actualFee = isLate ? baseFee * LATE_FEE_MULTIPLIER : baseFee;
-  const amountCents = Math.round(actualFee * 100);
-
-  (window as any).__checkoutItem = {
-    type: 'competition_entry',
-    label: isLate
-      ? `Competition Entry (Late Fee) — ${competition.title}`
-      : `Competition Entry — ${competition.title}`,
-    amount: amountCents,
-    metadata: {
-      competition_id: competition.id,
-      format: competition.type,
-      title: competition.title,
-      is_late_entry: isLate ? 'true' : 'false',
-    },
-  };
-
-  (window as any).__pendingSubmission = {
-    competition_id: competition.id,
-    is_late_entry: isLate,
-  };
-
-  if (preReg) {
-    await supabase
+    const { data: preReg } = await supabase
       .from('pre_registrations')
-      .update({ converted: true })
-      .eq('id', preReg.id);
-  }
-
-  window.history.pushState({}, '', '/checkout');
-  window.dispatchEvent(new PopStateEvent('popstate'));
-};
-
-const handlePreRegister = async () => {
-  if (!userId) { navigateTo('/signup'); return; }
-  if (!competition) return;
-  setPreRegLoading(true);
-  setError('');
-
-  const { error } = await supabase
-    .from('pre_registrations')
-    .insert({
-      competition_id: competition.id,
-      user_id: userId,
-      converted: false,
-    });
-
-  if (error) {
-    setError('Could not pre-register. Please try again.');
-  } else {
-    setPreRegistered(true);
-    await supabase
-      .from('competitions')
-      .update({ pre_registration_count: (competition.pre_registration_count ?? 0) + 1 })
-      .eq('id', competition.id);
-  }
-  setPreRegLoading(false);
-};
+      .select('id')
+      .eq('competition_id', competition.id)
+      .eq('user_id', userId)
+      .maybeSingle();
 
     const now = new Date();
     const starts = new Date(competition.start_date);
-    const isLate = now > starts;
+    const isLate = now > starts && !preReg;
     const baseFee = competition.entry_fee;
     const actualFee = isLate ? baseFee * LATE_FEE_MULTIPLIER : baseFee;
     const amountCents = Math.round(actualFee * 100);
@@ -233,21 +166,52 @@ const handlePreRegister = async () => {
       is_late_entry: isLate,
     };
 
+    if (preReg) {
+      await supabase
+        .from('pre_registrations')
+        .update({ converted: true })
+        .eq('id', preReg.id);
+    }
+
     window.history.pushState({}, '', '/checkout');
     window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+
+  const handlePreRegister = async () => {
+    if (!userId) { navigateTo('/signup'); return; }
+    if (!competition) return;
+    setPreRegLoading(true);
+    setError('');
+
+    const { error } = await supabase
+      .from('pre_registrations')
+      .insert({
+        competition_id: competition.id,
+        user_id: userId,
+        converted: false,
+      });
+
+    if (error) {
+      setError('Could not pre-register. Please try again.');
+    } else {
+      setPreRegistered(true);
+      await supabase
+        .from('competitions')
+        .update({ pre_registration_count: (competition.pre_registration_count ?? 0) + 1 })
+        .eq('id', competition.id);
+    }
+    setPreRegLoading(false);
   };
 
   const handleTakeQuiz = () => {
     if (!competition) return;
     const round = getCurrentElimRound();
-    // book_ids is 1-indexed in meaning but 0-indexed in array
     const bookId = competition.book_ids?.[round - 1];
     if (!bookId) return;
 
     if (competition.type === 'elimination') {
       navigateTo(`/quiz/${bookId}?competition=${competition.id}&round=${round}`);
     } else {
-      // Sprint / Read-A-Thon — use first book
       const sprintBookId = competition.book_ids?.[0];
       if (!sprintBookId) return;
       navigateTo(`/quiz/${sprintBookId}?competition=${competition.id}&round=1`);
@@ -298,7 +262,6 @@ const handlePreRegister = async () => {
   const eliminated = isElimEliminated();
   const elimDone = isElimFinished();
 
-  // Elimination round status labels
   const roundLabels = ['Round 1', 'Round 2', 'Final Round'];
   const roundThresholds = ['8/10 to advance', '9/10 to advance', 'Highest score wins'];
 
@@ -380,7 +343,7 @@ const handlePreRegister = async () => {
           </div>
         </div>
 
-        {/* Elimination round tracker — only shown for elimination format */}
+        {/* Elimination round tracker */}
         {competition.type === 'elimination' && alreadyEntered && (
           <div className={`rounded-xl border p-6 mb-8 ${cardBg}`}>
             <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Your Progress</h2>
@@ -487,8 +450,6 @@ const handlePreRegister = async () => {
           </div>
         )}
 
-        {/* ── CTA ── */}
-
         {/* Active + paid + entered + elimination */}
         {isActive && !competition.is_sponsored && alreadyEntered && competition.type === 'elimination' && (
           eliminated ? (
@@ -588,38 +549,40 @@ const handlePreRegister = async () => {
           </button>
         )}
 
+        {/* Upcoming */}
         {isUpcoming && (
-  <div className={`rounded-xl border p-5 text-center ${cardBg}`}>
-    <p className={`font-semibold mb-2 ${textPrimary}`}>Not open yet</p>
-    {preRegistered ? (
-      <div className="rounded-lg bg-green-500/10 border border-green-500/30 p-3">
-        <p className="text-green-400 font-semibold text-sm">✓ You're pre-registered</p>
-        <p className="text-green-400/70 text-xs mt-1">
-          You'll pay the base entry fee of ${competition.entry_fee} when this goes live — no late fee.
-        </p>
-      </div>
-    ) : (
-      <>
-        <p className={`text-sm mb-4 ${textMuted}`}>
-          Pre-register now to lock in the base entry fee of ${competition.entry_fee}. No charge until the competition opens.
-        </p>
-        <button
-          onClick={handlePreRegister}
-          disabled={preRegLoading}
-          className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-3 rounded-xl hover:bg-[#c49a3a] transition disabled:opacity-50"
-        >
-          {preRegLoading ? 'Locking in...' : `Pre-Register — Lock in $${competition.entry_fee}`}
-        </button>
-        {competition.pre_registration_count != null && competition.pre_registration_count > 0 && (
-          <p className={`text-xs mt-2 ${textMuted}`}>
-            {competition.pre_registration_count} reader{competition.pre_registration_count !== 1 ? 's' : ''} pre-registered
-          </p>
+          <div className={`rounded-xl border p-5 text-center ${cardBg}`}>
+            <p className={`font-semibold mb-2 ${textPrimary}`}>Not open yet</p>
+            {preRegistered ? (
+              <div className="rounded-lg bg-green-500/10 border border-green-500/30 p-3">
+                <p className="text-green-400 font-semibold text-sm">✓ You're pre-registered</p>
+                <p className="text-green-400/70 text-xs mt-1">
+                  You'll pay the base entry fee of ${competition.entry_fee} when this goes live — no late fee.
+                </p>
+              </div>
+            ) : (
+              <>
+                <p className={`text-sm mb-4 ${textMuted}`}>
+                  Pre-register now to lock in the base entry fee of ${competition.entry_fee}. No charge until the competition opens.
+                </p>
+                <button
+                  onClick={handlePreRegister}
+                  disabled={preRegLoading}
+                  className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-3 rounded-xl hover:bg-[#c49a3a] transition disabled:opacity-50"
+                >
+                  {preRegLoading ? 'Locking in...' : `Pre-Register — Lock in $${competition.entry_fee}`}
+                </button>
+                {competition.pre_registration_count != null && competition.pre_registration_count > 0 && (
+                  <p className={`text-xs mt-2 ${textMuted}`}>
+                    {competition.pre_registration_count} reader{competition.pre_registration_count !== 1 ? 's' : ''} pre-registered
+                  </p>
+                )}
+              </>
+            )}
+          </div>
         )}
-      </>
-    )}
-  </div>
-)}
 
+        {/* Completed */}
         {isCompleted && (
           <div className={`rounded-xl border p-5 text-center ${cardBg}`}>
             <p className={`font-semibold mb-1 ${textPrimary}`}>This competition has ended</p>
