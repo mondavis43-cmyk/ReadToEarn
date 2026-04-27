@@ -41,6 +41,7 @@ import { Leaderboard } from '../pages/Leaderboard';
 import { AccountSettings } from '../pages/AccountSettings';
 import { Tournaments } from '../pages/Tournaments';
 import { TournamentDetail } from '../pages/TournamentDetail';
+import { AMARequest } from '../pages/AMARequest';
 
 const WAITLIST_MODE = true;
 
@@ -87,6 +88,7 @@ export const Router = () => {
   if (route === '/privacy') return <PrivacyPolicy />;
 
   if (route === '/ama') return <AuthorAMA />;
+  if (route === '/ama-request') return <AMARequest />;
   if (route.startsWith('/ama/')) {
     const sessionId = route.replace('/ama/', '');
     return <AMASession sessionId={sessionId} />;
@@ -138,6 +140,7 @@ export const Router = () => {
     '/leaderboard',
     '/account-settings',
     '/tournaments/create',
+    '/ama-request',
   ];
 
   const isKnownRoute =
