@@ -17,6 +17,7 @@ import { AdminEarning }      from './admin/AdminEarning';
 import { AdminAMA }          from './admin/AdminAMA';
 import { AdminSubmissions }  from './admin/AdminSubmissions';
 import { AdminSponsoredPins } from './admin/AdminSponsoredPins';
+import { AdminGiveaway }      from './admin/AdminGiveaway';
 
 export const GENRES = [
   'Action & Adventure', 'Biography & Memoir', 'Business', "Children's", 'Chick Lit',
@@ -43,6 +44,7 @@ type Tab =
   | 'earning'
   | 'ama'
   | 'submissions'
+  | 'giveaway'
   | 'sponsored_pins';
 
 const TABS: { key: Tab; label: string }[] = [
@@ -58,6 +60,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'sponsored_pins', label: 'Sponsored Pins' },
   { key: 'waitlist',     label: 'Waitlist'          },
   { key: 'tropes',       label: 'Tropes'            },
+  { key: 'giveaway',     label: 'Giveaway'          },
   { key: 'ama',          label: 'AMA'               },
 ];
 
@@ -132,6 +135,7 @@ export function Admin() {
         {activeTab === 'ama'          && <AdminAMA />}
         {activeTab === 'submissions'  && <AdminSubmissions />}
         {activeTab === 'sponsored_pins' && <AdminSponsoredPins />}
+        {activeTab === 'giveaway'     && <AdminGiveaway />}
 
       </div>
     </div>
