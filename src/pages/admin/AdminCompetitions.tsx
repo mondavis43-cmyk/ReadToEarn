@@ -265,6 +265,23 @@ export function AdminCompetitions() {
     loadData();
   }
 
+  async function handleCloseAndPay(id: string) {
+  if (!confirm('Close this competition and distribute prizes? This cannot be undone.')) return;
+
+  const { data, error } = await supabase.rpc('close_competition_and_pay', {
+    p_competition_id: id,
+  });
+
+  if (error) {
+    setError('Payout failed: ' + error.message);
+  } else if (data === 'already_completed') {
+    setError('This competition has already been paid out.');
+  } else {
+    setSuccess('Competition closed and prizes distributed.');
+    loadData();
+  }
+}
+
   async function handleDelete(id: string) {
     if (!confirm('Delete this competition?')) return;
     await supabase.from('competitions').delete().eq('id', id);
