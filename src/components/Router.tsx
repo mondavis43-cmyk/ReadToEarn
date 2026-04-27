@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Home } from '../pages/Home';
 import { Library } from '../pages/Library';
+import { AuthorDashboard } from '../pages/AuthorDashboard';
 import { Login } from '../pages/Login';
 import { Signup } from '../pages/Signup';
 import { Quiz } from '../pages/Quiz';
@@ -95,6 +96,8 @@ export const Router = () => {
     return <AMASession sessionId={sessionId} />;
   }
 
+  if (route === '/pricing') return <Pricing />;
+
   if (WAITLIST_MODE && !user) return <Waitlist />;
 
   if (!user && route === '/signup') return <Signup />;
@@ -159,13 +162,13 @@ export const Router = () => {
       {route === '/how-it-works' && <HowItWorks />}
       {route === '/competitions' && <Competitions />}
       {route === '/earn' && <Earn />}
-      {route === '/pricing' && <Pricing />}
       {route === '/profile' && <Profile />}
       {route === '/cashout' && <Cashout />}
       {route === '/refer' && <Refer />}
       {route === '/request-book' && <RequestBook />}
       {route === '/faq' && <FAQ />}
       {route === '/authors' && <Authors />}
+      {route === '/author-dashboard' && <AuthorDashboard />}
       {route === '/author-submit' && <AuthorSubmit />}
       {route === '/author-bounty' && <AuthorBounty />}
       {route === '/author-competition' && <AuthorCompetition />}
