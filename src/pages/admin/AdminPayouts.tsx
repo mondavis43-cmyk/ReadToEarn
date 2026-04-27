@@ -35,56 +35,51 @@ export function AdminPayouts() {
   }
 
   async function handleUpdateStatus(
-  id: string,
-  status: 'approved' | 'paid' | 'rejected'
-) {
-  // Get the cashout request so we know the amount and user
-  const { data: req, error: fetchErr } = await supabase
-    .from('cashout_requests')
-    .select('user_id, amount')
-    .eq('id', id)
-    .single();
-
-  if (fetchErr || !req) { setError('Could not find request.'); return; }
-
-  // Update the cashout request status
-  const { error: err } = await supabase
-    .from('cashout_requests')
-    .update({ status })
-    .eq('id', id);
-
-  if (err) { setError('Failed to update status.'); return; }
-
-  // On rejection — restore held_balance back to available_balance
-  if (status === 'rejected') {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('available_balance, held_balance')
-      .eq('id', req.user_id)
+    id: string,
+    status: 'approved' | 'paid' | 'rejected'
+  ) {
+    const { data: req, error: fetchErr } = await supabase
+      .from('cashout_requests')
+      .select('user_id, amount')
+      .eq('id', id)
       .single();
 
-    if (profile) {
+    if (fetchErr || !req) { setError('Could not find request.'); return; }
+
+    const { error: err } = await supabase
+      .from('cashout_requests')
+      .update({ status })
+      .eq('id', id);
+
+    if (err) { setError('Failed to update status.'); return; }
+
+    if (status === 'rejected') {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('available_balance, held_balance')
+        .eq('id', req.user_id)
+        .single();
+
+      if (profile) {
+        await supabase
+          .from('profiles')
+          .update({
+            available_balance: profile.available_balance + profile.held_balance,
+            held_balance: 0,
+          })
+          .eq('id', req.user_id);
+      }
+    }
+
+    if (status === 'paid') {
       await supabase
         .from('profiles')
-        .update({
-          available_balance: profile.available_balance + profile.held_balance,
-          held_balance: 0,
-        })
+        .update({ held_balance: 0 })
         .eq('id', req.user_id);
     }
-  }
 
-  // On paid — clear held_balance (payout is done, money is gone)
-  if (status === 'paid') {
-    await supabase
-      .from('profiles')
-      .update({ held_balance: 0 })
-      .eq('id', req.user_id);
-  }
-
-  setSuccess(`Request marked as ${status}.`);
-  loadData();
-}
+    setSuccess(`Request marked as ${status}.`);
+    loadData();
   }
 
   async function handleClearTaxFlag(id: string) {
@@ -140,7 +135,6 @@ export function AdminPayouts() {
         </div>
       )}
 
-      {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">
           Payouts
@@ -155,7 +149,6 @@ export function AdminPayouts() {
         </p>
       </div>
 
-      {/* Filter tabs */}
       <div className="flex flex-wrap gap-2">
         {FILTERS.map(({ key, label }) => (
           <button
@@ -172,7 +165,6 @@ export function AdminPayouts() {
         ))}
       </div>
 
-      {/* List */}
       {loading ? (
         <p className="text-sm text-[#6B7280] dark:text-gray-400">Loading...</p>
       ) : filtered.length === 0 ? (
@@ -188,7 +180,6 @@ export function AdminPayouts() {
                   : 'border-[#e8e0d5] dark:border-gray-700'
               }`}
             >
-              {/* Tax review banner */}
               {req.requires_tax_review && (
                 <div className="flex items-center gap-2 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg px-3 py-2 text-orange-700 dark:text-orange-400 text-xs">
                   <AlertTriangle size={13} />
@@ -224,7 +215,6 @@ export function AdminPayouts() {
                 </span>
               </div>
 
-              {/* Actions */}
               <div className="flex gap-2 flex-wrap">
                 {req.status === 'pending' && (
                   <>
