@@ -42,8 +42,8 @@ type Tab =
   | 'tournaments'
   | 'earning'
   | 'ama'
-  | 'submissions';
-  | 'sponsored_pins'
+  | 'submissions'
+  | 'sponsored_pins';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'books',        label: 'Books & Questions' },
