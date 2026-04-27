@@ -174,7 +174,7 @@ export const Profile = () => {
             <div className={`border-l ${dividerColor} pl-8`}>
               <p className={`text-xs font-bold uppercase tracking-wider ${subColor} mb-1`}>Site Credit</p>
               <p className="text-4xl font-serif text-[#D4A843]">${profile?.site_credit?.toFixed(2) ?? '0.00'}</p>
-              <p className={`text-[10px] ${subColor} mt-2 uppercase`}>Use for entries & boosts</p>
+              <p className={`text-[10px] ${subColor} mt-2 uppercase`}>Earn from Daily Trivia. Use it for entries & boosts</p>
             </div>
           </div>
         </div>
