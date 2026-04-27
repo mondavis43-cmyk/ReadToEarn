@@ -130,29 +130,46 @@ export const Quiz = ({ bookId, competitionId, competitionRound }: QuizProps) => 
   }, [reportOpen]);
 
   const loadQuiz = async () => {
-    if (!user) return;
+  if (!user) return;
 
-    // For competition quizzes check elimination_progress instead of completed_books
-    const completedCheck = isCompetitionQuiz
-      ? supabase
-          .from('elimination_progress')
-          .select('id')
-          .eq('competition_id', competitionId)
-          .eq('user_id', user.id)
-          .eq('round', competitionRound)
-          .maybeSingle()
-      : supabase
-          .from('completed_books')
-          .select('id, passed')
-          .eq('user_id', user.id)
-          .eq('book_id', bookId)
-          .maybeSingle();
+  // ── PAYMENT GATE (competition quizzes only) ──────────────────────────
+  if (isCompetitionQuiz) {
+    const { data: entry, error: entryError } = await supabase
+      .from('competition_entries')
+      .select('id')
+      .eq('competition_id', competitionId)
+      .eq('user_id', user.id)
+      .maybeSingle();
 
-    const [bookResult, questionsResult, completedResult] = await Promise.all([
-      supabase.from('books').select('*').eq('id', bookId).single(),
-      supabase.from('questions').select('*').eq('book_id', bookId),
-      completedCheck,
-    ]);
+    if (entryError || !entry) {
+      // No paid entry found — redirect back to competition page
+      navigateTo(`/competition/${competitionId}`);
+      return;
+    }
+  }
+  // ────────────────────────────────────────────────────────────────────
+
+  // For competition quizzes check elimination_progress instead of completed_books
+  const completedCheck = isCompetitionQuiz
+    ? supabase
+        .from('elimination_progress')
+        .select('id')
+        .eq('competition_id', competitionId)
+        .eq('user_id', user.id)
+        .eq('round', competitionRound)
+        .maybeSingle()
+    : supabase
+        .from('completed_books')
+        .select('id, passed')
+        .eq('user_id', user.id)
+        .eq('book_id', bookId)
+        .maybeSingle();
+
+  const [bookResult, questionsResult, completedResult] = await Promise.all([
+    supabase.from('books').select('*').eq('id', bookId).single(),
+    supabase.from('questions').select('*').eq('book_id', bookId),
+    completedCheck,
+  ]);
 
     if (bookResult.data) setBook(bookResult.data);
 
