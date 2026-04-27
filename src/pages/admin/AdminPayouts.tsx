@@ -35,16 +35,56 @@ export function AdminPayouts() {
   }
 
   async function handleUpdateStatus(
-    id: string,
-    status: 'approved' | 'paid' | 'rejected'
-  ) {
-    const { error: err } = await supabase
-      .from('cashout_requests')
-      .update({ status })
-      .eq('id', id);
-    if (err) { setError('Failed to update status.'); return; }
-    setSuccess(`Request marked as ${status}.`);
-    loadData();
+  id: string,
+  status: 'approved' | 'paid' | 'rejected'
+) {
+  // Get the cashout request so we know the amount and user
+  const { data: req, error: fetchErr } = await supabase
+    .from('cashout_requests')
+    .select('user_id, amount')
+    .eq('id', id)
+    .single();
+
+  if (fetchErr || !req) { setError('Could not find request.'); return; }
+
+  // Update the cashout request status
+  const { error: err } = await supabase
+    .from('cashout_requests')
+    .update({ status })
+    .eq('id', id);
+
+  if (err) { setError('Failed to update status.'); return; }
+
+  // On rejection — restore held_balance back to available_balance
+  if (status === 'rejected') {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('available_balance, held_balance')
+      .eq('id', req.user_id)
+      .single();
+
+    if (profile) {
+      await supabase
+        .from('profiles')
+        .update({
+          available_balance: profile.available_balance + profile.held_balance,
+          held_balance: 0,
+        })
+        .eq('id', req.user_id);
+    }
+  }
+
+  // On paid — clear held_balance (payout is done, money is gone)
+  if (status === 'paid') {
+    await supabase
+      .from('profiles')
+      .update({ held_balance: 0 })
+      .eq('id', req.user_id);
+  }
+
+  setSuccess(`Request marked as ${status}.`);
+  loadData();
+}
   }
 
   async function handleClearTaxFlag(id: string) {
