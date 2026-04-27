@@ -92,7 +92,13 @@ export const Cashout = () => {
       return;
     }
 
-    await supabase.from('profiles').update({ available_balance: 0 }).eq('id', user!.id);
+    await supabase
+  .from('profiles')
+  .update({
+    held_balance: balance,
+    available_balance: 0,
+  })
+  .eq('id', user.id);
     setSuccess(true);
     setSubmitting(false);
   };
