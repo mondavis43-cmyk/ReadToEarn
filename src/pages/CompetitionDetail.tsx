@@ -132,10 +132,83 @@ if (preReg) setPreRegistered(true);
     return elimProgress.some(r => r.round === 3);
   };
 
-  const handleEnter = () => {
-    if (!userId) { navigateTo('/signup'); return; }
-    if (!competition) return;
-    setError('');
+  const handleEnter = async () => {
+  if (!userId) { navigateTo('/signup'); return; }
+  if (!competition) return;
+  setError('');
+
+  // Check if user pre-registered — if so, always use base fee
+  const { data: preReg } = await supabase
+    .from('pre_registrations')
+    .select('id')
+    .eq('competition_id', competition.id)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  const now = new Date();
+  const starts = new Date(competition.start_date);
+  const isLate = now > starts && !preReg; // pre-registered users are never "late"
+  const baseFee = competition.entry_fee;
+  const actualFee = isLate ? baseFee * LATE_FEE_MULTIPLIER : baseFee;
+  const amountCents = Math.round(actualFee * 100);
+
+  (window as any).__checkoutItem = {
+    type: 'competition_entry',
+    label: isLate
+      ? `Competition Entry (Late Fee) — ${competition.title}`
+      : `Competition Entry — ${competition.title}`,
+    amount: amountCents,
+    metadata: {
+      competition_id: competition.id,
+      format: competition.type,
+      title: competition.title,
+      is_late_entry: isLate ? 'true' : 'false',
+    },
+  };
+
+  (window as any).__pendingSubmission = {
+    competition_id: competition.id,
+    is_late_entry: isLate,
+  };
+
+  // Mark pre-registration as converted
+  if (preReg) {
+    await supabase
+      .from('pre_registrations')
+      .update({ converted: true })
+      .eq('id', preReg.id);
+  }
+
+  window.history.pushState({}, '', '/checkout');
+  window.dispatchEvent(new PopStateEvent('popstate'));
+};
+
+    const handlePreRegister = async () => {
+  if (!userId) { navigateTo('/signup'); return; }
+  if (!competition) return;
+  setPreRegLoading(true);
+  setError('');
+
+  const { error } = await supabase
+    .from('pre_registrations')
+    .insert({
+      competition_id: competition.id,
+      user_id: userId,
+      converted: false,
+    });
+
+  if (error) {
+    setError('Could not pre-register. Please try again.');
+  } else {
+    setPreRegistered(true);
+    // Increment the display count
+    await supabase
+      .from('competitions')
+      .update({ pre_registration_count: (competition.pre_registration_count ?? 0) + 1 })
+      .eq('id', competition.id);
+  }
+  setPreRegLoading(false);
+};
 
     const now = new Date();
     const starts = new Date(competition.start_date);
