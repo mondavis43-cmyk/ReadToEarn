@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { ExternalLink, Star } from 'lucide-react';
 
@@ -24,7 +25,10 @@ interface SponsoredPin {
   category: string | null;
 }
 
-const GENRES = ['All', 'Romance', 'Fantasy', 'Mystery', 'Thriller', 'Sci-Fi', 'Young Adult', 'Historical', 'Literary', 'Horror', 'Non-Fiction', 'Other'];
+const GENRES = [
+  'All', 'Romance', 'Fantasy', 'Mystery', 'Thriller', 'Sci-Fi',
+  'Young Adult', 'Historical', 'Literary', 'Horror', 'Non-Fiction', 'Other',
+];
 
 const ROTATIONS = [
   'rotate-[-1.5deg]', 'rotate-[1deg]', 'rotate-[-0.5deg]', 'rotate-[2deg]',
@@ -33,28 +37,75 @@ const ROTATIONS = [
 
 export const BulletinBoard = () => {
   const { isDark } = useTheme();
+  const { user }   = useAuth();
+
   const [books, setBooks]           = useState<BulletinBook[]>([]);
   const [filtered, setFiltered]     = useState<BulletinBook[]>([]);
   const [sponsored, setSponsored]   = useState<SponsoredPin[]>([]);
   const [activeGenre, setActiveGenre] = useState('All');
   const [loading, setLoading]       = useState(true);
+  const [isUpgraded, setIsUpgraded] = useState(false);
 
-  const bg             = isDark ? '#0f172a'  : '#F5F0E8';
-  const cardBg         = isDark ? '#1e293b'  : '#FFFDF7';
-  const cardBorder     = isDark ? '#334155'  : '#e8e0d0';
-  const textPrimary    = isDark ? '#f1f5f9'  : '#1B2A4A';
-  const textSecondary  = isDark ? '#94a3b8'  : '#6b7280';
-  const accent         = '#D4A843';
-  const tabActiveBg    = isDark ? '#D4A843'  : '#1B2A4A';
-  const tabActiveText  = '#FFFFFF';
-  const tabInactiveBg  = isDark ? '#1e293b'  : '#FFFFFF';
-  const tabInactiveText = isDark ? '#94a3b8' : '#6b7280';
-  const tabBorder      = isDark ? '#334155'  : '#e2d9c8';
-  const pinColor       = isDark ? '#ef4444'  : '#dc2626';
-  const sponsorBg      = isDark ? '#1e293b'  : '#fffbf0';
-  const sponsorBorder  = isDark ? '#D4A843'  : '#D4A843';
+  const bg              = isDark ? '#0f172a'  : '#F5F0E8';
+  const cardBg          = isDark ? '#1e293b'  : '#FFFDF7';
+  const cardBorder      = isDark ? '#334155'  : '#e8e0d0';
+  const textPrimary     = isDark ? '#f1f5f9'  : '#1B2A4A';
+  const textSecondary   = isDark ? '#94a3b8'  : '#6b7280';
+  const accent          = '#D4A843';
+  const tabActiveBg     = isDark ? '#D4A843'  : '#1B2A4A';
+  const tabActiveText   = '#FFFFFF';
+  const tabInactiveBg   = isDark ? '#1e293b'  : '#FFFFFF';
+  const tabInactiveText = isDark ? '#94a3b8'  : '#6b7280';
+  const tabBorder       = isDark ? '#334155'  : '#e2d9c8';
+  const pinColor        = isDark ? '#ef4444'  : '#dc2626';
+  const sponsorBg       = isDark ? '#1e293b'  : '#FFFDF7';
 
-  useEffect(() => { loadData(); }, []);
+  const loadData = async () => {
+    setLoading(true);
+
+    // 1. check upgrade status first
+    let upgraded = false;
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_upgraded')
+        .eq('id', user.id)
+        .single();
+      upgraded = profile?.is_upgraded ?? false;
+      setIsUpgraded(upgraded);
+    }
+
+    // 2. fetch books (always shown to everyone)
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    const dateLimit = ninetyDaysAgo.toISOString().split('T')[0];
+
+    const { data: booksData } = await supabase
+      .from('books')
+      .select('id, title, author, cover_url, genre, release_date, blurb, is_listed, buy_link')
+      .eq('on_bulletin', true)
+      .gte('release_date', dateLimit)
+      .order('release_date', { ascending: false });
+
+    setBooks(booksData ?? []);
+    setFiltered(booksData ?? []);
+
+    // 3. fetch sponsored pins only for non-upgraded users
+    if (!upgraded) {
+      const { data: sponsoredData } = await supabase
+        .from('sponsored_pins')
+        .select('id, brand_name, tagline, image_url, site_url, category')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+      setSponsored(sponsoredData ?? []);
+    } else {
+      setSponsored([]);
+    }
+
+    setLoading(false);
+  };
+
+  useEffect(() => { loadData(); }, [user]);
 
   useEffect(() => {
     if (activeGenre === 'All') {
@@ -64,75 +115,62 @@ export const BulletinBoard = () => {
     }
   }, [activeGenre, books]);
 
-  const loadData = async () => {
-    const dateLimit = new Date();
-    dateLimit.setDate(dateLimit.getDate() - 90);
-
-    const [{ data: booksData }, { data: sponsoredData }] = await Promise.all([
-      supabase
-        .from('books')
-        .select('id, title, author, cover_url, genre, release_date, blurb, is_listed, buy_link')
-        .eq('on_bulletin', true)
-        .gte('release_date', dateLimit.toISOString().split('T')[0])
-        .order('release_date', { ascending: false }),
-      supabase
-        .from('sponsored_pins')
-        .select('id, brand_name, tagline, image_url, site_url, category')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false }),
-    ]);
-
-    setBooks(booksData || []);
-    setSponsored(sponsoredData || []);
-    setLoading(false);
-  };
-
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr + 'T00:00:00');
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const isFuture = (dateStr: string) =>
-    new Date(dateStr + 'T00:00:00') > new Date();
+  const isFuture = (dateStr: string | null) => {
+    if (!dateStr) return false;
+    return new Date(dateStr + 'T00:00:00') > new Date();
+  };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: bg, transition: 'background 0.3s' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: bg, paddingBottom: '80px' }}>
 
       {/* Header */}
-      <div style={{ borderBottom: `1px solid ${cardBorder}`, padding: '24px 16px' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <span style={{ fontSize: 20 }}>📌</span>
-              <h1 style={{ fontFamily: 'serif', fontSize: 28, fontWeight: 700, color: textPrimary, margin: 0 }}>
-                Bulletin Board
+      <div style={{
+        padding: '24px 16px 16px',
+        borderBottom: `1px solid ${isDark ? '#334155' : '#e8e0d0'}`,
+        backgroundColor: isDark ? '#1e293b' : '#FFFDF7',
+      }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h1 style={{ fontSize: '22px', fontWeight: 700, color: textPrimary, margin: 0 }}>
+                📌 Bulletin Board
               </h1>
-              <span style={{ fontSize: 20 }}>📌</span>
+              <p style={{ fontSize: '13px', color: textSecondary, marginTop: '4px' }}>
+                New releases, upcoming books, and community picks
+              </p>
             </div>
-            <p style={{ fontSize: 13, color: textSecondary, margin: 0 }}>
-              New releases, upcoming books, and featured brands — all in one place.
-            </p>
+            <a
+              href="/bulletin-submit"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '8px 16px', borderRadius: '8px', fontSize: '13px',
+                fontWeight: 600, textDecoration: 'none',
+                backgroundColor: accent, color: '#1B2A4A',
+                transition: 'opacity 0.2s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
+              onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+            >
+              <Star size={14} /> Post to Board
+            </a>
           </div>
-          <button
-            onClick={() => { window.history.pushState({}, '', '/bulletin-submit'); window.dispatchEvent(new PopStateEvent('popstate')); }}
-            style={{ backgroundColor: accent, color: '#1B2A4A', fontWeight: 600, fontSize: 13, padding: '10px 20px', borderRadius: 10, border: 'none', cursor: 'pointer' }}
-          >
-            + Post to Board
-          </button>
         </div>
       </div>
 
-      {/* Sponsored Pins Row */}
-      {sponsored.length > 0 && (
-        <div style={{ borderBottom: `1px solid ${cardBorder}`, padding: '16px', backgroundColor: isDark ? '#0f172a' : '#fffdf5' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-              <Star size={13} color={accent} fill={accent} />
-              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: accent }}>
-                Featured Sponsors
-              </span>
-            </div>
-            <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px 16px' }}>
+
+        {/* Sponsored Pins — hidden for upgraded users */}
+        {!isUpgraded && sponsored.length > 0 && (
+          <div style={{ marginBottom: '24px' }}>
+            <p style={{ fontSize: '11px', fontWeight: 600, color: textSecondary, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '10px' }}>
+              Sponsored
+            </p>
+            <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '8px' }}>
               {sponsored.map(pin => (
                 <a
                   key={pin.id}
@@ -140,176 +178,197 @@ export const BulletinBoard = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
-                    flexShrink: 0,
-                    width: 200,
+                    flexShrink: 0, width: '160px', borderRadius: '12px',
+                    border: `1.5px solid ${accent}`,
                     backgroundColor: sponsorBg,
-                    border: `1.5px solid ${sponsorBorder}`,
-                    borderRadius: 12,
-                    overflow: 'hidden',
-                    textDecoration: 'none',
-                    display: 'block',
-                    transition: 'transform 0.15s, box-shadow 0.15s',
+                    padding: '12px', textDecoration: 'none',
+                    transition: 'transform 0.2s, box-shadow 0.2s',
+                    display: 'flex', flexDirection: 'column', gap: '8px',
                   }}
                   onMouseEnter={e => {
-                    (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
-                    (e.currentTarget as HTMLElement).style.boxShadow = `0 6px 20px ${accent}30`;
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = `0 4px 16px ${accent}40`;
                   }}
                   onMouseLeave={e => {
-                    (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
-                    (e.currentTarget as HTMLElement).style.boxShadow = 'none';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
-                  {/* Sponsor image */}
-                  <div style={{ width: '100%', height: 110, backgroundColor: isDark ? '#334155' : '#f0ebe0', overflow: 'hidden' }}>
-                    {pin.image_url ? (
-                      <img
-                        src={pin.image_url}
-                        alt={pin.brand_name}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
-                    ) : (
-                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>
-                        🛍️
-                      </div>
-                    )}
-                  </div>
-                  {/* Sponsor info */}
-                  <div style={{ padding: '10px 12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 130 }}>
-                        {pin.brand_name}
-                      </span>
-                      <ExternalLink size={11} color={accent} />
-                    </div>
+                  {pin.image_url && (
+                    <img
+                      src={pin.image_url}
+                      alt={pin.brand_name}
+                      style={{ width: '100%', height: '110px', objectFit: 'cover', borderRadius: '8px' }}
+                    />
+                  )}
+                  <div>
+                    <p style={{ fontSize: '12px', fontWeight: 700, color: textPrimary, margin: 0 }}>{pin.brand_name}</p>
                     {pin.category && (
-                      <span style={{ fontSize: 10, fontWeight: 600, color: accent, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                        {pin.category}
-                      </span>
+                      <p style={{ fontSize: '10px', color: accent, margin: '2px 0 0', fontWeight: 600 }}>{pin.category}</p>
                     )}
-                    <p style={{ fontSize: 11, color: textSecondary, margin: '4px 0 0', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                      {pin.tagline}
-                    </p>
+                    <p style={{ fontSize: '11px', color: textSecondary, margin: '4px 0 0', lineHeight: 1.4 }}>{pin.tagline}</p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
+                    <ExternalLink size={11} color={accent} />
+                    <span style={{ fontSize: '10px', color: accent, fontWeight: 600 }}>Visit</span>
                   </div>
                 </a>
               ))}
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Genre Tabs */}
-      <div style={{ padding: '16px 16px 0', borderBottom: `1px solid ${cardBorder}` }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 12 }}>
-          {GENRES.map(g => (
+        {/* Genre Filter Tabs */}
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '20px' }}>
+          {GENRES.map(genre => (
             <button
-              key={g}
-              onClick={() => setActiveGenre(g)}
+              key={genre}
+              onClick={() => setActiveGenre(genre)}
               style={{
-                flexShrink: 0,
-                padding: '6px 14px',
-                borderRadius: 20,
+                flexShrink: 0, padding: '6px 14px', borderRadius: '20px',
+                fontSize: '12px', fontWeight: 600, cursor: 'pointer',
                 border: `1px solid ${tabBorder}`,
-                backgroundColor: activeGenre === g ? tabActiveBg : tabInactiveBg,
-                color: activeGenre === g ? tabActiveText : tabInactiveText,
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.15s',
+                backgroundColor: activeGenre === genre ? tabActiveBg : tabInactiveBg,
+                color: activeGenre === genre ? tabActiveText : tabInactiveText,
+                transition: 'all 0.2s',
               }}
             >
-              {g}
+              {genre}
             </button>
           ))}
         </div>
-      </div>
 
-      {/* Board */}
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 16px' }}>
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '80px 0', color: textSecondary }}>Loading board...</div>
-        ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '80px 0' }}>
-            <p style={{ fontSize: 32, marginBottom: 8 }}>📌</p>
-            <p style={{ color: textSecondary, fontSize: 14 }}>No books in this genre yet.</p>
+        {/* Loading */}
+        {loading && (
+          <div style={{ textAlign: 'center', padding: '60px 0', color: textSecondary }}>
+            Loading board...
           </div>
-        ) : (
+        )}
+
+        {/* Empty state */}
+        {!loading && filtered.length === 0 && (
           <div style={{
-            columns: '4 220px',
-            columnGap: 16,
+            textAlign: 'center', padding: '60px 20px',
+            borderRadius: '16px', border: `1px dashed ${cardBorder}`,
+            backgroundColor: cardBg,
           }}>
-            {filtered.map((book, i) => {
-              const rotation = ROTATIONS[i % ROTATIONS.length];
-              return (
-                <div
-                  key={book.id}
-                  className={`${rotation} hover:rotate-0`}
-                  style={{
-                    breakInside: 'avoid',
-                    marginBottom: 20,
-                    backgroundColor: cardBg,
-                    border: `1px solid ${cardBorder}`,
-                    borderRadius: 12,
-                    overflow: 'hidden',
-                    boxShadow: isDark
-                      ? '0 4px 16px rgba(0,0,0,0.4)'
-                      : '0 4px 16px rgba(0,0,0,0.08)',
-                    transition: 'transform 0.2s, box-shadow 0.2s',
-                    cursor: book.buy_link ? 'pointer' : 'default',
-                  }}
-                >
-                  {/* Pin */}
-                  <div style={{ textAlign: 'center', paddingTop: 10 }}>
-                    <span style={{ fontSize: 18, color: pinColor }}>📌</span>
-                  </div>
+            <p style={{ fontSize: '32px', margin: '0 0 12px' }}>📌</p>
+            <p style={{ color: textPrimary, fontWeight: 600, margin: '0 0 6px' }}>Nothing pinned yet</p>
+            <p style={{ color: textSecondary, fontSize: '13px', margin: 0 }}>
+              {activeGenre === 'All' ? 'No books on the board right now.' : `No ${activeGenre} books on the board.`}
+            </p>
+          </div>
+        )}
 
-                  {/* Cover */}
-                  <div
-                    style={{ margin: '8px 12px', borderRadius: 8, overflow: 'hidden', aspectRatio: '2/3', backgroundColor: isDark ? '#334155' : '#f0ebe0', cursor: book.buy_link ? 'pointer' : 'default' }}
-                    onClick={() => book.buy_link && window.open(book.buy_link, '_blank')}
-                  >
-                    {book.cover_url ? (
-                      <img src={book.cover_url} alt={book.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>📚</div>
-                    )}
-                  </div>
-
-                  {/* Info */}
-                  <div style={{ padding: '10px 12px 14px' }}>
-                    {book.genre && (
-                      <span style={{ fontSize: 10, fontWeight: 700, color: accent, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                        {book.genre}
-                      </span>
-                    )}
-                    <div
-                      style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, cursor: book.buy_link ? 'pointer' : 'default' }}
-                      onClick={() => book.buy_link && window.open(book.buy_link, '_blank')}
-                    >
-                      <p style={{ fontFamily: 'serif', fontSize: 14, fontWeight: 700, color: textPrimary, margin: 0, lineHeight: 1.3 }}>
-                        {book.title}
-                      </p>
-                      {book.buy_link && <ExternalLink size={11} color={accent} style={{ flexShrink: 0 }} />}
-                    </div>
-                    <p style={{ fontSize: 12, color: textSecondary, margin: '2px 0 6px' }}>{book.author}</p>
-                    {book.blurb && (
-                      <p style={{ fontSize: 12, color: textSecondary, margin: '0 0 6px', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        {book.blurb}
-                      </p>
-                    )}
-                    {book.release_date && (
-                      <p style={{ fontSize: 11, color: accent, margin: 0, fontWeight: 600 }}>
-                        {isFuture(book.release_date) ? 'Releasing: ' : ''}{formatDate(book.release_date)}
-                      </p>
-                    )}
-                    {book.is_listed && (
-                      <span style={{ display: 'inline-block', marginTop: 6, fontSize: 9, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', backgroundColor: accent, color: '#1B2A4A', padding: '2px 7px', borderRadius: 20 }}>
-                        READ TO EARN
-                      </span>
-                    )}
-                  </div>
+        {/* Book Cards — masonry columns */}
+        {!loading && filtered.length > 0 && (
+          <div style={{ columns: '220px', columnGap: '16px' }}>
+            {filtered.map((book, i) => (
+              <div
+                key={book.id}
+                className={ROTATIONS[i % ROTATIONS.length]}
+                style={{
+                  breakInside: 'avoid', marginBottom: '16px',
+                  borderRadius: '12px', border: `1px solid ${cardBorder}`,
+                  backgroundColor: cardBg, overflow: 'hidden',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  position: 'relative',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLDivElement).style.transform = 'rotate(0deg) translateY(-3px)';
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = `0 8px 24px ${isDark ? '#00000060' : '#1B2A4A20'}`;
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLDivElement).style.transform = '';
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = '';
+                }}
+              >
+                {/* Pin emoji */}
+                <div style={{
+                  position: 'absolute', top: '-8px', left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontSize: '18px', zIndex: 10,
+                  filter: `drop-shadow(0 2px 3px ${pinColor}60)`,
+                }}>
+                  📌
                 </div>
-              );
-            })}
+
+                {/* Cover */}
+                {book.cover_url && (
+                  <img
+                    src={book.cover_url}
+                    alt={book.title}
+                    style={{ width: '100%', aspectRatio: '2/3', objectFit: 'cover', display: 'block' }}
+                  />
+                )}
+
+                <div style={{ padding: '12px' }}>
+                  {/* Genre tag */}
+                  {book.genre && (
+                    <span style={{
+                      display: 'inline-block', fontSize: '10px', fontWeight: 700,
+                      color: accent, backgroundColor: `${accent}18`,
+                      padding: '2px 8px', borderRadius: '20px', marginBottom: '6px',
+                      letterSpacing: '0.04em', textTransform: 'uppercase',
+                    }}>
+                      {book.genre}
+                    </span>
+                  )}
+
+                  <p style={{ fontSize: '13px', fontWeight: 700, color: textPrimary, margin: '0 0 2px', lineHeight: 1.3 }}>
+                    {book.title}
+                  </p>
+                  <p style={{ fontSize: '11px', color: textSecondary, margin: '0 0 8px' }}>
+                    by {book.author}
+                  </p>
+
+                  {book.blurb && (
+                    <p style={{
+                      fontSize: '11px', color: textSecondary, margin: '0 0 8px',
+                      lineHeight: 1.5, display: '-webkit-box',
+                      WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                    }}>
+                      {book.blurb}
+                    </p>
+                  )}
+
+                  {/* Release date */}
+                  {book.release_date && (
+                    <p style={{ fontSize: '10px', color: isFuture(book.release_date) ? accent : textSecondary, margin: '0 0 8px', fontWeight: isFuture(book.release_date) ? 700 : 400 }}>
+                      {isFuture(book.release_date) ? '🗓 Coming ' : '📅 Released '}{formatDate(book.release_date)}
+                    </p>
+                  )}
+
+                  {/* READ TO EARN badge */}
+                  {book.is_listed && (
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '4px',
+                      fontSize: '10px', fontWeight: 700,
+                      color: '#1B2A4A', backgroundColor: accent,
+                      padding: '3px 8px', borderRadius: '20px', marginBottom: '8px',
+                    }}>
+                      <Star size={10} fill="#1B2A4A" /> READ TO EARN
+                    </div>
+                  )}
+
+                  {/* Buy link */}
+                  {book.buy_link && (
+                    <a
+                      href={book.buy_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '4px',
+                        fontSize: '11px', fontWeight: 600, color: accent,
+                        textDecoration: 'none',
+                      }}
+                    >
+                      <ExternalLink size={11} /> Get this book
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
