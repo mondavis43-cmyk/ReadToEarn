@@ -69,6 +69,21 @@ export function AdminBounties() {
       status: 'active',
     });
     if (err) { setError('Failed to save bounty.'); setSaving(false); return; }
+      // #11: notify subscribers
+  const { data: newBountyRow } = await supabase
+    .from('bounties')
+    .select('id, books(title)')
+    .eq('book_id', newBounty.book_id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+  if (newBountyRow) {
+    await supabase.rpc('notify_subscribers_new_earning', {
+      p_type:  'bounty',
+      p_title: (newBountyRow.books as any)?.title ?? 'New Bounty',
+      p_id:    newBountyRow.id,
+    });
+  }
     setSuccess('Bounty created!');
     setNewBounty(emptyBounty);
     setShowForm(false);
