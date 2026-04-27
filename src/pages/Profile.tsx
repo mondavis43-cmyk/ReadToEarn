@@ -40,8 +40,6 @@ export const Profile = () => {
   const [savingBirthday, setSavingBirthday] = useState(false);
   const [birthdaySuccess, setBirthdaySuccess] = useState(false);
   const [birthdayError, setBirthdayError] = useState('');
-  const [claimingBonus, setClaimingBonus] = useState(false);
-  const [bonusClaimed, setBonusClaimed] = useState(false);
 
   const get1099Warning = () => {
     if (!profile) return null;
@@ -84,7 +82,10 @@ export const Profile = () => {
   const handleSaveBirthday = async () => {
     if (!user || !birthdayInput) return;
     setSavingBirthday(true);
-    const { error } = await supabase.from('profiles').update({ birthday: birthdayInput }).eq('id', user.id);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ birthday: birthdayInput })
+      .eq('id', user.id);
     if (!error) {
       setBirthdaySuccess(true);
       await loadProfile();
@@ -117,12 +118,12 @@ export const Profile = () => {
   };
 
   // Theme tokens
-  const bg = isDark ? 'bg-[#1B2A4A]' : 'bg-[#F5F0E8]';
-  const cardBg = isDark ? 'bg-[#162238]' : 'bg-white';
-  const cardBorder = isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10';
-  const headingColor = isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]';
-  const subColor = isDark ? 'text-[#F5F0E8]/50' : 'text-[#1B2A4A]/50';
-  const dividerColor = isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10';
+  const bg          = isDark ? 'bg-[#1B2A4A]'         : 'bg-[#F5F0E8]';
+  const cardBg      = isDark ? 'bg-[#162238]'          : 'bg-white';
+  const cardBorder  = isDark ? 'border-[#F5F0E8]/10'   : 'border-[#1B2A4A]/10';
+  const headingColor = isDark ? 'text-[#F5F0E8]'       : 'text-[#1B2A4A]';
+  const subColor    = isDark ? 'text-[#F5F0E8]/50'     : 'text-[#1B2A4A]/50';
+  const dividerColor = isDark ? 'border-[#F5F0E8]/10'  : 'border-[#1B2A4A]/10';
 
   if (loading) return (
     <div className={`min-h-screen ${bg} flex items-center justify-center`}>
@@ -154,6 +155,21 @@ export const Profile = () => {
             <p className={`text-xs ${subColor} mt-1`}>
               You've earned ${profile?.available_balance.toFixed(2)}. To keep earning past $600, we'll need your tax info soon for 1099 reporting.
             </p>
+          </div>
+        )}
+
+        {/* Giveaway Banner — upgraded members only */}
+        {profile?.is_upgraded && (
+          <div className="rounded-xl border border-[#D4A843]/40 bg-[#D4A843]/10 p-4 flex items-center gap-3">
+            <Gift className="w-5 h-5 text-[#D4A843] flex-shrink-0" />
+            <div>
+              <p className={`text-sm font-semibold ${headingColor}`}>
+                You're entered in this month's giveaway 🎉
+              </p>
+              <p className={`text-xs ${subColor} mt-0.5`}>
+                3 winners drawn monthly — prizes credited directly to your balance. No action needed.
+              </p>
+            </div>
           </div>
         )}
 
@@ -210,8 +226,8 @@ export const Profile = () => {
               </div>
               <p className={`text-xs ${subColor}`}>
                 {profile?.is_upgraded
-                  ? 'Active: Enjoy ad-free reading, priority survey access, and 30% off entries.'
-                  : 'Upgrade for $4.99/mo to unlock priority survey queues and entry discounts.'}
+                  ? 'Active: Enjoy ad-free reading, priority survey access, monthly giveaway entry, and 30% off entries.'
+                  : 'Upgrade for $4.99/mo to unlock ad-free reading, priority survey queues, monthly giveaway entry, entry discounts, and more.'}
               </p>
             </div>
             {!profile?.is_upgraded && (
