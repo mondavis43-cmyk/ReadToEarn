@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Home } from '../pages/Home';
 import { Library } from '../pages/Library';
-import { AuthorDashboard } from '../pages/AuthorDashboard';
 import { Login } from '../pages/Login';
 import { Signup } from '../pages/Signup';
 import { Quiz } from '../pages/Quiz';
@@ -168,7 +167,6 @@ export const Router = () => {
       {route === '/request-book' && <RequestBook />}
       {route === '/faq' && <FAQ />}
       {route === '/authors' && <Authors />}
-      {route === '/author-dashboard' && <AuthorDashboard />}
       {route === '/author-submit' && <AuthorSubmit />}
       {route === '/author-bounty' && <AuthorBounty />}
       {route === '/author-competition' && <AuthorCompetition />}
