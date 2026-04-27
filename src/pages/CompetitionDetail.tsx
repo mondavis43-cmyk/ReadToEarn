@@ -59,6 +59,8 @@ export const CompetitionDetail = () => {
   const [alreadyEntered, setAlreadyEntered] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [preRegistered, setPreRegistered] = useState(false);
+  const [preRegLoading, setPreRegLoading] = useState(false);
   // Elimination-specific
   const [elimProgress, setElimProgress] = useState<EliminationRound[]>([]);
 
@@ -77,6 +79,15 @@ export const CompetitionDetail = () => {
           .eq('user_id', user.id)
           .maybeSingle();
         if (entry) setAlreadyEntered(true);
+
+        // Check if user already pre-registered
+const { data: preReg } = await supabase
+  .from('pre_registrations')
+  .select('id')
+  .eq('competition_id', id)
+  .eq('user_id', user.id)
+  .maybeSingle();
+if (preReg) setPreRegistered(true);
 
         // Load elimination progress if any
         const { data: progress } = await supabase
