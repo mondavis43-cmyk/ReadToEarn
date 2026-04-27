@@ -75,7 +75,19 @@ function QuickTasksPanel() {
   async function handleSave() {
     if (!form.title) return;
     setSaving(true);
-    await supabase.from('quick_tasks').insert({ ...form, is_active: true });
+    setSaving(true);
+    const { data: newTask } = await supabase
+      .from('quick_tasks')
+      .insert({ ...form, is_active: true })
+      .select('id, title')
+      .single();
+    if (newTask) {
+      await supabase.rpc('notify_subscribers_new_earning', {
+        p_type:  'quick_task',
+        p_title: newTask.title,
+        p_id:    newTask.id,
+      });
+    }
     setForm({ title: '', description: '', payout: 0.35, task_type: 'social' });
     setShowForm(false);
     setSaving(false);
@@ -173,8 +185,19 @@ function SurveysPanel() {
 
   async function handleSave() {
     if (!form.title) return;
-    setSaving(true);
-    await supabase.from('surveys').insert({ ...form, is_active: true });
+      setSaving(true);
+    const { data: newSurvey } = await supabase
+      .from('surveys')
+      .insert({ ...form, is_active: true })
+      .select('id, title')
+      .single();
+    if (newSurvey) {
+      await supabase.rpc('notify_subscribers_new_earning', {
+        p_type:  'survey',
+        p_title: newSurvey.title,
+        p_id:    newSurvey.id,
+      });
+    }
     setForm({ title: '', description: '', payout: 1.00, question_count: 5 });
     setShowForm(false);
     setSaving(false);
@@ -271,7 +294,18 @@ function BetaPanel_() {
   async function handleSave() {
     if (!form.title) return;
     setSaving(true);
-    await supabase.from('beta_panels').insert({ ...form, genre: form.genre || null, spots_filled: 0, is_active: true });
+    const { data: newPanel } = await supabase
+      .from('beta_panels')
+      .insert({ ...form, genre: form.genre || null, spots_filled: 0, is_active: true })
+      .select('id, title')
+      .single();
+    if (newPanel) {
+      await supabase.rpc('notify_subscribers_new_earning', {
+        p_type:  'beta_panel',
+        p_title: newPanel.title,
+        p_id:    newPanel.id,
+      });
+    }
     setForm({ title: '', description: '', payout: 1.50, genre: '', spots_total: 10 });
     setShowForm(false);
     setSaving(false);
@@ -376,7 +410,18 @@ function SensitivityPanel_() {
   async function handleSave() {
     if (!form.title) return;
     setSaving(true);
-    await supabase.from('sensitivity_panels').insert({ ...form, sensitivity_type: form.sensitivity_type || null, spots_filled: 0, is_active: true });
+    const { data: newPanel } = await supabase
+      .from('sensitivity_panels')
+      .insert({ ...form, sensitivity_type: form.sensitivity_type || null, spots_filled: 0, is_active: true })
+      .select('id, title')
+      .single();
+    if (newPanel) {
+      await supabase.rpc('notify_subscribers_new_earning', {
+        p_type:  'sensitivity_panel',
+        p_title: newPanel.title,
+        p_id:    newPanel.id,
+      });
+    }
     setForm({ title: '', description: '', payout: 10.00, sensitivity_type: '', spots_total: 5 });
     setShowForm(false);
     setSaving(false);
