@@ -235,6 +235,12 @@ export const Authors = () => {
                   <p className={`text-sm ${textMuted}`}>
                     Host a Reddit-style Q&A directly on the platform. Readers submit questions, you answer. Free promotion, direct access to your audience, no social media drama.
                   </p>
+                  <button
+  onClick={() => navigateTo('/ama-request')}
+  className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-[#D4A843] hover:underline"
+>
+  Request an AMA <ArrowRight size={12} />
+</button>
                 </div>
               </div>
             </div>
