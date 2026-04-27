@@ -15,6 +15,7 @@ import { ResetPassword } from '../pages/ResetPassword';
 import { RequestBook } from '../pages/RequestBook';
 import { Refer } from '../pages/Refer';
 import { Authors } from '../pages/Authors';
+import { AuthorDashboard } from '../pages/AuthorDashboard';
 import { AuthorSubmit } from '../pages/AuthorSubmit';
 import { AuthorBounty } from '../pages/AuthorBounty';
 import { AuthorCompetition } from '../pages/AuthorCompetition';
@@ -144,6 +145,7 @@ export const Router = () => {
     '/account-settings',
     '/tournaments/create',
     '/ama-request',
+    '/author-dashboard',
   ];
 
   const isKnownRoute =
@@ -167,6 +169,7 @@ export const Router = () => {
       {route === '/request-book' && <RequestBook />}
       {route === '/faq' && <FAQ />}
       {route === '/authors' && <Authors />}
+      {route === '/author-dashboard' && <AuthorDashboard />}
       {route === '/author-submit' && <AuthorSubmit />}
       {route === '/author-bounty' && <AuthorBounty />}
       {route === '/author-competition' && <AuthorCompetition />}
