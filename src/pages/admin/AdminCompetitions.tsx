@@ -547,6 +547,15 @@ export function AdminCompetitions() {
                     Mark Completed
                   </button>
                 )}
+
+                {comp.status === 'active' && (
+  <button
+    onClick={() => handleCloseAndPay(comp.id)}
+    className="px-3 py-1 text-sm border border-yellow-500 text-yellow-500 rounded hover:bg-yellow-500/10"
+  >
+    Close & Pay Out
+  </button>
+)}
                 {(comp.status === 'upcoming' || comp.status === 'active') && (
                   <button
                     onClick={() => handleUpdateStatus(comp.id, 'canceled')}
