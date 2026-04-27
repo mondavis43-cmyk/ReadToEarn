@@ -592,17 +592,36 @@ if (preReg) setPreRegistered(true);
         )}
 
         {isUpcoming && (
-          <div className={`rounded-xl border p-5 text-center ${cardBg}`}>
-            <p className={`font-semibold mb-1 ${textPrimary}`}>Not open yet</p>
-            <p className={`text-sm ${textMuted}`}>
-              Pre-register on the{' '}
-              <button onClick={() => navigateTo('/competitions')} className="text-[#D4A843] hover:underline">
-                competitions page
-              </button>{' '}
-              to get notified when this goes live.
-            </p>
-          </div>
+  <div className={`rounded-xl border p-5 text-center ${cardBg}`}>
+    <p className={`font-semibold mb-2 ${textPrimary}`}>Not open yet</p>
+    {preRegistered ? (
+      <div className="rounded-lg bg-green-500/10 border border-green-500/30 p-3">
+        <p className="text-green-400 font-semibold text-sm">✓ You're pre-registered</p>
+        <p className="text-green-400/70 text-xs mt-1">
+          You'll pay the base entry fee of ${competition.entry_fee} when this goes live — no late fee.
+        </p>
+      </div>
+    ) : (
+      <>
+        <p className={`text-sm mb-4 ${textMuted}`}>
+          Pre-register now to lock in the base entry fee of ${competition.entry_fee}. No charge until the competition opens.
+        </p>
+        <button
+          onClick={handlePreRegister}
+          disabled={preRegLoading}
+          className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-3 rounded-xl hover:bg-[#c49a3a] transition disabled:opacity-50"
+        >
+          {preRegLoading ? 'Locking in...' : `Pre-Register — Lock in $${competition.entry_fee}`}
+        </button>
+        {competition.pre_registration_count != null && competition.pre_registration_count > 0 && (
+          <p className={`text-xs mt-2 ${textMuted}`}>
+            {competition.pre_registration_count} reader{competition.pre_registration_count !== 1 ? 's' : ''} pre-registered
+          </p>
         )}
+      </>
+    )}
+  </div>
+)}
 
         {isCompleted && (
           <div className={`rounded-xl border p-5 text-center ${cardBg}`}>
