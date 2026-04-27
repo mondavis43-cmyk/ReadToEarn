@@ -181,6 +181,7 @@ if (preReg) setPreRegistered(true);
   window.history.pushState({}, '', '/checkout');
   window.dispatchEvent(new PopStateEvent('popstate'));
 };
+    (window as any).__checkoutItem = {
     type: 'competition_entry',
     label: isLate
       ? `Competition Entry (Late Fee) — ${competition.title}`
