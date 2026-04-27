@@ -109,10 +109,10 @@ export function Pricing() {
               "Ad-free experience",
               "Access to the Referral Program",
               "Priority queue. You're first notified when new earning options open. Slots are limited and fill fast.",
-              "Early competition registration — see upcoming tournaments before the general public.",
               "1 competition entry at 30% off every month.",
-              "Subscriber-only competition every month. Free to enter, guaranteed prize pool regardless of entrant count. Top 3 win.",
-              "Cashout minimum drops to $5."
+              "Subscriber-only giveaway every month. Free to enter, guaranteed prize pool regardless of entrant count. Three names are drawn and win cash prizes.",
+              "Minimum cashout drops to $5.",
+
             ].map((feature) => (
               <li key={feature} className="flex gap-3 text-sm items-start">
                 <Check className="w-5 h-5 text-[#D4A843] shrink-0" />
