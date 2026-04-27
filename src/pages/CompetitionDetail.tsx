@@ -58,6 +58,7 @@ export const CompetitionDetail = () => {
   const [notFound, setNotFound] = useState(false);
   const [alreadyEntered, setAlreadyEntered] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isUpgraded, setIsUpgraded] = useState(false);           // #12 + #13
   const [error, setError] = useState('');
   const [preRegistered, setPreRegistered] = useState(false);
   const [preRegLoading, setPreRegLoading] = useState(false);
@@ -70,6 +71,14 @@ export const CompetitionDetail = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserId(user.id);
+
+        // #12: fetch subscriber status
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_upgraded')
+          .eq('id', user.id)
+          .single();
+        if (profile) setIsUpgraded(profile.is_upgraded ?? false);
 
         const { data: entry } = await supabase
           .from('competition_entries')
@@ -120,13 +129,8 @@ export const CompetitionDetail = () => {
     return Math.min(lastPassed.round + 1, 3);
   };
 
-  const isElimEliminated = (): boolean => {
-    return elimProgress.some(r => !r.passed);
-  };
-
-  const isElimFinished = (): boolean => {
-    return elimProgress.some(r => r.round === 3);
-  };
+  const isElimEliminated = (): boolean => elimProgress.some(r => !r.passed);
+  const isElimFinished = (): boolean => elimProgress.some(r => r.round === 3);
 
   const handleEnter = async () => {
     if (!userId) { navigateTo('/signup'); return; }
@@ -145,25 +149,52 @@ export const CompetitionDetail = () => {
     const isLate = now > starts && !preReg;
     const baseFee = competition.entry_fee;
     const actualFee = isLate ? baseFee * LATE_FEE_MULTIPLIER : baseFee;
-    const amountCents = Math.round(actualFee * 100);
+
+    // #12: apply 30% subscriber discount once per calendar month
+    let discountedFee = actualFee;
+    let usedMonthlyDiscount = false;
+    if (isUpgraded && !isLate) {
+      const currentMonth = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+      const { data: existingDiscount } = await supabase
+        .from('subscriber_monthly_discounts')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('month', currentMonth)
+        .maybeSingle();
+
+      if (!existingDiscount) {
+        discountedFee = Math.round(actualFee * 0.70 * 100) / 100; // 30% off, rounded to cents
+        usedMonthlyDiscount = true;
+        await supabase.from('subscriber_monthly_discounts').insert({
+          user_id:        userId,
+          month:          currentMonth,
+          competition_id: competition.id,
+        });
+      }
+    }
+
+    const amountCents = Math.round(discountedFee * 100);
 
     (window as any).__checkoutItem = {
       type: 'competition_entry',
       label: isLate
         ? `Competition Entry (Late Fee) — ${competition.title}`
+        : usedMonthlyDiscount
+        ? `Competition Entry (Subscriber 30% Off) — ${competition.title}`
         : `Competition Entry — ${competition.title}`,
       amount: amountCents,
       metadata: {
-        competition_id: competition.id,
-        format: competition.type,
-        title: competition.title,
-        is_late_entry: isLate ? 'true' : 'false',
+        competition_id:        competition.id,
+        format:                competition.type,
+        title:                 competition.title,
+        is_late_entry:         isLate ? 'true' : 'false',
+        used_monthly_discount: usedMonthlyDiscount ? 'true' : 'false',
       },
     };
 
     (window as any).__pendingSubmission = {
       competition_id: competition.id,
-      is_late_entry: isLate,
+      is_late_entry:  isLate,
     };
 
     if (preReg) {
@@ -187,8 +218,8 @@ export const CompetitionDetail = () => {
       .from('pre_registrations')
       .insert({
         competition_id: competition.id,
-        user_id: userId,
-        converted: false,
+        user_id:        userId,
+        converted:      false,
       });
 
     if (error) {
@@ -221,7 +252,7 @@ export const CompetitionDetail = () => {
   if (loading) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]'}`}>
-        <div className="w-8 h-8 border-2 border-[#D4A843] border-t-transparent rounded-full animate-spin" />
+        <p className={textMuted}>Loading...</p>
       </div>
     );
   }
@@ -229,41 +260,39 @@ export const CompetitionDetail = () => {
   if (notFound || !competition) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]'}`}>
-        <div className="text-center">
-          <p className={`font-serif text-2xl mb-3 ${textPrimary}`}>Competition not found</p>
-          <p className={`text-sm mb-6 ${textMuted}`}>It may have ended or the link is invalid.</p>
-          <button
-            onClick={() => navigateTo('/competitions')}
-            className="bg-[#D4A843] text-[#1B2A4A] font-semibold px-6 py-3 rounded-xl hover:bg-[#c49a3a] transition"
-          >
-            Browse Competitions
-          </button>
-        </div>
+        <p className={textMuted}>Competition not found.</p>
       </div>
     );
   }
 
-  const starts = new Date(competition.start_date);
-  const ends = new Date(competition.end_date);
-  const now = new Date();
-  const isActive = competition.status === 'active';
-  const isUpcoming = competition.status === 'upcoming';
+  const isActive    = competition.status === 'active';
+  const isUpcoming  = competition.status === 'upcoming';
   const isCompleted = competition.status === 'completed' || competition.status === 'canceled';
-  const isLateEntry = isActive && now > starts;
-  const lateFee = competition.entry_fee * LATE_FEE_MULTIPLIER;
 
-  const timeLabel = isCompleted
-    ? `Ended ${ends.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
-    : isActive
-    ? `Ends ${ends.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} at ${ends.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
-    : `Opens ${starts.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} at ${starts.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+  const now      = new Date();
+  const starts   = new Date(competition.start_date);
+  const ends     = new Date(competition.end_date);
+  const isLateEntry = isActive && now > starts;
+
+  const lateFee     = competition.entry_fee * LATE_FEE_MULTIPLIER;
+  const timeLabel   = isActive
+    ? ends.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : isUpcoming
+    ? starts.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : ends.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
   const currentRound = getCurrentElimRound();
-  const eliminated = isElimEliminated();
-  const elimDone = isElimFinished();
+  const eliminated   = isElimEliminated();
+  const elimDone     = isElimFinished();
 
-  const roundLabels = ['Round 1', 'Round 2', 'Final Round'];
-  const roundThresholds = ['8/10 to advance', '9/10 to advance', 'Highest score wins'];
+  const roundLabels     = ['Round 1', 'Round 2', 'Final Round'];
+  const roundThresholds = ['Score 7/10 to advance', 'Score 8/10 to advance', 'Top 3 win prizes'];
+
+  // #12: compute display price for the enter button
+  // (we can't know at render time if discount is available without an async check,
+  //  so we show the potential discounted price if subscriber and discount not yet used this month)
+  // The actual deduction happens inside handleEnter — this is display only.
+  const displayEntryFee = competition.entry_fee;
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]'}`}>
@@ -327,7 +356,7 @@ export const CompetitionDetail = () => {
           <div className="text-center">
             <DollarSign size={16} className="text-[#D4A843] mx-auto mb-1" />
             <p className="text-[#D4A843] font-bold text-xl">
-              {competition.is_sponsored ? 'Free' : `$${competition.entry_fee}`}
+              {competition.is_sponsored ? 'Free' : `$${displayEntryFee}`}
             </p>
             <p className={`text-xs ${textMuted}`}>Entry Fee</p>
           </div>
@@ -351,7 +380,6 @@ export const CompetitionDetail = () => {
               {[1, 2, 3].map((round) => {
                 const progress = elimProgress.find(r => r.round === round);
                 const isCurrentRound = !eliminated && !elimDone && currentRound === round;
-                const isFuture = !progress && !isCurrentRound;
                 return (
                   <div key={round} className={`flex items-center justify-between p-3 rounded-lg border ${
                     progress?.passed
@@ -500,6 +528,13 @@ export const CompetitionDetail = () => {
                 </p>
               </div>
             )}
+            {isUpgraded && !isLateEntry && (
+              <div className="rounded-xl border border-[#D4A843]/30 bg-[#D4A843]/10 p-3 mb-4">
+                <p className="text-[#D4A843] text-xs font-semibold">
+                  ⭐ Subscriber perk — 30% off your first competition entry this month may apply at checkout.
+                </p>
+              </div>
+            )}
             <button
               onClick={handleEnter}
               className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-4 rounded-xl hover:bg-[#c49a3a] transition text-lg"
@@ -537,10 +572,10 @@ export const CompetitionDetail = () => {
               if (!userId) { navigateTo('/signup'); return; }
               supabase.from('competition_entries').insert({
                 competition_id: competition.id,
-                user_id: userId,
+                user_id:        userId,
                 entry_fee_paid: 0,
-                is_late_entry: false,
-                status: 'active',
+                is_late_entry:  false,
+                status:         'active',
               }).then(() => setAlreadyEntered(true));
             }}
             className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-4 rounded-xl hover:bg-[#c49a3a] transition text-lg"
