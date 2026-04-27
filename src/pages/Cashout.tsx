@@ -11,32 +11,36 @@ interface GiftCardOption {
 }
 
 const GIFT_CARDS: GiftCardOption[] = [
-  { id: 'amazon', name: 'Amazon', logo: '🛒' },
-  { id: 'starbucks', name: 'Starbucks', logo: '☕' },
-  { id: 'target', name: 'Target', logo: '🎯' },
-  { id: 'walmart', name: 'Walmart', logo: '🏪' },
-  { id: 'netflix', name: 'Netflix', logo: '🎬' },
-  { id: 'apple', name: 'Apple', logo: '🍎' },
-  { id: 'google_play', name: 'Google Play', logo: '▶️' },
-  { id: 'doordash', name: 'DoorDash', logo: '🍔' },
-  { id: 'uber', name: 'Uber', logo: '🚗' },
-  { id: 'sephora', name: 'Sephora', logo: '💄' },
-  { id: 'nike', name: 'Nike', logo: '👟' },
-  { id: 'visa', name: 'Visa Prepaid', logo: '💳' },
+  { id: 'amazon',      name: 'Amazon',       logo: '🛒' },
+  { id: 'starbucks',   name: 'Starbucks',    logo: '☕' },
+  { id: 'target',      name: 'Target',       logo: '🎯' },
+  { id: 'walmart',     name: 'Walmart',      logo: '🏪' },
+  { id: 'netflix',     name: 'Netflix',      logo: '🎬' },
+  { id: 'apple',       name: 'Apple',        logo: '🍎' },
+  { id: 'google_play', name: 'Google Play',  logo: '▶️' },
+  { id: 'doordash',    name: 'DoorDash',     logo: '🍔' },
+  { id: 'uber',        name: 'Uber',         logo: '🚗' },
+  { id: 'sephora',     name: 'Sephora',      logo: '💄' },
+  { id: 'nike',        name: 'Nike',         logo: '👟' },
+  { id: 'visa',        name: 'Visa Prepaid', logo: '💳' },
 ];
 
 export const Cashout = () => {
   const { user } = useAuth();
   const { navigateTo } = useNavigate();
-  const [balance, setBalance] = useState(0);
-  const [payoutType, setPayoutType] = useState<'paypal' | 'venmo' | 'gift_card'>('gift_card');
+  const [balance, setBalance]           = useState(0);
+  const [isUpgraded, setIsUpgraded]     = useState(false);
+  const [payoutType, setPayoutType]     = useState<'paypal' | 'venmo' | 'gift_card'>('gift_card');
   const [payoutDetails, setPayoutDetails] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [loading, setLoading]           = useState(true);
+  const [submitting, setSubmitting]     = useState(false);
+  const [error, setError]               = useState('');
+  const [success, setSuccess]           = useState(false);
   const [pastRequests, setPastRequests] = useState<any[]>([]);
   const [selectedCard, setSelectedCard] = useState<GiftCardOption>(GIFT_CARDS[0]);
+
+  // Minimum cashout: $5 for subscribers, $10 for standard users
+  const MIN_CASHOUT = isUpgraded ? 5 : 10;
 
   useEffect(() => {
     loadData();
@@ -45,14 +49,21 @@ export const Cashout = () => {
   const loadData = async () => {
     if (!user) return;
     const [profileResult, requestsResult] = await Promise.all([
-      supabase.from('profiles').select('available_balance').eq('id', user.id).single(),
+      supabase
+        .from('profiles')
+        .select('available_balance, is_upgraded')
+        .eq('id', user.id)
+        .single(),
       supabase
         .from('cashout_requests')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false }),
     ]);
-    if (profileResult.data) setBalance(profileResult.data.available_balance);
+    if (profileResult.data) {
+      setBalance(profileResult.data.available_balance);
+      setIsUpgraded(profileResult.data.is_upgraded ?? false);
+    }
     if (requestsResult.data) setPastRequests(requestsResult.data);
     setLoading(false);
   };
@@ -61,8 +72,8 @@ export const Cashout = () => {
     e.preventDefault();
     setError('');
 
-    if (balance < 10) {
-      setError('You need at least $10.00 to cash out.');
+    if (balance < MIN_CASHOUT) {
+      setError(`You need at least $${MIN_CASHOUT.toFixed(2)} to cash out.`);
       return;
     }
 
@@ -76,14 +87,14 @@ export const Cashout = () => {
     setSubmitting(true);
 
     const { error: insertError } = await supabase.from('cashout_requests').insert({
-      user_id: user!.id,
-      email: user!.email,
-      amount: balance,
-      payout_type: payoutType,
-      payout_details: payoutType === 'gift_card' ? selectedCard.name : payoutDetails,
-      gift_card_brand: payoutType === 'gift_card' ? selectedCard.name : null,
+      user_id:            user!.id,
+      email:              user!.email,
+      amount:             balance,
+      payout_type:        payoutType,
+      payout_details:     payoutType === 'gift_card' ? selectedCard.name : payoutDetails,
+      gift_card_brand:    payoutType === 'gift_card' ? selectedCard.name : null,
       reloadly_product_id: payoutType === 'gift_card' ? selectedCard.id : null,
-      status: 'pending',
+      status:             'pending',
     });
 
     if (insertError) {
@@ -93,12 +104,10 @@ export const Cashout = () => {
     }
 
     await supabase
-  .from('profiles')
-  .update({
-    held_balance: balance,
-    available_balance: 0,
-  })
-  .eq('id', user.id);
+      .from('profiles')
+      .update({ held_balance: balance, available_balance: 0 })
+      .eq('id', user!.id);
+
     setSuccess(true);
     setSubmitting(false);
   };
@@ -156,14 +165,17 @@ export const Cashout = () => {
         <div className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800 mb-8 text-center">
           <p className="text-gray-400 text-sm mb-1">Available Balance</p>
           <p className="text-4xl font-semibold text-white">${balance.toFixed(2)}</p>
-          {balance < 5 && (
+          {isUpgraded && (
+            <p className="text-[#D4A843] text-xs mt-1">⭐ Subscriber minimum: $5.00</p>
+          )}
+          {balance < MIN_CASHOUT && (
             <p className="text-yellow-500 text-sm mt-2">
-              Minimum cashout is $10.00 — keep reading to earn more!
+              Minimum cashout is ${MIN_CASHOUT.toFixed(2)} — keep reading to earn more!
             </p>
           )}
         </div>
 
-        {balance >= 5 ? (
+        {balance >= MIN_CASHOUT ? (
           <form onSubmit={handleSubmit} className="bg-[#1a1a1a] rounded-lg p-8 border border-gray-800">
             {error && (
               <div className="mb-4 p-3 bg-red-900/20 border border-red-900/50 rounded text-red-400 text-sm">
@@ -264,7 +276,9 @@ export const Cashout = () => {
           </form>
         ) : (
           <div className="bg-[#1a1a1a] rounded-lg p-8 border border-gray-800 text-center">
-            <p className="text-gray-400 mb-4">You need ${(5 - balance).toFixed(2)} more to cash out.</p>
+            <p className="text-gray-400 mb-4">
+              You need ${(MIN_CASHOUT - balance).toFixed(2)} more to cash out.
+            </p>
             <button
               onClick={() => navigateTo('/')}
               className="bg-white text-black font-medium py-3 px-6 rounded-lg hover:bg-gray-200 transition"
