@@ -126,17 +126,65 @@ useEffect(() => {
   return () => document.removeEventListener('mousedown', handler);
 }, [reportOpen]);
 
+const isQuizUnlocked = async (bookId: string, bookType: 'platform' | 'sponsored'): Promise<boolean> => {
+  // Check active bounty (works for both platform and sponsored)
+  const { data: bounty } = await supabase
+    .from('bounties')
+    .select('id')
+    .eq('book_id', bookId)
+    .eq('status', 'active')
+    .gt('reader_pool', 0)
+    .maybeSingle();
+
+  if (bounty) return true;
+
+  // Check active competition containing this book
+  const { data: competitions } = await supabase
+    .from('competitions')
+    .select('book_ids')
+    .eq('status', 'active');
+
+  if (competitions) {
+    for (const comp of competitions) {
+      const ids: string[] = comp.book_ids ?? [];
+      if (ids.includes(bookId)) return true;
+    }
+  }
+
+  // Check active readathon (all books unlocked during readathon)
+  const { data: readathon } = await supabase
+    .from('competitions')
+    .select('id')
+    .eq('status', 'active')
+    .eq('type', 'readathon')
+    .maybeSingle();
+
+  if (readathon) return true;
+
+  return false;
+};
+
 const loadQuiz = async () => {
   if (!user) return;
 
-  if (!isCompetitionQuiz && book?.book_type === 'sponsored') {
-    const { data: bounty } = await supabase
-      .from('bounties')
-      .select('status, reader_pool')
-      .eq('book_id', bookId)
-      .maybeSingle();
+  // Fetch book first so we know its type
+  const { data: bookData, error: bookError } = await supabase
+    .from('books')
+    .select('*')
+    .eq('id', bookId)
+    .single();
 
-    if (!bounty || bounty.status !== 'active' || bounty.reader_pool <= 0) {
+  if (bookError || !bookData) {
+    navigateTo('/library');
+    return;
+  }
+
+  setBook(bookData);
+
+  // Gate: all books locked unless active bounty, competition, or readathon
+  if (!isCompetitionQuiz) {
+    const unlocked = await isQuizUnlocked(bookId, bookData.book_type);
+    if (!unlocked) {
       navigateTo('/library');
       return;
     }
@@ -186,17 +234,14 @@ const loadQuiz = async () => {
         .eq('book_id', bookId)
         .maybeSingle();
 
-  const [bookResult, questionsResult, completedResult] = await Promise.all([
-    supabase.from('books').select('*').eq('id', bookId).single(),
+  const [questionsResult, completedResult] = await Promise.all([
     supabase.from('public_questions').select('*').eq('book_id', bookId),
     completedCheck,
   ]);
 
-  if (bookResult.data) setBook(bookResult.data);
-
   if (questionsResult.data) {
     const allQuestions = questionsResult.data as Question[];
-    const isMasterQuiz = bookResult.data?.is_master_quiz === true;
+    const isMasterQuiz = bookData.is_master_quiz === true;
 
     const questionPool = isMasterQuiz
       ? allQuestions
