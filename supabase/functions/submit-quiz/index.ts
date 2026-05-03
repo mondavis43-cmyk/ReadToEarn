@@ -6,7 +6,6 @@ const corsHeaders = {
 "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Known disposable email domains
 const DISPOSABLE_DOMAINS = new Set([
 "mailinator.com", "guerrillamail.com", "tempmail.com", "throwaway.email",
 "yopmail.com", "sharklasers.com", "guerrillamailblock.com", "grr.la",
@@ -15,10 +14,10 @@ const DISPOSABLE_DOMAINS = new Set([
 "10minutemail.net", "temp-mail.org", "fakeinbox.com", "mailnull.com",
 "spamcowboy.com", "getairmail.com", "filzmail.com", "throwam.com",
 "spamevader.com", "discard.email", "spamhereplease.com", "hatespam.org",
-"rcpt.at", "spam.la", "tempinbox.com", "throwam.com", "mailnesia.com",
-"mailnull.com", "spamgourmet.org", "spamgourmet.net", "trashmail.at",
+"rcpt.at", "spam.la", "tempinbox.com", "mailnesia.com",
+"spamgourmet.org", "spamgourmet.net", "trashmail.at",
 "trashmail.io", "trashmail.xyz", "tempmail.ninja", "tempr.email",
-"dispostable.com", "spamfree24.org", "spamfree24.de", "spamfree24.eu",
+"spamfree24.org", "spamfree24.de", "spamfree24.eu",
 ]);
 
 serve(async (req) => {
@@ -26,338 +25,463 @@ if (req.method === "OPTIONS") {
   return new Response("ok", { headers: corsHeaders });
 }
 
+const authHeader = req.headers.get("Authorization");
+if (!authHeader) {
+  return new Response(JSON.stringify({ error: "Missing authorization" }), {
+    status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+// Capture IP and user-agent for fraud detection
+const ipRaw = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+const ipAddress = ipRaw.split(",")[0].trim();
+const userAgent = req.headers.get("user-agent") ?? "unknown";
+
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+  global: { headers: { Authorization: authHeader } },
+});
+const adminClient = createClient(supabaseUrl, serviceKey);
+
+// Verify auth
+const { data: { user }, error: authError } = await userClient.auth.getUser();
+if (authError || !user) {
+  return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+// Disposable email check
+const emailDomain = user.email?.split("@")[1]?.toLowerCase() ?? "";
+if (DISPOSABLE_DOMAINS.has(emailDomain)) {
+  return new Response(JSON.stringify({ error: "Disposable email addresses are not allowed." }), {
+    status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+const { data: blockedDomain } = await adminClient
+  .from("blocked_email_domains")
+  .select("domain")
+  .eq("domain", emailDomain)
+  .maybeSingle();
+if (blockedDomain) {
+  return new Response(JSON.stringify({ error: "Disposable email addresses are not allowed." }), {
+    status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+// Parse request body
+let body: {
+  book_id: string;
+  answers: { question_id: string; selected_answer: string }[];
+  competition_id?: string;
+  competition_round?: number;
+  is_final_round?: boolean;
+  time_spent_ms: number;
+};
 try {
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader) {
-    return new Response(JSON.stringify({ error: "Missing authorization" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  body = await req.json();
+} catch {
+  return new Response(JSON.stringify({ error: "Invalid request body" }), {
+    status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
 
-  // Capture IP and user agent for fraud detection
-  const ipAddress =
-    req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
-    req.headers.get("x-real-ip") ||
-    "unknown";
-  const userAgent = req.headers.get("user-agent") || "unknown";
+const { book_id, answers, competition_id, competition_round, is_final_round, time_spent_ms } = body;
+const isCompetition = !!competition_id && !!competition_round;
 
-  const userClient = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    { global: { headers: { Authorization: authHeader } } }
-  );
-
-  const adminClient = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
-
-  const { data: { user }, error: userError } = await userClient.auth.getUser();
-  if (userError || !user) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  // --- DISPOSABLE EMAIL CHECK ---
-  const emailDomain = user.email?.split("@")[1]?.toLowerCase() ?? "";
-  if (DISPOSABLE_DOMAINS.has(emailDomain)) {
-    return new Response(JSON.stringify({ error: "Disposable email addresses are not allowed." }), {
-      status: 403,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  // Also check DB blocklist for domains added after deploy
-  const { data: blockedDomain } = await adminClient
-    .from("blocked_email_domains")
-    .select("domain")
-    .eq("domain", emailDomain)
+// ── READATHON PATH ──────────────────────────────────────────────────────────
+// Check if this submission is during an active readathon AND not a competition quiz
+if (!isCompetition) {
+  const { data: activeReadathon } = await adminClient
+    .from("readathons")
+    .select("id")
+    .eq("status", "active")
     .maybeSingle();
 
-  if (blockedDomain) {
-    return new Response(JSON.stringify({ error: "Disposable email addresses are not allowed." }), {
-      status: 403,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  const { book_id, answers, competition_id, competition_round, is_final_round, time_spent_ms } = await req.json();
-
-  if (!book_id || !answers || !Array.isArray(answers)) {
-    return new Response(JSON.stringify({ error: "Invalid request body" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  const is_competition = !!competition_id;
-
-  // --- DUPLICATE SUBMISSION CHECK ---
-  if (is_competition) {
-    const { data: existing } = await adminClient
-      .from("elimination_progress")
+  if (activeReadathon) {
+    // Verify user paid the entry fee
+    const { data: entry } = await adminClient
+      .from("readathon_entries")
       .select("id")
-      .eq("competition_id", competition_id)
+      .eq("readathon_id", activeReadathon.id)
       .eq("user_id", user.id)
-      .eq("round", competition_round)
       .maybeSingle();
-    if (existing) {
-      return new Response(JSON.stringify({ error: "Already submitted for this round" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+
+    if (!entry) {
+      return new Response(JSON.stringify({ error: "You must enter the readathon to participate." }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-  } else {
-    const { data: existing } = await adminClient
-      .from("completed_books")
+
+    // Check for duplicate readathon progress (already passed this book in this readathon)
+    const { data: alreadyDone } = await adminClient
+      .from("readathon_progress")
       .select("id")
+      .eq("readathon_id", activeReadathon.id)
       .eq("user_id", user.id)
       .eq("book_id", book_id)
       .maybeSingle();
-    if (existing) {
-      return new Response(JSON.stringify({ error: "Already completed this book" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+
+    if (alreadyDone) {
+      return new Response(JSON.stringify({ error: "Already completed this book in the current readathon." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-  }
 
-  // --- FETCH CORRECT ANSWERS (service role only, never exposed to client) ---
-  const { data: questions, error: qError } = await adminClient
-    .from("questions")
-    .select("id, correct_answer")
-    .eq("book_id", book_id);
+    // Load questions and grade
+    const { data: questions, error: qErr } = await adminClient
+      .from("questions")
+      .select("id, correct_answer")
+      .eq("book_id", book_id);
 
-  if (qError || !questions || questions.length === 0) {
-    return new Response(JSON.stringify({ error: "Could not load questions" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    if (qErr || !questions) {
+      return new Response(JSON.stringify({ error: "Could not load questions" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const answerMap = new Map(answers.map((a) => [a.question_id, a.selected_answer]));
+    let correct = 0;
+    for (const q of questions) {
+      if (answerMap.get(q.id) === q.correct_answer) correct++;
+    }
+    const total = questions.length;
+    const passed = correct >= 8;
+
+    // Log quiz attempt for fraud detection
+    await adminClient.from("quiz_attempts").insert({
+      user_id: user.id,
+      book_id,
+      score: correct,
+      passed,
+      ip_address: ipAddress,
+      user_agent: userAgent,
     });
-  }
 
-  // --- GRADE SERVER-SIDE ---
-  let correct = 0;
-  for (const question of questions) {
-    const userAnswer = answers.find((a: { question_id: string; selected_answer: string }) =>
-      a.question_id === question.id
-    );
-    if (userAnswer && userAnswer.selected_answer === question.correct_answer) {
-      correct++;
+    // Fraud detection
+    let isSuspicious = false;
+    let fraudReason = "";
+    if (passed && correct === total && time_spent_ms < 150_000) {
+      isSuspicious = true;
+      fraudReason = "Perfect score in under 2.5 minutes during readathon";
     }
-  }
-
-  const total = questions.length;
-
-  // --- DETERMINE PASS ---
-  const ELIMINATION_PASS_THRESHOLD: Record<number, number> = { 1: 8, 2: 9 };
-  let pass = false;
-  if (is_competition) {
-    if (is_final_round) {
-      pass = true;
-    } else {
-      const threshold = ELIMINATION_PASS_THRESHOLD[competition_round] ?? 8;
-      pass = correct >= threshold;
-    }
-  } else {
-    pass = correct >= 8;
-  }
-
-  // --- FRAUD DETECTION ---
-  // Flag if: perfect score AND completed suspiciously fast (under 2.5 min = 150000ms)
-  const SUSPICIOUS_TIME_MS = 150_000;
-  const isPerfectScore = correct === total;
-  const isSuspiciouslyFast = typeof time_spent_ms === "number" && time_spent_ms < SUSPICIOUS_TIME_MS;
-  const isSuspicious = isPerfectScore && isSuspiciouslyFast;
-
-  // Check if another user has submitted from this IP in the last 24 hours
-  // Flag if 3+ different user_ids share this IP
-  let ipFlagged = false;
-  if (ipAddress !== "unknown") {
-    const { data: ipMatches } = await adminClient
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: recentAttempts } = await adminClient
       .from("quiz_attempts")
       .select("user_id")
       .eq("ip_address", ipAddress)
-      .gte("attempted_at", new Date(Date.now() - 86_400_000).toISOString());
-
-    if (ipMatches) {
-      const uniqueUsers = new Set(ipMatches.map((r: { user_id: string }) => r.user_id));
-      uniqueUsers.add(user.id);
-      if (uniqueUsers.size >= 3) {
-        ipFlagged = true;
-      }
+      .gte("attempted_at", since24h);
+    const uniqueUsers = new Set((recentAttempts ?? []).map((a: { user_id: string }) => a.user_id));
+    if (uniqueUsers.size >= 3) {
+      isSuspicious = true;
+      fraudReason = fraudReason
+        ? fraudReason + "; 3+ accounts from same IP in 24h"
+        : "3+ accounts from same IP in 24h during readathon";
     }
-  }
+    if (isSuspicious) {
+      await adminClient.from("profiles").update({ requires_tax_review: true }).eq("id", user.id);
+      await adminClient.from("payout_logs").insert({
+        user_id: user.id,
+        amount: 0,
+        status: "flagged",
+        reason: fraudReason,
+      });
+    }
 
-  const flagForReview = isSuspicious || ipFlagged;
+    if (passed) {
+      // Fetch book page count
+      const { data: bookData } = await adminClient
+        .from("books")
+        .select("page_count")
+        .eq("id", book_id)
+        .maybeSingle();
 
-  // --- LOG QUIZ ATTEMPT ---
-  await adminClient.from("quiz_attempts").insert({
-    user_id: user.id,
-    book_id,
-    score: correct,
-    passed: pass,
-    ip_address: ipAddress,
-    user_agent: userAgent,
-  });
+      const pages = bookData?.page_count ?? 0;
 
-  // Flag profile for admin review if suspicious
-  if (flagForReview) {
-    await adminClient.from("profiles").update({
-      requires_tax_review: true,
-    }).eq("id", user.id);
+      // Log readathon progress
+      await adminClient.from("readathon_progress").insert({
+        readathon_id: activeReadathon.id,
+        user_id: user.id,
+        book_id,
+        pages_read: pages,
+      });
 
-    // Log the flag reason for the admin dashboard
-    await adminClient.from("payout_logs").insert({
-      user_id: user.id,
-      amount: 0,
-      status: "flagged",
-      reason: isSuspicious && ipFlagged
-        ? "suspicious_speed_and_shared_ip"
-        : isSuspicious
-        ? "suspicious_speed"
-        : "shared_ip",
-    });
-  }
+      // If book ALSO has an active bounty, still pay it out (bounty is independent)
+      const { data: bounty } = await adminClient
+        .from("bounties")
+        .select("id, reader_pool, book_type")
+        .eq("book_id", book_id)
+        .eq("status", "active")
+        .gt("reader_pool", 0)
+        .maybeSingle();
 
-  // --- COMPETITION PATH ---
-  if (is_competition) {
-    await adminClient.from("elimination_progress").insert({
-      competition_id,
-      user_id: user.id,
-      round: competition_round,
-      score: correct,
-      total_questions: total,
-      passed: pass,
-      submitted_at: new Date().toISOString(),
-    });
+      let earnedAmount = 0;
+      if (bounty) {
+        const { data: bookFull } = await adminClient
+          .from("books")
+          .select("bounty_amount, book_type")
+          .eq("id", book_id)
+          .maybeSingle();
 
+        if (bookFull) {
+          if (bookFull.book_type === "sponsored") {
+            const { data: rpcResult } = await adminClient.rpc("claim_bounty_payout", {
+              p_book_id: book_id,
+              p_user_id: user.id,
+            });
+            earnedAmount = rpcResult ?? 0;
+          } else {
+            earnedAmount = bookFull.bounty_amount ?? 0;
+            await adminClient
+              .from("profiles")
+              .update({ available_balance: adminClient.rpc("increment_balance", { amount: earnedAmount }) })
+              .eq("id", user.id);
+          }
+          await adminClient.from("payout_logs").insert({
+            user_id: user.id,
+            amount: earnedAmount,
+            status: isSuspicious ? "flagged" : "completed",
+            reason: "Bounty payout during readathon",
+          });
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ passed: true, score: correct, total, earned_amount: earnedAmount, pages_logged: pages }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Failed -- no pages logged, no payout
     return new Response(
-      JSON.stringify({ passed: pass, score: correct, total, is_final_round }),
+      JSON.stringify({ passed: false, score: correct, total, earned_amount: 0, pages_logged: 0 }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
+}
+// ── END READATHON PATH ──────────────────────────────────────────────────────
 
-  // --- STANDARD LIBRARY PATH ---
-  await adminClient.from("completed_books").upsert(
-    { user_id: user.id, book_id },
-    { onConflict: "user_id,book_id" }
-  );
+// Load questions (server-side grading)
+const { data: questions, error: questionsError } = await adminClient
+  .from("questions")
+  .select("id, correct_answer")
+  .eq("book_id", book_id);
 
-  let earned_amount = 0;
-  let streak_bonus: number | null = null;
-  let pool_exhausted = false;
-
-  if (pass) {
-    const { data: book } = await adminClient
-      .from("books")
-      .select("bounty_amount, book_type, page_count")
-      .eq("id", book_id)
-      .single();
-
-    const { data: profile } = await adminClient
-      .from("profiles")
-      .select("available_balance, streak_count, last_quiz_date, referred_by, requires_tax_review")
-      .eq("id", user.id)
-      .single();
-
-    if (book && profile) {
-      const today = new Date().toISOString().split("T")[0];
-      const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
-      const newStreak = profile.last_quiz_date === yesterday
-        ? (profile.streak_count ?? 0) + 1
-        : 1;
-
-      let bonus = 0;
-      if (newStreak === 7 || newStreak === 30) {
-        bonus = 0.10;
-        streak_bonus = newStreak;
-      }
-
-      const payout = book.bounty_amount ?? 0;
-      earned_amount = payout;
-
-      const projectedBalance = profile.available_balance + payout + bonus;
-      const shouldFlag = projectedBalance >= 500;
-
-      if (book.book_type === "sponsored") {
-        const { data: result } = await adminClient.rpc("claim_bounty_payout", {
-          p_book_id: book_id,
-          p_user_id: user.id,
-          p_amount: payout,
-        });
-
-        if (result === "ok") {
-          await adminClient.from("profiles").update({
-            streak_count: newStreak,
-            last_quiz_date: today,
-            requires_tax_review: profile.requires_tax_review || shouldFlag || flagForReview,
-          }).eq("id", user.id);
-
-          await adminClient.from("payout_logs").insert({
-            user_id: user.id,
-            amount: payout + bonus,
-            status: flagForReview ? "flagged" : shouldFlag ? "pending_review" : "completed",
-            reason: flagForReview
-              ? (isSuspicious && ipFlagged ? "suspicious_speed_and_shared_ip" : isSuspicious ? "suspicious_speed" : "shared_ip")
-              : shouldFlag ? "1099_threshold" : null,
-          });
-        } else {
-          earned_amount = 0;
-          pool_exhausted = true;
-        }
-      } else {
-        await adminClient.from("profiles").update({
-          available_balance: projectedBalance,
-          streak_count: newStreak,
-          last_quiz_date: today,
-          requires_tax_review: profile.requires_tax_review || shouldFlag || flagForReview,
-        }).eq("id", user.id);
-
-        await adminClient.from("payout_logs").insert({
-          user_id: user.id,
-          amount: payout + bonus,
-          status: flagForReview ? "flagged" : shouldFlag ? "pending_review" : "completed",
-          reason: flagForReview
-            ? (isSuspicious && ipFlagged ? "suspicious_speed_and_shared_ip" : isSuspicious ? "suspicious_speed" : "shared_ip")
-            : shouldFlag ? "1099_threshold" : null,
-        });
-      }
-
-      if (profile.referred_by) {
-        const { data: referrer } = await adminClient
-          .from("profiles")
-          .select("available_balance")
-          .eq("id", profile.referred_by)
-          .single();
-        if (referrer) {
-          await adminClient.from("profiles")
-            .update({ available_balance: referrer.available_balance + 0.50 })
-            .eq("id", profile.referred_by);
-        }
-      }
-    }
-  }
-
-  return new Response(
-    JSON.stringify({
-      passed: pass,
-      score: correct,
-      total,
-      earned_amount,
-      streak_bonus,
-      pool_exhausted,
-    }),
-    { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-  );
-
-} catch (err) {
-  console.error("Unexpected error:", err);
-  return new Response(JSON.stringify({ error: "Internal server error" }), {
-    status: 500,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+if (questionsError || !questions) {
+  return new Response(JSON.stringify({ error: "Could not load questions" }), {
+    status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
+
+const answerMap = new Map(answers.map((a) => [a.question_id, a.selected_answer]));
+let correct = 0;
+for (const q of questions) {
+  if (answerMap.get(q.id) === q.correct_answer) correct++;
+}
+const total = questions.length;
+
+// Pass thresholds
+let passed = false;
+if (is_final_round) {
+  passed = true;
+} else if (competition_round === 1) {
+  passed = correct >= 8;
+} else if (competition_round === 2) {
+  passed = correct >= 9;
+} else {
+  passed = correct >= 8;
+}
+
+// Log quiz attempt
+await adminClient.from("quiz_attempts").insert({
+  user_id: user.id,
+  book_id,
+  score: correct,
+  passed,
+  ip_address: ipAddress,
+  user_agent: userAgent,
+});
+
+// Fraud detection
+let isSuspicious = false;
+let fraudReason = "";
+if (passed && correct === total && time_spent_ms < 150_000) {
+  isSuspicious = true;
+  fraudReason = "Perfect score in under 2.5 minutes";
+}
+const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+const { data: recentAttempts } = await adminClient
+  .from("quiz_attempts")
+  .select("user_id")
+  .eq("ip_address", ipAddress)
+  .gte("attempted_at", since24h);
+const uniqueUsers = new Set((recentAttempts ?? []).map((a: { user_id: string }) => a.user_id));
+if (uniqueUsers.size >= 3) {
+  isSuspicious = true;
+  fraudReason = fraudReason
+    ? fraudReason + "; 3+ accounts from same IP in 24h"
+    : "3+ accounts from same IP in 24h";
+}
+if (isSuspicious) {
+  await adminClient.from("profiles").update({ requires_tax_review: true }).eq("id", user.id);
+  await adminClient.from("payout_logs").insert({
+    user_id: user.id,
+    amount: 0,
+    status: "flagged",
+    reason: fraudReason,
+  });
+}
+
+// ── COMPETITION PATH ────────────────────────────────────────────────────────
+if (isCompetition) {
+  const { data: existing } = await adminClient
+    .from("elimination_progress")
+    .select("id")
+    .eq("competition_id", competition_id)
+    .eq("user_id", user.id)
+    .eq("round", competition_round)
+    .maybeSingle();
+
+  if (existing) {
+    return new Response(JSON.stringify({ error: "Already submitted for this round" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  await adminClient.from("elimination_progress").insert({
+    competition_id,
+    user_id: user.id,
+    round: competition_round,
+    score: correct,
+    total_questions: total,
+    passed,
+    submitted_at: new Date().toISOString(),
+  });
+
+  return new Response(
+    JSON.stringify({ passed, score: correct, total, is_final_round: !!is_final_round }),
+    { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+// ── END COMPETITION PATH ────────────────────────────────────────────────────
+
+// ── STANDARD LIBRARY PATH (bounty only) ────────────────────────────────────
+const { data: existing } = await adminClient
+  .from("completed_books")
+  .select("id")
+  .eq("user_id", user.id)
+  .eq("book_id", book_id)
+  .maybeSingle();
+
+if (existing) {
+  return new Response(JSON.stringify({ error: "Already completed this book" }), {
+    status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+await adminClient.from("completed_books").upsert({
+  user_id: user.id,
+  book_id,
+  passed,
+  completed_at: new Date().toISOString(),
+});
+
+if (!passed) {
+  return new Response(
+    JSON.stringify({ passed: false, score: correct, total, earned_amount: 0 }),
+    { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+
+// Fetch book + profile for payout
+const [bookResult, profileResult] = await Promise.all([
+  adminClient.from("books").select("bounty_amount, book_type, page_count").eq("id", book_id).maybeSingle(),
+  adminClient.from("profiles").select("available_balance, streak_count, referral_id, referred_by").eq("id", user.id).maybeSingle(),
+]);
+
+const book = bookResult.data;
+const profile = profileResult.data;
+
+if (!book || !profile) {
+  return new Response(
+    JSON.stringify({ passed: true, score: correct, total, earned_amount: 0 }),
+    { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+
+// Check active bounty
+const { data: bounty } = await adminClient
+  .from("bounties")
+  .select("id, reader_pool")
+  .eq("book_id", book_id)
+  .eq("status", "active")
+  .gt("reader_pool", 0)
+  .maybeSingle();
+
+if (!bounty) {
+  // No active bounty -- quiz was unlocked by competition/readathon but no payout
+  return new Response(
+    JSON.stringify({ passed: true, score: correct, total, earned_amount: 0, pool_exhausted: true }),
+    { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+
+let earnedAmount = book.bounty_amount ?? 0;
+let streakBonus = 0;
+
+// Streak bonus
+const streak = profile.streak_count ?? 0;
+if (streak >= 30) streakBonus = 0.10;
+else if (streak >= 7) streakBonus = 0.10;
+
+let payoutStatus = isSuspicious ? "flagged" : "completed";
+const projectedBalance = (profile.available_balance ?? 0) + earnedAmount + streakBonus;
+if (projectedBalance >= 500) payoutStatus = "pending_review";
+
+if (book.book_type === "sponsored") {
+  const { data: rpcResult } = await adminClient.rpc("claim_bounty_payout", {
+    p_book_id: book_id,
+    p_user_id: user.id,
+  });
+  earnedAmount = rpcResult ?? 0;
+} else {
+  const newBalance = (profile.available_balance ?? 0) + earnedAmount + streakBonus;
+  await adminClient.from("profiles").update({ available_balance: newBalance }).eq("id", user.id);
+}
+
+await adminClient.from("payout_logs").insert({
+  user_id: user.id,
+  amount: earnedAmount + streakBonus,
+  status: payoutStatus,
+  reason: "Bounty payout",
+});
+
+// Referral bonus
+if (profile.referred_by) {
+  const { data: referrer } = await adminClient
+    .from("profiles")
+    .select("available_balance")
+    .eq("referral_id", profile.referred_by)
+    .maybeSingle();
+  if (referrer) {
+    await adminClient
+      .from("profiles")
+      .update({ available_balance: (referrer.available_balance ?? 0) + 0.50 })
+      .eq("referral_id", profile.referred_by);
+  }
+}
+
+return new Response(
+  JSON.stringify({
+    passed: true,
+    score: correct,
+    total,
+    earned_amount: earnedAmount,
+    streak_bonus: streakBonus > 0 ? streakBonus : undefined,
+    pool_exhausted: false,
+  }),
+  { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+);
 });
