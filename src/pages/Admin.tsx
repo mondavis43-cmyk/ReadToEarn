@@ -4,21 +4,22 @@ import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
 import { ArrowLeft, Sun, Moon } from 'lucide-react';
 
-import { AdminBooks }          from './admin/AdminBooks';
-import { AdminBounties }       from './admin/AdminBounties';
-import { AdminCompetitions }   from './admin/AdminCompetitions';
-import { AdminPayouts }        from './admin/AdminPayouts';
-import { AdminWaitlist }       from './admin/AdminWaitlist';
-import { AdminTropes }         from './admin/AdminTropes';
-import { AdminReports }        from './admin/AdminReports';
-import { AdminTrivia }         from './admin/AdminTrivia';
-import { AdminTournaments }    from './admin/AdminTournaments';
-import { AdminEarning }        from './admin/AdminEarning';
-import { AdminAMA }            from './admin/AdminAMA';
-import { AdminSubmissions }    from './admin/AdminSubmissions';
-import { AdminSponsoredPins }  from './admin/AdminSponsoredPins';
-import { AdminGiveaway }       from './admin/AdminGiveaway';
-import { AdminFraudDashboard } from './admin/AdminFraudDashboard';
+import { AdminBooks }           from './admin/AdminBooks';
+import { AdminBounties }        from './admin/AdminBounties';
+import { AdminCompetitions }    from './admin/AdminCompetitions';
+import { AdminPayouts }         from './admin/AdminPayouts';
+import { AdminWaitlist }        from './admin/AdminWaitlist';
+import { AdminTropes }          from './admin/AdminTropes';
+import { AdminReports }         from './admin/AdminReports';
+import { AdminTrivia }          from './admin/AdminTrivia';
+import { AdminTournaments }     from './admin/AdminTournaments';
+import { AdminEarning }         from './admin/AdminEarning';
+import { AdminAMA }             from './admin/AdminAMA';
+import { AdminSubmissions }     from './admin/AdminSubmissions';
+import { AdminSponsoredPins }   from './admin/AdminSponsoredPins';
+import { AdminGiveaway }        from './admin/AdminGiveaway';
+import { AdminFraudDashboard }  from './admin/AdminFraudDashboard';
+import { AdminReadathon }       from './admin/AdminReadathon';
 
 export const GENRES = [
 'Action & Adventure', 'Biography & Memoir', 'Business', "Children's", 'Chick Lit',
@@ -47,19 +48,21 @@ type Tab =
 | 'submissions'
 | 'giveaway'
 | 'sponsored_pins'
+| 'readathon'
 | 'fraud';
 
 const TABS: { key: Tab; label: string }[] = [
 { key: 'books',          label: 'Books & Questions' },
 { key: 'bounties',       label: 'Bounties'          },
 { key: 'competitions',   label: 'Competitions'      },
+{ key: 'readathon',      label: 'Readathons'        },
 { key: 'payouts',        label: 'Payouts'           },
 { key: 'reports',        label: 'Reports'           },
 { key: 'trivia',         label: 'Daily Trivia'      },
 { key: 'tournaments',    label: 'Tournaments'       },
 { key: 'earning',        label: 'Earning Tasks'     },
 { key: 'submissions',    label: 'Submissions'       },
-{ key: 'sponsored_pins', label: 'Sponsored Pins'   },
+{ key: 'sponsored_pins', label: 'Sponsored Pins'    },
 { key: 'waitlist',       label: 'Waitlist'          },
 { key: 'tropes',         label: 'Tropes'            },
 { key: 'giveaway',       label: 'Giveaway'          },
@@ -128,6 +131,7 @@ return (
       {activeTab === 'books'          && <AdminBooks />}
       {activeTab === 'bounties'       && <AdminBounties />}
       {activeTab === 'competitions'   && <AdminCompetitions />}
+      {activeTab === 'readathon'      && <AdminReadathon />}
       {activeTab === 'payouts'        && <AdminPayouts />}
       {activeTab === 'waitlist'       && <AdminWaitlist />}
       {activeTab === 'tropes'         && <AdminTropes />}
