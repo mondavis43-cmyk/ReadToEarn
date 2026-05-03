@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
-import { ArrowLeft, PartyPopper, Timer, AlertCircle, Flag } from 'lucide-react';
+import { ArrowLeft, PartyPopper, Timer, AlertCircle, Flag, BookOpen } from 'lucide-react';
 
 interface Question {
 id: string;
@@ -62,7 +62,7 @@ const s = seconds % 60;
 return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
-export const Quiz = ({ bookId, competitionId, competitionRound }: QuizProps) => {
+export function Quiz({ bookId, competitionId, competitionRound }: QuizProps) {
 const { user } = useAuth();
 const { navigateTo } = useNavigate();
 const { isDark } = useTheme();
@@ -84,6 +84,12 @@ const [timedOut, setTimedOut] = useState(false);
 const [streakBonus, setStreakBonus] = useState<number | null>(null);
 const [earnedAmount, setEarnedAmount] = useState(0);
 const [isSpeeding, setIsSpeeding] = useState(false);
+const [pagesLogged, setPagesLogged] = useState(0);
+
+// Readathon state
+const [activeReadathon, setActiveReadathon] = useState<{ id: string; title: string } | null>(null);
+const [isReadathonEntrant, setIsReadathonEntrant] = useState(false);
+const [readathonGate, setReadathonGate] = useState(false); // true = readathon active but user not entered
 
 const [reportOpen, setReportOpen] = useState<string | null>(null);
 const [reportReason, setReportReason] = useState('');
@@ -94,40 +100,13 @@ const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 const startTimeRef = useRef<number>(Date.now());
 const reportRef = useRef<HTMLDivElement | null>(null);
 
-useEffect(() => {
-  loadQuiz();
-  return () => { if (timerRef.current) clearInterval(timerRef.current); };
-}, [bookId]);
+// ── isQuizUnlocked ──────────────────────────────────────────────────────────
+const isQuizUnlocked = async (
+  bookId: string,
+  _bookType: 'platform' | 'sponsored'
+): Promise<{ unlocked: boolean; readathonActive: boolean; readathonEntrant: boolean; readathon: { id: string; title: string } | null }> => {
 
-useEffect(() => {
-  if (!loading && !submitted) {
-    timerRef.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current!);
-          handleSubmit(true);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }
-  return () => { if (timerRef.current) clearInterval(timerRef.current); };
-}, [loading, submitted]);
-
-useEffect(() => {
-  const handler = (e: MouseEvent) => {
-    if (reportRef.current && !reportRef.current.contains(e.target as Node)) {
-      setReportOpen(null);
-      setReportReason('');
-    }
-  };
-  if (reportOpen) document.addEventListener('mousedown', handler);
-  return () => document.removeEventListener('mousedown', handler);
-}, [reportOpen]);
-
-const isQuizUnlocked = async (bookId: string, bookType: 'platform' | 'sponsored'): Promise<boolean> => {
-  // Check active bounty (works for both platform and sponsored)
+  // Check active bounty
   const { data: bounty } = await supabase
     .from('bounties')
     .select('id')
@@ -135,39 +114,52 @@ const isQuizUnlocked = async (bookId: string, bookType: 'platform' | 'sponsored'
     .eq('status', 'active')
     .gt('reader_pool', 0)
     .maybeSingle();
+  if (bounty) return { unlocked: true, readathonActive: false, readathonEntrant: false, readathon: null };
 
-  if (bounty) return true;
-
-  // Check active competition containing this book
+  // Check active competition containing this book (non-readathon)
   const { data: competitions } = await supabase
     .from('competitions')
     .select('book_ids')
     .eq('status', 'active');
-
   if (competitions) {
     for (const comp of competitions) {
       const ids: string[] = comp.book_ids ?? [];
-      if (ids.includes(bookId)) return true;
+      if (ids.includes(bookId)) return { unlocked: true, readathonActive: false, readathonEntrant: false, readathon: null };
     }
   }
 
-  // Check active readathon (all books unlocked during readathon)
+  // Check active readathon
   const { data: readathon } = await supabase
-    .from('competitions')
-    .select('id')
+    .from('readathons')
+    .select('id, title')
     .eq('status', 'active')
-    .eq('type', 'readathon')
     .maybeSingle();
 
-  if (readathon) return true;
+  if (readathon) {
+    // Check if user is an entrant
+    const { data: entry } = await supabase
+      .from('readathon_entries')
+      .select('id')
+      .eq('readathon_id', readathon.id)
+      .eq('user_id', user!.id)
+      .maybeSingle();
 
-  return false;
+    const entrant = !!entry;
+    return {
+      unlocked: entrant,
+      readathonActive: true,
+      readathonEntrant: entrant,
+      readathon: { id: readathon.id, title: readathon.title },
+    };
+  }
+
+  return { unlocked: false, readathonActive: false, readathonEntrant: false, readathon: null };
 };
 
+// ── loadQuiz ────────────────────────────────────────────────────────────────
 const loadQuiz = async () => {
   if (!user) return;
 
-  // Fetch book first so we know its type
   const { data: bookData, error: bookError } = await supabase
     .from('books')
     .select('*')
@@ -181,10 +173,20 @@ const loadQuiz = async () => {
 
   setBook(bookData);
 
-  // Gate: all books locked unless active bounty, competition, or readathon
   if (!isCompetitionQuiz) {
-    const unlocked = await isQuizUnlocked(bookId, bookData.book_type);
-    if (!unlocked) {
+    const result = await isQuizUnlocked(bookId, bookData.book_type);
+
+    if (result.readathonActive) {
+      setActiveReadathon(result.readathon);
+      setIsReadathonEntrant(result.readathonEntrant);
+      if (!result.readathonEntrant) {
+        setReadathonGate(true);
+        setLoading(false);
+        return;
+      }
+    }
+
+    if (!result.unlocked) {
       navigateTo('/library');
       return;
     }
@@ -272,6 +274,7 @@ const loadQuiz = async () => {
   setLoading(false);
 };
 
+// ── handleSubmit ────────────────────────────────────────────────────────────
 const handleSubmit = async (fromTimer = false) => {
   const timeSpent = Date.now() - startTimeRef.current;
   if (!fromTimer && timeSpent < MIN_QUIZ_TIME) {
@@ -323,6 +326,7 @@ const handleSubmit = async (fromTimer = false) => {
     setPassed(result.passed ?? false);
     setEarnedAmount(result.earned_amount ?? 0);
     if (result.streak_bonus) setStreakBonus(result.streak_bonus);
+    if (result.pages_logged) setPagesLogged(result.pages_logged);
     setSubmitted(true);
 
   } catch (err) {
@@ -330,6 +334,7 @@ const handleSubmit = async (fromTimer = false) => {
   }
 };
 
+// ── handleReport ────────────────────────────────────────────────────────────
 const handleReport = async (questionId: string) => {
   if (!user || !reportReason) return;
   setReportLoading(true);
@@ -344,6 +349,40 @@ const handleReport = async (questionId: string) => {
   setReportLoading(false);
 };
 
+// ── useEffects ──────────────────────────────────────────────────────────────
+useEffect(() => {
+  loadQuiz();
+  return () => { if (timerRef.current) clearInterval(timerRef.current); };
+}, [bookId]);
+
+useEffect(() => {
+  if (!loading && !submitted && !readathonGate) {
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!);
+          handleSubmit(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }
+  return () => { if (timerRef.current) clearInterval(timerRef.current); };
+}, [loading, submitted, readathonGate]);
+
+useEffect(() => {
+  const handler = (e: MouseEvent) => {
+    if (reportRef.current && !reportRef.current.contains(e.target as Node)) {
+      setReportOpen(null);
+      setReportReason('');
+    }
+  };
+  if (reportOpen) document.addEventListener('mousedown', handler);
+  return () => document.removeEventListener('mousedown', handler);
+}, [reportOpen]);
+
+// ── Theme ───────────────────────────────────────────────────────────────────
 const bg = isDark ? 'bg-[#1B2A4A]' : 'bg-[#F5F0E8]';
 const cardBg = isDark ? 'bg-[#162238]' : 'bg-white';
 const cardBorder = isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10';
@@ -355,283 +394,312 @@ const optionBorder = isDark ? 'border-[#F5F0E8]/15 hover:border-[#D4A843]/50' : 
 const optionText = isDark ? 'text-[#F5F0E8]/80' : 'text-[#1B2A4A]/80';
 const popoverBg = isDark ? 'bg-[#0f1623] border-[#D4A843]/20' : 'bg-white border-[#1B2A4A]/15';
 
+// ── Loading ─────────────────────────────────────────────────────────────────
 if (loading) return (
   <div className={`min-h-screen ${bg} flex items-center justify-center transition-colors duration-300`}>
     <div className="w-8 h-8 border-2 border-[#D4A843] border-t-transparent rounded-full animate-spin" />
   </div>
 );
 
-const renderResult = () => {
-  if (isCompetitionQuiz) {
-    if (isFinalRound) {
-      return (
-        <>
-          <div className="flex items-center gap-3 mb-2">
-            <PartyPopper className="w-6 h-6 text-[#D4A843]" />
-            <h2 className={`text-3xl font-serif ${headingColor}`}>Final round submitted!</h2>
-          </div>
-          <p className={`${subColor} mb-6`}>
-            You scored {score} out of {questions.length}. Winners are announced when the competition closes.
-          </p>
-          <button
-            onClick={() => navigateTo(`/competition/${competitionId}`)}
-            className="bg-[#D4A843] text-[#1B2A4A] font-medium px-6 py-2.5 rounded-lg hover:bg-[#c49a38] transition"
-          >
-            Back to Competition
-          </button>
-        </>
-      );
-    }
-
-    if (passed) {
-      return (
-        <>
-          <div className="flex items-center gap-3 mb-2">
-            <PartyPopper className="w-6 h-6 text-[#D4A843]" />
-            <h2 className={`text-3xl font-serif ${headingColor}`}>
-              Round {competitionRound} passed!
-            </h2>
-          </div>
-          <p className={`${subColor} mb-6`}>
-            {score} out of {questions.length} correct. You advance to Round {competitionRound! + 1}.
-          </p>
-          <button
-            onClick={() => navigateTo(`/competition/${competitionId}`)}
-            className="bg-[#D4A843] text-[#1B2A4A] font-medium px-6 py-2.5 rounded-lg hover:bg-[#c49a38] transition"
-          >
-            Back to Competition
-          </button>
-        </>
-      );
-    }
-
-    return (
-      <>
-        <h2 className={`text-3xl font-serif ${headingColor} mb-2`}>
-          {timedOut ? 'Time is up' : 'Eliminated'}
-        </h2>
-        <p className={`${subColor} mb-6`}>
-          {score} out of {questions.length} correct.{' '}
-          {ELIMINATION_PASS_THRESHOLD[competitionRound!]
-            ? `${ELIMINATION_PASS_THRESHOLD[competitionRound!]} required to advance.`
-            : ''}
+// ── Readathon gate -- user not entered ──────────────────────────────────────
+if (readathonGate && activeReadathon) return (
+  <div className={`min-h-screen ${bg} flex items-center justify-center px-4 transition-colors duration-300`}>
+    <div className={`${cardBg} border ${cardBorder} rounded-2xl p-8 max-w-md w-full text-center space-y-5`}>
+      <div className="w-14 h-14 rounded-full bg-[#D4A843]/15 flex items-center justify-center mx-auto">
+        <BookOpen size={28} className="text-[#D4A843]" />
+      </div>
+      <div>
+        <h2 className={`text-xl font-bold ${headingColor} mb-2`}>Readathon in Progress</h2>
+        <p className={`${subColor} text-sm leading-relaxed`}>
+          <span className="font-semibold text-[#D4A843]">{activeReadathon.title}</span> is currently active.
+          All quizzes on the platform are unlocked for registered participants.
         </p>
-        <button
-          onClick={() => navigateTo(`/competition/${competitionId}`)}
-          className="bg-[#D4A843] text-[#1B2A4A] font-medium px-6 py-2.5 rounded-lg hover:bg-[#c49a38] transition"
-        >
-          Back to Competition
-        </button>
-      </>
-    );
-  }
-
-  return passed ? (
-    <>
-      <div className="flex items-center gap-3 mb-2">
-        <PartyPopper className="w-6 h-6 text-[#D4A843]" />
-        <h2 className={`text-3xl font-serif ${headingColor}`}>You passed!</h2>
       </div>
-      <p className={`${subColor} mb-6`}>{score} out of {questions.length} correct</p>
-      {!alreadyCompleted && (
-        <div className="bg-[#D4A843]/10 border border-[#D4A843]/30 rounded-lg p-4 mb-3">
-          <p className="text-[#D4A843] font-medium text-sm">+${earnedAmount.toFixed(2)} added to balance</p>
-        </div>
-      )}
-      {streakBonus && (
-        <div className="bg-[#D4A843]/10 border border-[#D4A843]/30 rounded-lg p-4 mb-3">
-          <p className="text-[#D4A843] font-medium text-sm">{streakBonus}-day streak bonus! +$0.10</p>
-        </div>
-      )}
-      <div className="flex gap-3 mt-6">
+      <div className={`${isDark ? 'bg-[#1B2A4A]' : 'bg-[#F5F0E8]'} rounded-xl p-4 text-sm ${subColor} leading-relaxed`}>
+        Enter the readathon to take this quiz and have your pages counted toward the leaderboard.
+        Winners take home cash prizes.
+      </div>
+      <div className="flex flex-col gap-3">
+        <button
+          onClick={() => navigateTo('/readathon')}
+          className="w-full py-3 rounded-xl bg-[#D4A843] text-white font-semibold hover:bg-[#c49a3a] transition-colors"
+        >
+          Join the Readathon
+        </button>
         <button
           onClick={() => navigateTo('/library')}
-          className="bg-[#D4A843] text-[#1B2A4A] font-medium px-6 py-2.5 rounded-lg hover:bg-[#c49a38] transition"
+          className={`w-full py-3 rounded-xl border ${cardBorder} ${subColor} text-sm hover:opacity-70 transition-opacity`}
         >
           Back to Library
         </button>
       </div>
-    </>
-  ) : (
-    <>
-      <h2 className={`text-3xl font-serif ${headingColor} mb-2`}>
-        {timedOut ? 'Time is up' : 'Not quite'}
-      </h2>
-      <p className={`${subColor} mb-6`}>{score} out of {questions.length} correct. (8 required)</p>
-      <div className="flex gap-3 mt-6">
-        <button
-          onClick={() => navigateTo('/library')}
-          className="bg-[#D4A843] text-[#1B2A4A] font-medium px-6 py-2.5 rounded-lg hover:bg-[#c49a38] transition"
-        >
-          Back to Library
-        </button>
-        <button
-          onClick={() => {
-            setSubmitted(false);
-            setAnswers({});
-            setScore(0);
-            setPassed(false);
-            setTimedOut(false);
-            setTimeLeft(QUIZ_DURATION);
-            startTimeRef.current = Date.now();
-          }}
-          className={`${isDark ? 'bg-[#F5F0E8]/10 text-[#F5F0E8]' : 'bg-[#1B2A4A]/10 text-[#1B2A4A]'} font-medium px-6 py-2.5 rounded-lg transition`}
-        >
-          Try Again
-        </button>
-      </div>
-    </>
-  );
-};
-
-return (
-  <div className={`min-h-screen ${bg} transition-colors duration-300`}>
-    <div className={`border-b ${dividerColor} px-4 py-4 sticky top-0 z-10 ${isDark ? 'bg-[#1B2A4A]' : 'bg-[#F5F0E8]'}`}>
-      <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            onClick={() => isCompetitionQuiz ? navigateTo(`/competition/${competitionId}`) : navigateTo('/library')}
-            className={`${subColor} hover:text-[#D4A843] transition flex-shrink-0`}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="min-w-0">
-            <h1 className={`font-serif text-lg ${headingColor} truncate`}>{book?.title}</h1>
-            <p className={`text-xs ${subColor} truncate`}>
-              {isCompetitionQuiz ? `Round ${competitionRound} — ${book?.author}` : book?.author}
-            </p>
-          </div>
-        </div>
-        {!submitted && (
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-mono flex-shrink-0 transition-colors ${
-            timeLeft <= 30
-              ? 'bg-red-500/10 border-red-500/30 text-red-400'
-              : 'bg-[#162238] border-[#F5F0E8]/10 text-[#F5F0E8]/60'
-          }`}>
-            <Timer className="w-3.5 h-3.5" />
-            {formatTime(timeLeft)}
-          </div>
-        )}
-      </div>
-    </div>
-
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      {alreadyCompleted && (
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6 text-yellow-300 text-sm flex items-center gap-2">
-          <AlertCircle className="w-4 h-4" />
-          {isCompetitionQuiz
-            ? `You have already submitted Round ${competitionRound}.`
-            : 'You have already used your attempt for this book.'}
-        </div>
-      )}
-
-      {submitted ? (
-        <div className={`${cardBg} rounded-lg p-8 border ${cardBorder}`}>
-          {renderResult()}
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {questions.map((q, idx) => (
-            <div key={q.id} className={`${cardBg} rounded-lg p-6 border ${cardBorder}`}>
-              <div className="flex items-start justify-between gap-3 mb-4">
-                <p className={`font-medium ${headingColor}`}>
-                  <span className="text-[#D4A843] mr-2">{idx + 1}.</span>{q.question_text}
-                </p>
-                <div className="relative shrink-0" ref={reportOpen === q.id ? reportRef : null}>
-                  {reportSubmitted.has(q.id) ? (
-                    <span className={`text-xs ${subColor}`}>Reported</span>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setReportOpen(reportOpen === q.id ? null : q.id);
-                        setReportReason('');
-                      }}
-                      title="Report an issue with this question"
-                      className={`p-1.5 rounded-md transition-colors ${
-                        reportOpen === q.id
-                          ? 'text-[#D4A843] bg-[#D4A843]/10'
-                          : `${subColor} hover:text-[#D4A843] hover:bg-[#D4A843]/10`
-                      }`}
-                    >
-                      <Flag className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                  {reportOpen === q.id && (
-                    <div className={`absolute right-0 top-8 z-20 w-56 rounded-xl border shadow-xl p-3 ${popoverBg}`}>
-                      <p className={`text-xs font-semibold mb-2 ${headingColor}`}>Report an issue</p>
-                      <div className="space-y-1 mb-3">
-                        {REPORT_REASONS.map((reason) => (
-                          <button
-                            key={reason}
-                            onClick={() => setReportReason(reason)}
-                            className={`w-full text-left text-xs px-2.5 py-1.5 rounded-lg transition-colors ${
-                              reportReason === reason
-                                ? 'bg-[#D4A843]/15 text-[#D4A843]'
-                                : `${subColor} hover:bg-[#D4A843]/10 hover:text-[#D4A843]`
-                            }`}
-                          >
-                            {reason}
-                          </button>
-                        ))}
-                      </div>
-                      <button
-                        onClick={() => handleReport(q.id)}
-                        disabled={!reportReason || reportLoading}
-                        className="w-full text-xs font-medium bg-[#D4A843] text-[#1B2A4A] py-1.5 rounded-lg hover:bg-[#c49a38] transition disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        {reportLoading ? 'Submitting...' : 'Submit Report'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {(shuffledOptions[q.id] ?? []).map((opt, i) => (
-                  <label key={i} className={`flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${
-                    answers[q.id] === opt
-                      ? 'border-[#D4A843] bg-[#D4A843]/10'
-                      : `${optionBg} ${optionBorder}`
-                  }`}>
-                    <input
-                      type="radio"
-                      name={q.id}
-                      value={opt}
-                      checked={answers[q.id] === opt}
-                      onChange={() => setAnswers((prev) => ({ ...prev, [q.id]: opt }))}
-                      className="mt-0.5 accent-[#D4A843] flex-shrink-0"
-                    />
-                    <span className={`text-sm ${answers[q.id] === opt ? (isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]') : optionText}`}>
-                      <span className="font-medium mr-2">{['A', 'B', 'C', 'D'][i]}.</span>{opt}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          ))}
-
-          <div className="flex flex-col items-end gap-2 pt-2 pb-8">
-            {isSpeeding && (
-              <p className="text-red-400 text-xs animate-pulse">
-                Wait! We verify reading time. Please review your answers for a moment.
-              </p>
-            )}
-            <div className="flex items-center justify-between w-full">
-              <p className={`text-sm ${subColor}`}>
-                {Object.keys(answers).length} of {questions.length} answered
-              </p>
-              <button
-                onClick={() => handleSubmit(false)}
-                disabled={Object.keys(answers).length < questions.length || isSpeeding}
-                className="bg-[#D4A843] text-[#1B2A4A] font-medium px-8 py-3 rounded-lg hover:bg-[#c49a38] transition disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Submit Quiz
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   </div>
 );
+
+// ── renderResult ────────────────────────────────────────────────────────────
+const renderResult = () => {
+  if (isCompetitionQuiz) {
+    return (
+      <div className={`min-h-screen ${bg} flex items-center justify-center px-4`}>
+        <div className={`${cardBg} border ${cardBorder} rounded-2xl p-8 max-w-md w-full text-center space-y-4`}>
+          {passed ? (
+            <>
+              <PartyPopper size={40} className="text-[#D4A843] mx-auto" />
+              <h2 className={`text-2xl font-bold ${headingColor}`}>Round Passed!</h2>
+              <p className={subColor}>Score: {score}/{questions.length}</p>
+              {isFinalRound && <p className={`text-sm ${subColor}`}>You've completed the final round. Results will be announced soon.</p>}
+            </>
+          ) : (
+            <>
+              <AlertCircle size={40} className="text-red-400 mx-auto" />
+              <h2 className={`text-2xl font-bold ${headingColor}`}>Eliminated</h2>
+              <p className={subColor}>Score: {score}/{questions.length}</p>
+              <p className={`text-sm ${subColor}`}>You needed {ELIMINATION_PASS_THRESHOLD[competitionRound ?? 1] ?? 8} correct to advance.</p>
+            </>
+          )}
+          <button
+            onClick={() => navigateTo(`/competition/${competitionId}`)}
+            className="mt-4 px-6 py-2 rounded-xl bg-[#D4A843] text-white font-semibold hover:bg-[#c49a3a] transition-colors"
+          >
+            Back to Competition
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Readathon result
+  if (activeReadathon && isReadathonEntrant) {
+    return (
+      <div className={`min-h-screen ${bg} flex items-center justify-center px-4`}>
+        <div className={`${cardBg} border ${cardBorder} rounded-2xl p-8 max-w-md w-full text-center space-y-4`}>
+          {passed ? (
+            <>
+              <PartyPopper size={40} className="text-[#D4A843] mx-auto" />
+              <h2 className={`text-2xl font-bold ${headingColor}`}>Quiz Passed!</h2>
+              <p className={subColor}>Score: {score}/{questions.length}</p>
+              <div className={`${isDark ? 'bg-[#1B2A4A]' : 'bg-[#F5F0E8]'} rounded-xl p-4 space-y-2`}>
+                <p className={`text-sm font-semibold ${headingColor}`}>
+                  📖 +{pagesLogged} pages added to your readathon total
+                </p>
+                {earnedAmount > 0 && (
+                  <p className={`text-sm ${subColor}`}>
+                    +${earnedAmount.toFixed(2)} bounty earned
+                  </p>
+                )}
+              </div>
+              <p className={`text-xs ${subColor}`}>Check the leaderboard to see your standing.</p>
+            </>
+          ) : (
+            <>
+              <AlertCircle size={40} className="text-red-400 mx-auto" />
+              <h2 className={`text-2xl font-bold ${headingColor}`}>Quiz Failed</h2>
+              <p className={subColor}>Score: {score}/{questions.length} -- need 8 to pass</p>
+              <p className={`text-sm ${subColor}`}>No pages counted for failed quizzes. Try another book!</p>
+            </>
+          )}
+          <div className="flex gap-3 mt-4">
+            <button
+              onClick={() => navigateTo('/library')}
+              className={`flex-1 py-2 rounded-xl border ${cardBorder} ${subColor} text-sm hover:opacity-70 transition-opacity`}
+            >
+              More Books
+            </button>
+            <button
+              onClick={() => navigateTo('/readathon')}
+              className="flex-1 py-2 rounded-xl bg-[#D4A843] text-white font-semibold hover:bg-[#c49a3a] transition-colors text-sm"
+            >
+              Leaderboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Standard result
+  return (
+    <div className={`min-h-screen ${bg} flex items-center justify-center px-4`}>
+      <div className={`${cardBg} border ${cardBorder} rounded-2xl p-8 max-w-md w-full text-center space-y-4`}>
+        {passed ? (
+          <>
+            <PartyPopper size={40} className="text-[#D4A843] mx-auto" />
+            <h2 className={`text-2xl font-bold ${headingColor}`}>Quiz Passed!</h2>
+            <p className={subColor}>Score: {score}/{questions.length}</p>
+            {earnedAmount > 0 && (
+              <p className={`text-lg font-bold text-[#D4A843]`}>+${earnedAmount.toFixed(2)} earned</p>
+            )}
+            {streakBonus && (
+              <p className={`text-sm ${subColor}`}>+${streakBonus.toFixed(2)} streak bonus</p>
+            )}
+          </>
+        ) : (
+          <>
+            <AlertCircle size={40} className="text-red-400 mx-auto" />
+            <h2 className={`text-2xl font-bold ${headingColor}`}>Quiz Failed</h2>
+            <p className={subColor}>Score: {score}/{questions.length} -- need 8 to pass</p>
+          </>
+        )}
+        <button
+          onClick={() => navigateTo('/library')}
+          className="mt-4 px-6 py-2 rounded-xl bg-[#D4A843] text-white font-semibold hover:bg-[#c49a3a] transition-colors"
+        >
+          Back to Library
+        </button>
+      </div>
+    </div>
+  );
 };
+
+if (submitted) return renderResult();
+
+// ── Quiz UI ─────────────────────────────────────────────────────────────────
+return (
+  <div className={`min-h-screen ${bg} pb-16 transition-colors duration-300`}>
+
+    {/* Header */}
+    <div className={`${cardBg} border-b ${dividerColor} px-4 py-3 flex items-center justify-between sticky top-0 z-10`}>
+      <div className="flex items-center gap-3">
+        <button onClick={() => navigateTo('/library')} className={`${subColor} hover:opacity-70`}>
+          <ArrowLeft size={20} />
+        </button>
+        <div>
+          <p className={`text-sm font-semibold ${headingColor} leading-tight`}>{book?.title}</p>
+          <p className={`text-xs ${subColor}`}>{book?.author}</p>
+        </div>
+      </div>
+      <div className={`flex items-center gap-1.5 text-sm font-mono font-semibold ${timeLeft < 60 ? 'text-red-400' : headingColor}`}>
+        <Timer size={15} />
+        {formatTime(timeLeft)}
+      </div>
+    </div>
+
+    {/* Readathon banner */}
+    {activeReadathon && isReadathonEntrant && (
+      <div className="bg-[#D4A843]/10 border-b border-[#D4A843]/20 px-4 py-2 text-center">
+        <p className="text-xs text-[#D4A843] font-medium">
+          📖 Readathon: {activeReadathon.title} -- pages count toward your total on pass
+        </p>
+      </div>
+    )}
+
+    <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+
+      {/* Already completed notice */}
+      {alreadyCompleted && (
+        <div className={`${cardBg} border ${cardBorder} rounded-xl p-4 flex items-start gap-3`}>
+          <AlertCircle size={18} className="text-amber-400 mt-0.5 shrink-0" />
+          <p className={`text-sm ${subColor}`}>You've already completed this quiz. You can review the questions but won't earn again.</p>
+        </div>
+      )}
+
+      {/* Timed out notice */}
+      {timedOut && (
+        <div className={`${cardBg} border border-red-400/20 rounded-xl p-4 flex items-start gap-3`}>
+          <Timer size={18} className="text-red-400 mt-0.5 shrink-0" />
+          <p className="text-sm text-red-400">Time's up! Your answers were submitted automatically.</p>
+        </div>
+      )}
+
+      {/* Speed warning */}
+      {isSpeeding && (
+        <div className={`${cardBg} border border-amber-400/20 rounded-xl p-4 flex items-start gap-3`}>
+          <AlertCircle size={18} className="text-amber-400 mt-0.5 shrink-0" />
+          <p className="text-sm text-amber-400">Please take your time reading the questions carefully.</p>
+        </div>
+      )}
+
+      {/* Questions */}
+      {questions.map((q, idx) => (
+        <div key={q.id} className={`${cardBg} border ${cardBorder} rounded-2xl p-5 space-y-4`}>
+          <div className="flex items-start justify-between gap-3">
+            <p className={`text-sm font-medium ${headingColor} leading-relaxed flex-1`}>
+              <span className={`${subColor} mr-2`}>{idx + 1}.</span>
+              {q.question_text}
+            </p>
+            <div className="relative shrink-0" ref={reportOpen === q.id ? reportRef : null}>
+              <button
+                onClick={() => setReportOpen(reportOpen === q.id ? null : q.id)}
+                className={`${subColor} hover:text-red-400 transition-colors`}
+                title="Report question"
+              >
+                <Flag size={14} />
+              </button>
+              {reportOpen === q.id && (
+                <div className={`absolute right-0 top-6 z-20 w-64 rounded-xl border ${popoverBg} p-3 shadow-xl space-y-2`}>
+                  <p className={`text-xs font-semibold ${headingColor}`}>Report this question</p>
+                  {reportSubmitted.has(q.id) ? (
+                    <p className="text-xs text-green-400">Thanks for the report!</p>
+                  ) : (
+                    <>
+                      {REPORT_REASONS.map((r) => (
+                        <label key={r} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name={`report-${q.id}`}
+                            value={r}
+                            checked={reportReason === r}
+                            onChange={() => setReportReason(r)}
+                            className="accent-[#D4A843]"
+                          />
+                          <span className={`text-xs ${subColor}`}>{r}</span>
+                        </label>
+                      ))}
+                      <button
+                        onClick={() => handleReport(q.id)}
+                        disabled={!reportReason || reportLoading}
+                        className="w-full mt-1 py-1.5 rounded-lg bg-[#D4A843] text-white text-xs font-semibold disabled:opacity-40 hover:bg-[#c49a3a] transition-colors"
+                      >
+                        {reportLoading ? 'Submitting...' : 'Submit Report'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {(shuffledOptions[q.id] ?? []).map((option) => {
+              const selected = answers[q.id] === option;
+              return (
+                <label
+                  key={option}
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                    selected
+                      ? 'border-[#D4A843] bg-[#D4A843]/10'
+                      : `${optionBg} ${optionBorder}`
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name={q.id}
+                    value={option}
+                    checked={selected}
+                    onChange={() => setAnswers(prev => ({ ...prev, [q.id]: option }))}
+                    className="accent-[#D4A843] shrink-0"
+                  />
+                  <span className={`text-sm ${selected ? headingColor : optionText}`}>{option}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* Submit */}
+      <button
+        onClick={() => handleSubmit(false)}
+        disabled={Object.keys(answers).length < questions.length || alreadyCompleted}
+        className="w-full py-4 rounded-2xl bg-[#D4A843] text-white font-bold text-base hover:bg-[#c49a3a] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        {Object.keys(answers).length < questions.length
+          ? `Answer all questions (${Object.keys(answers).length}/${questions.length})`
+          : 'Submit Quiz'}
+      </button>
+
+    </div>
+  </div>
+);
+}
