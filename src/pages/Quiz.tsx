@@ -284,7 +284,11 @@ const handleSubmit = async (fromTimer = false) => {
     return;
   }
 
-  if (timerRef.current) clearInterval(timerRef.current);
+  // ✅ FIX: clear timer BEFORE async call to prevent race condition
+  if (timerRef.current) {
+    clearInterval(timerRef.current);
+    timerRef.current = null;
+  }
   if (fromTimer) setTimedOut(true);
 
   if (!user || !book) return;
@@ -319,6 +323,9 @@ const handleSubmit = async (fromTimer = false) => {
     const result = await response.json();
 
     if (!response.ok) {
+      // ✅ FIX: was silently failing with only a console.error
+      setScore(result.score ?? 0);
+      setSubmitted(true); // show result screen with score even on error
       console.error('Quiz submission error:', result.error);
       return;
     }
@@ -331,10 +338,13 @@ const handleSubmit = async (fromTimer = false) => {
     setSubmitted(true);
 
   } catch (err) {
+    // ✅ FIX: network failure also now shows result screen
+    setScore(0);
+    setSubmitted(true);
     console.error('Quiz submission failed:', err);
   }
 };
-
+  
 // ── handleReport ────────────────────────────────────────────────────────────
 const handleReport = async (questionId: string) => {
   if (!user || !reportReason) return;
