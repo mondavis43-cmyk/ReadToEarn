@@ -36,10 +36,16 @@ interface PhoneVerifierState {
   otp: string;
   verified: boolean;
   loading: boolean;
+  cooldown: number; // ✅ FIX: tracks seconds remaining before resend allowed
 }
 
 const defaultVerifier = (): PhoneVerifierState => ({
-  phone: '', otpSent: false, otp: '', verified: false, loading: false,
+  phone: '',
+  otpSent: false,
+  otp: '',
+  verified: false,
+  loading: false,
+  cooldown: 0, // ✅ FIX
 });
 
 export const Signup = () => {
