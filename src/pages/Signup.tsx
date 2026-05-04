@@ -356,13 +356,20 @@ export const Signup = () => {
         />
         {!state.verified && (
           <button
-            type="button"
-            onClick={() => sendOtp(state, setState)}
-            disabled={state.loading || state.otpSent}
-            className="px-3 py-2 rounded-xl bg-[#1B2A4A] text-white text-xs font-medium hover:bg-[#243a5e] transition disabled:opacity-50 whitespace-nowrap"
-          >
-            {state.otpSent ? 'Resend' : state.loading ? '...' : 'Send Code'}
-          </button>
+  type="button"
+  onClick={() => sendOtp(state, setState)}
+  disabled={state.loading || state.cooldown > 0} // ✅ FIX: was permanently disabled after first send
+  className="px-3 py-2 rounded-xl bg-[#1B2A4A] text-white text-xs font-medium hover:bg-[#243a5e] transition disabled:opacity-50 whitespace-nowrap"
+>
+  {state.loading
+    ? '...'
+    : state.cooldown > 0
+    ? `Resend in ${state.cooldown}s` // ✅ FIX: shows countdown
+    : state.otpSent
+    ? 'Resend'
+    : 'Send Code'}
+</button>
+
         )}
         {state.verified && (
           <span className="px-3 py-2 rounded-xl bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs font-medium flex items-center gap-1">
