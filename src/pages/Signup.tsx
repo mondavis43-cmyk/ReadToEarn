@@ -121,23 +121,41 @@ export const Signup = () => {
 
   // ── Generic OTP sender ─────────────────────────────────────────────────────
   const sendOtp = async (
-    state: PhoneVerifierState,
-    setState: React.Dispatch<React.SetStateAction<PhoneVerifierState>>
-  ) => {
-    if (!state.phone.trim()) { setError('Enter a phone number first.'); return; }
-    setState((s) => ({ ...s, loading: true }));
-    setError('');
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      phone: state.phone.trim(),
-    });
-    if (otpError) {
-      setError(otpError.message);
-    } else {
-      setState((s) => ({ ...s, otpSent: true }));
-    }
-    setState((s) => ({ ...s, loading: false }));
-  };
+  state: PhoneVerifierState,
+  setState: React.Dispatch<React.SetStateAction<PhoneVerifierState>>
+) => {
+  if (!state.phone.trim()) { setError('Enter a phone number first.'); return; }
 
+  // ✅ FIX: basic international format check
+  const phoneRegex = /^\+[1-9]\d{7,14}$/;
+  if (!phoneRegex.test(state.phone.trim())) {
+    setError('Please use international format, e.g. +15551234567');
+    return;
+  }
+
+  setState((s) => ({ ...s, loading: true }));
+  setError('');
+  const { error: otpError } = await supabase.auth.signInWithOtp({
+    phone: state.phone.trim(),
+  });
+  if (otpError) {
+    setError(otpError.message);
+  } else {
+    setState((s) => ({ ...s, otpSent: true, cooldown: 60 })); // ✅ FIX: start 60s cooldown
+
+    // ✅ FIX: countdown timer
+    const interval = setInterval(() => {
+      setState((s) => {
+        if (s.cooldown <= 1) {
+          clearInterval(interval);
+          return { ...s, cooldown: 0 };
+        }
+        return { ...s, cooldown: s.cooldown - 1 };
+      });
+    }, 1000);
+  }
+  setState((s) => ({ ...s, loading: false }));
+};
   // ── Generic OTP verifier ───────────────────────────────────────────────────
   const verifyOtp = async (
     state: PhoneVerifierState,
