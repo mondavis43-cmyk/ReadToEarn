@@ -28,9 +28,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      (async () => {
-        setUser(session?.user ?? null);
-      })();
+      setUser(session?.user ?? null);
+      setLoading(false); // ✅ FIX: was missing, caused infinite loading screen
     });
 
     return () => subscription.unsubscribe();
