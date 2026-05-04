@@ -47,26 +47,37 @@ export const Cashout = () => {
   }, [user]);
 
   const loadData = async () => {
-    if (!user) return;
-    const [profileResult, requestsResult] = await Promise.all([
-      supabase
-        .from('profiles')
-        .select('available_balance, is_upgraded')
-        .eq('id', user.id)
-        .single(),
-      supabase
-        .from('cashout_requests')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false }),
-    ]);
-    if (profileResult.data) {
-      setBalance(profileResult.data.available_balance);
-      setIsUpgraded(profileResult.data.is_upgraded ?? false);
-    }
-    if (requestsResult.data) setPastRequests(requestsResult.data);
+  if (!user) return;
+  const [profileResult, requestsResult] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('available_balance, is_upgraded')
+      .eq('id', user.id)
+      .single(),
+    supabase
+      .from('cashout_requests')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false }),
+  ]);
+
+  // ✅ FIX: check for errors before reading data
+  if (profileResult.error) {
+    console.error('Failed to load balance:', profileResult.error);
     setLoading(false);
-  };
+    return;
+  }
+  if (requestsResult.error) {
+    console.error('Failed to load cashout history:', requestsResult.error);
+  }
+
+  if (profileResult.data) {
+    setBalance(profileResult.data.available_balance);
+    setIsUpgraded(profileResult.data.is_upgraded ?? false);
+  }
+  if (requestsResult.data) setPastRequests(requestsResult.data);
+  setLoading(false);
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
