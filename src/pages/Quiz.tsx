@@ -33,6 +33,7 @@ competitionRound?: number;
 
 const QUIZ_DURATION = 8 * 60;
 const MIN_QUIZ_TIME = 2 * 60 * 1000;
+const STANDARD_PASS_THRESHOLD = 8;
 
 const ELIMINATION_PASS_THRESHOLD: Record<number, number> = {
 1: 8,
