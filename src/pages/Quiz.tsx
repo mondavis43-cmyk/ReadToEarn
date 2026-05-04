@@ -506,7 +506,7 @@ const renderResult = () => {
             <>
               <AlertCircle size={40} className="text-red-400 mx-auto" />
               <h2 className={`text-2xl font-bold ${headingColor}`}>Quiz Failed</h2>
-              <p className={subColor}>Score: {score}/{questions.length} -- need 8 to pass</p>
+              <p className={subColor}>Score: {score}/{questions.length} -- need {STANDARD_PASS_THRESHOLD} to pass</p>
               <p className={`text-sm ${subColor}`}>No pages counted for failed quizzes. Try another book!</p>
             </>
           )}
@@ -549,7 +549,7 @@ const renderResult = () => {
           <>
             <AlertCircle size={40} className="text-red-400 mx-auto" />
             <h2 className={`text-2xl font-bold ${headingColor}`}>Quiz Failed</h2>
-            <p className={subColor}>Score: {score}/{questions.length} -- need 8 to pass</p>
+            <p className={subColor}>Score: {score}/{questions.length} -- need {STANDARD_PASS_THRESHOLD} to pass</p>
           </>
         )}
         <button
