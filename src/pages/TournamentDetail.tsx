@@ -82,6 +82,8 @@ export const TournamentDetail = ({ tournamentId }: { tournamentId: string }) => 
   const [inviteInput, setInviteInput] = useState('');
   const [inviteError, setInviteError] = useState('');
   const [isCreator, setIsCreator] = useState(false);
+  const [distributing, setDistributing] = useState(false);
+  const [prizeDistributed, setPrizeDistributed] = useState(false);
 
   useEffect(() => {
     loadAll();
@@ -155,6 +157,29 @@ export const TournamentDetail = ({ tournamentId }: { tournamentId: string }) => 
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const handleDistributePrizes = async () => {
+  if (!tournament || distributing) return;
+  const confirmed = window.confirm(
+    'This will close the tournament and pay out winners. This cannot be undone. Continue?'
+  );
+  if (!confirmed) return;
+
+  setDistributing(true);
+  try {
+    const { data, error } = await supabase.functions.invoke('distribute-tournament-prizes', {
+      body: { tournament_id: tournament.id },
+    });
+    if (error) throw new Error(error.message);
+    setPrizeDistributed(true);
+    // Refresh tournament data to show completed status
+    await loadTournament();
+  } catch (err: any) {
+    alert('Failed to distribute prizes: ' + err.message);
+  } finally {
+    setDistributing(false);
+  }
+};
 
   if (loading) {
     return (
@@ -314,6 +339,23 @@ export const TournamentDetail = ({ tournamentId }: { tournamentId: string }) => 
             </div>
           )}
         </div>
+
+        {isCreator && tournament.status === 'active' && (
+  <button
+    onClick={handleDistributePrizes}
+    disabled={distributing}
+    className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-3 bg-[#D4A843] text-[#1B2A4A] rounded-xl text-sm font-semibold hover:bg-[#c49a3a] transition disabled:opacity-50"
+  >
+    <Trophy size={15} />
+    {distributing ? 'Distributing...' : 'Close & Distribute Prizes'}
+  </button>
+)}
+
+{prizeDistributed && (
+  <div className="mt-3 p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-sm text-center">
+    ✓ Prizes distributed successfully
+  </div>
+)}
 
         {/* Participants / Leaderboard */}
         <div className={`rounded-2xl border ${cardBg} p-6`}>
