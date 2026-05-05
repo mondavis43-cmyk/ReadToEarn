@@ -3,7 +3,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { Zap, BookOpen, Trophy, Clock, DollarSign, ArrowRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import CompetitionLeaderboard from '../components/CompetitionLeaderboard';
+import { CompetitionLeaderboard } from '../components/CompetitionLeaderboard';
 
 type Competition = {
   id: string;
