@@ -26,7 +26,7 @@ interface LeaderboardEntry {
   time_spent_ms: number;
 }
 
-export const SprintsPage = () => {
+export const Sprints = () => {
   const { user } = useAuth();
   const { navigateTo } = useNavigate();
   const { isDark } = useTheme();
