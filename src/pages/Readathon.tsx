@@ -22,7 +22,7 @@ interface LeaderboardEntry {
   total_pages: number;
 }
 
-export const ReadathonPage = () => {
+export const Readathon = () => {
   const { user } = useAuth();
   const { navigateTo } = useNavigate();
   const { isDark } = useTheme();
