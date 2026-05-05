@@ -101,7 +101,9 @@ const [reportLoading, setReportLoading] = useState(false);
 
 const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 const startTimeRef = useRef<number>(Date.now());
+const boostsUsedRef = useRef(0);  
 const reportRef = useRef<HTMLDivElement | null>(null);
+const submittedRef = useRef(false);  
 
 // ── isQuizUnlocked ──────────────────────────────────────────────────────────
 const isQuizUnlocked = async (
@@ -179,6 +181,7 @@ setBoostBalance(boostData?.balance ?? 0);
     .update({ balance: boostBalance - 1, updated_at: new Date().toISOString() })
     .eq('user_id', user.id);
   setBoostBalance((b) => b - 1);
+  boostsUsedRef.current += 1;  
   setBoostUsedCount((c) => c + 1);
   setTimeLeft((t) => t + 120); // +2 minutes per boost
 };
@@ -298,6 +301,7 @@ setBoostBalance(boostData?.balance ?? 0);
 };
 
 // ── handleSubmit ────────────────────────────────────────────────────────────
+submittedRef.current = true;    
 const handleSubmit = async (fromTimer = false) => {
   const timeSpent = Date.now() - startTimeRef.current;
   if (!fromTimer && timeSpent < MIN_QUIZ_TIME) {
@@ -385,7 +389,25 @@ const handleReport = async (questionId: string) => {
 // ── useEffects ──────────────────────────────────────────────────────────────
 useEffect(() => {
   loadQuiz();
-  return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  return () => {
+  if (timerRef.current) clearInterval(timerRef.current);
+  // Refund boosts if user exits without submitting
+  if (boostsUsedRef.current > 0 && !submittedRef.current) {
+    supabase
+      .from('user_boosts')
+      .select('balance')
+      .eq('user_id', user?.id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          supabase
+            .from('user_boosts')
+            .update({ balance: data.balance + boostsUsedRef.current })
+            .eq('user_id', user?.id);
+        }
+      });
+  }
+};
 }, [bookId]);
 
 useEffect(() => {
