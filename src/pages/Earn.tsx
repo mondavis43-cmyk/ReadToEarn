@@ -343,11 +343,11 @@ export const Earn = () => {
                 );
               })}
               <button
-                onClick={() => navigateTo('/earn')}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline mt-2"
-              >
-                See all open tasks <ArrowRight size={14} />
-              </button>
+  onClick={() => navigateTo('/author-quick-tasks')}
+  className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline mt-2"
+>
+  See all open tasks <ArrowRight size={14} />
+</button>
             </div>
           )}
         </div>
