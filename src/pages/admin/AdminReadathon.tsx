@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Trophy, Users, BookOpen, Plus, Play, Square, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trophy, Users, BookOpen, Plus, Play, Square, ChevronDown, ChevronUp, DollarSign } from 'lucide-react';
 
 interface Readathon {
 id: string;
@@ -13,7 +13,7 @@ prize_pool: number;
 first_place_pct: number;
 second_place_pct: number;
 third_place_pct: number;
-status: 'upcoming' | 'active' | 'ended';
+status: 'upcoming' | 'active' | 'ended' | 'completed';
 created_at: string;
 }
 
@@ -49,10 +49,12 @@ const [creating, setCreating] = useState(false);
 const [form, setForm] = useState(EMPTY_FORM);
 const [saving, setSaving] = useState(false);
 const [error, setError] = useState('');
+const [success, setSuccess] = useState('');
 const [expandedId, setExpandedId] = useState<string | null>(null);
 const [leaderboards, setLeaderboards] = useState<Record<string, LeaderboardEntry[]>>({});
 const [stats, setStats] = useState<Record<string, ReadathonStats>>({});
 const [loadingLeaderboard, setLoadingLeaderboard] = useState<string | null>(null);
+const [payingOut, setPayingOut] = useState<string | null>(null);
 
 const load = async () => {
   setLoading(true);
@@ -67,16 +69,14 @@ const load = async () => {
 useEffect(() => { load(); }, []);
 
 const loadLeaderboard = async (readathonId: string) => {
-  if (leaderboards[readathonId]) return; // already loaded
+  if (leaderboards[readathonId]) return;
   setLoadingLeaderboard(readathonId);
 
-  // Get progress grouped by user
   const { data: progress } = await supabase
     .from('readathon_progress')
     .select('user_id, pages_read, book_id')
     .eq('readathon_id', readathonId);
 
-  // Get entry count + pool
   const { data: entries } = await supabase
     .from('readathon_entries')
     .select('user_id, entry_fee_paid')
@@ -92,7 +92,6 @@ const loadLeaderboard = async (readathonId: string) => {
     return;
   }
 
-  // Aggregate by user
   const userMap: Record<string, { total_pages: number; books: Set<string> }> = {};
   for (const row of progress) {
     if (!userMap[row.user_id]) userMap[row.user_id] = { total_pages: 0, books: new Set() };
@@ -100,7 +99,6 @@ const loadLeaderboard = async (readathonId: string) => {
     userMap[row.user_id].books.add(row.book_id);
   }
 
-  // Fetch display names
   const userIds = Object.keys(userMap);
   const { data: profiles } = await supabase
     .from('profiles')
@@ -137,7 +135,6 @@ const toggleExpand = (id: string) => {
 };
 
 const handleStatusChange = async (id: string, newStatus: 'upcoming' | 'active' | 'ended') => {
-  // If activating, deactivate any currently active readathon first
   if (newStatus === 'active') {
     await supabase
       .from('readathons')
@@ -145,6 +142,29 @@ const handleStatusChange = async (id: string, newStatus: 'upcoming' | 'active' |
       .eq('status', 'active');
   }
   await supabase.from('readathons').update({ status: newStatus }).eq('id', id);
+  load();
+};
+
+const handleCloseAndPay = async (id: string, title: string) => {
+  if (!window.confirm(`Close "${title}" and distribute prizes to top 3 readers? This cannot be undone.`)) return;
+  setPayingOut(id);
+  setError('');
+  setSuccess('');
+  const { data, error: rpcError } = await supabase.rpc('close_readathon_and_pay', { p_readathon_id: id });
+  setPayingOut(null);
+  if (rpcError) {
+    setError(`Payout failed: ${rpcError.message}`);
+    return;
+  }
+  if (data === 'already_completed') {
+    setError('This readathon has already been paid out.');
+    return;
+  }
+  if (data === 'no_prize_pool') {
+    setError('No prize pool to distribute.');
+    return;
+  }
+  setSuccess(`"${title}" closed and prizes distributed successfully.`);
   load();
 };
 
@@ -193,7 +213,7 @@ const prizeBreakdown = (r: Readathon) => {
 
 const statusBadge = (status: Readathon['status']) => {
   if (status === 'active') return 'bg-green-500/15 text-green-400 border-green-500/20';
-  if (status === 'ended') return 'bg-gray-500/15 text-gray-400 border-gray-500/20';
+  if (status === 'ended' || status === 'completed') return 'bg-gray-500/15 text-gray-400 border-gray-500/20';
   return 'bg-amber-500/15 text-amber-400 border-amber-500/20';
 };
 
@@ -230,16 +250,24 @@ return (
       </button>
     </div>
 
+    {/* Alerts */}
+    {error && (
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 text-sm text-red-600 dark:text-red-400 flex items-center justify-between">
+        {error}
+        <button onClick={() => setError('')} className="ml-3 text-red-400 hover:text-red-600">✕</button>
+      </div>
+    )}
+    {success && (
+      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-3 text-sm text-green-600 dark:text-green-400 flex items-center justify-between">
+        {success}
+        <button onClick={() => setSuccess('')} className="ml-3 text-green-400 hover:text-green-600">✕</button>
+      </div>
+    )}
+
     {/* Create form */}
     {creating && (
       <div className="bg-white dark:bg-gray-800 border border-[#e8e0d5] dark:border-gray-700 rounded-2xl p-6 space-y-4">
         <h3 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">New Readathon</h3>
-
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 text-sm text-red-600 dark:text-red-400">
-            {error}
-          </div>
-        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
@@ -305,7 +333,6 @@ return (
           </div>
         </div>
 
-        {/* Prize split */}
         <div>
           <label className="block text-xs font-medium text-[#6B7280] dark:text-gray-400 mb-2">Prize Split (must total 100%)</label>
           <div className="grid grid-cols-3 gap-3">
@@ -363,7 +390,6 @@ return (
           return (
             <div key={r.id} className="bg-white dark:bg-gray-800 border border-[#e8e0d5] dark:border-gray-700 rounded-2xl overflow-hidden">
 
-              {/* Card header */}
               <div className="p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
@@ -384,12 +410,10 @@ return (
                     </div>
                   </div>
 
-                  {/* Actions */}
                   <div className="flex items-center gap-2 shrink-0">
                     {r.status === 'upcoming' && (
                       <button
                         onClick={() => handleStatusChange(r.id, 'active')}
-                        title="Start readathon"
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 text-green-500 text-xs font-semibold hover:bg-green-500/20 transition-colors border border-green-500/20"
                       >
                         <Play size={12} /> Start
@@ -398,10 +422,19 @@ return (
                     {r.status === 'active' && (
                       <button
                         onClick={() => handleStatusChange(r.id, 'ended')}
-                        title="End readathon"
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 text-xs font-semibold hover:bg-red-500/20 transition-colors border border-red-500/20"
                       >
                         <Square size={12} /> End
+                      </button>
+                    )}
+                    {(r.status === 'ended') && (
+                      <button
+                        onClick={() => handleCloseAndPay(r.id, r.title)}
+                        disabled={payingOut === r.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#D4A843]/10 text-[#D4A843] text-xs font-semibold hover:bg-[#D4A843]/20 transition-colors border border-[#D4A843]/20 disabled:opacity-50"
+                      >
+                        <DollarSign size={12} />
+                        {payingOut === r.id ? 'Paying...' : 'Close & Pay Out'}
                       </button>
                     )}
                     <button
@@ -414,11 +447,8 @@ return (
                 </div>
               </div>
 
-              {/* Expanded leaderboard */}
               {isExpanded && (
                 <div className="border-t border-[#e8e0d5] dark:border-gray-700 p-5 space-y-4">
-
-                  {/* Stats row */}
                   {st && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       <div className="bg-[#F5F0E8] dark:bg-gray-700/50 rounded-xl p-3 text-center">
@@ -445,7 +475,6 @@ return (
                     </div>
                   )}
 
-                  {/* Leaderboard */}
                   <div>
                     <h4 className="text-sm font-semibold text-[#1B2A4A] dark:text-[#F5F0E8] mb-3">Leaderboard</h4>
                     {loadingLeaderboard === r.id ? (
@@ -481,7 +510,6 @@ return (
                       </div>
                     )}
                   </div>
-
                 </div>
               )}
             </div>
