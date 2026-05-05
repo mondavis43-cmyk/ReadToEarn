@@ -405,23 +405,29 @@ export const Earn = () => {
           ) : (
             <div className="space-y-3">
               {betaPanels.map((p) => {
-                const spotsLeft = p.max_responses - p.responses_count;
-                return (
-                  <div key={p.id} className={`rounded-xl border p-5 flex items-center justify-between transition-colors ${cardBg}`}>
-                    <div>
-                      <p className={`text-sm font-medium ${textPrimary}`}>{p.title}</p>
-                      <p className={`text-xs ${textMuted}`}>{p.genre} · {spotsLeft} spots left</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-[#D4A843]">$1.50</p>
-                    </div>
-                  </div>
-                );
-              })}
+        const spotsLeft = p.max_responses - p.responses_count;
+        return (
+          <div key={p.id} className={`rounded-xl border p-5 flex items-center justify-between transition-colors ${cardBg}`}>
+            <div>
+              <p className={`text-sm font-medium ${textPrimary}`}>{p.title}</p>
+              <p className={`text-xs ${textMuted}`}>{p.genre} · {spotsLeft} spots left</p>
             </div>
-          )}
-        </div>
-
+            <div className="text-right">
+              <p className="text-sm font-semibold text-[#D4A843]">$1.50</p>
+            </div>
+          </div>
+        );
+      })}
+      <button
+        onClick={() => navigateTo('/beta-reader-panels')}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline mt-2"
+      >
+        See all open panels <ArrowRight size={14} />
+      </button>
+    </div>
+  )}
+</div>
+        
         {/* Sensitivity Panels */}
         <div className="mb-16">
           <SectionHeader
@@ -437,21 +443,27 @@ export const Earn = () => {
           ) : (
             <div className="space-y-3">
               {sensitivityPanels.map((p) => {
-                const spotsLeft = p.max_responses - p.responses_count;
-                return (
-                  <div key={p.id} className={`rounded-xl border p-5 transition-colors ${cardBg}`}>
-                    <div className="flex items-start justify-between mb-2">
-                      <p className={`text-sm font-medium ${textPrimary}`}>{p.title}</p>
-                      <p className="text-sm font-semibold text-[#D4A843]">$10.00</p>
-                    </div>
-                    <p className={`text-xs mb-3 ${textMuted}`}>Looking for: {p.identity_requirements}</p>
-                    <p className={`text-xs ${textMuted}`}>{spotsLeft} spots left</p>
-                  </div>
-                );
-              })}
+        const spotsLeft = p.max_responses - p.responses_count;
+        return (
+          <div key={p.id} className={`rounded-xl border p-5 transition-colors ${cardBg}`}>
+            <div className="flex items-start justify-between mb-2">
+              <p className={`text-sm font-medium ${textPrimary}`}>{p.title}</p>
+              <p className="text-sm font-semibold text-[#D4A843]">$10.00</p>
             </div>
-          )}
-        </div>
+            <p className={`text-xs mb-3 ${textMuted}`}>Looking for: {p.identity_requirements}</p>
+            <p className={`text-xs ${textMuted}`}>{spotsLeft} spots left</p>
+          </div>
+        );
+      })}
+      <button
+        onClick={() => navigateTo('/sensitivity-reader-panels')}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline mt-2"
+      >
+        See all open panels <ArrowRight size={14} />
+      </button>
+    </div>
+  )}
+</div>
 
         {/* CTA */}
         <div className="text-center">
