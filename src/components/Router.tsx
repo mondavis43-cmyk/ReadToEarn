@@ -155,6 +155,9 @@ export const Router = () => {
     '/readathon',
     '/sprints',
     '/quick-tasks',
+    '/surveys',
+    '/beta-reader-panels',
+    '/sensitivity-reader-panels',
   ];
 
   const isKnownRoute =
@@ -194,6 +197,9 @@ export const Router = () => {
       {route === '/bulletin-submit' && <BulletinSubmit />}
       {route === '/account-settings' && <AccountSettings />}
       {route === '/quick-tasks' && <QuickTasks />}
+      {route === '/surveys' && <SurveyFeed />}
+      {route === '/beta-reader-panels' && <BetaReaderPanel />}
+      {route === '/sensitivity-reader-panels' && <SensitivityReaderPanel />}
       {route === '/checkout' && <Checkout />}
       {route.startsWith('/quiz/') && (() => {
         const bookId = route.split('/')[2]?.split('?')[0];
