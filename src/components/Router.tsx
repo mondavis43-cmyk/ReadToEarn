@@ -146,6 +146,7 @@ export const Router = () => {
     '/tournaments/create',
     '/ama-request',
     '/author-dashboard',
+    '/readathon',
   ];
 
   const isKnownRoute =
