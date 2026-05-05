@@ -228,6 +228,27 @@ const CheckoutForm = ({ item }: { item: CheckoutItem }) => {
   delete (window as any).__pendingSubmission;
 }
 
+if (item.type === 'time_boost' && pending) {
+  // ✅ FIX: actually credit the boosts to the user's account
+  const boostCount = pending.boosts ?? item.metadata?.boosts ?? 0;
+  const { data: existing } = await supabase
+    .from('user_boosts')
+    .select('balance')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (existing) {
+    await supabase
+      .from('user_boosts')
+      .update({ balance: existing.balance + boostCount, updated_at: new Date().toISOString() })
+      .eq('user_id', user.id);
+  } else {
+    await supabase
+      .from('user_boosts')
+      .insert({ user_id: user.id, balance: boostCount });
+  }
+}
+    
         // 6. Show success + redirect
         setSuccess(true);
         setTimeout(() => goTo(REDIRECT_MAP[item.type] ?? "/profile"), 2500);
