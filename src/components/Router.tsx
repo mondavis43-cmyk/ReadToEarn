@@ -154,6 +154,7 @@ export const Router = () => {
     '/author-dashboard',
     '/readathon',
     '/sprints',
+    '/quick-tasks',
   ];
 
   const isKnownRoute =
