@@ -15,8 +15,6 @@ import {
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 export type CheckoutItem = {
   type:
     | "listing"
@@ -33,8 +31,6 @@ export type CheckoutItem = {
   amount: number;
   metadata?: Record<string, string | number>;
 };
-
-// ─── Pricing constants ────────────────────────────────────────────────────────
 
 export const LISTING_PRICES = [
   { label: "Single (1 book)", amount: 700 },
@@ -103,8 +99,6 @@ export const COMPETITION_ENTRY_PRICES = [
   { label: "Premium Entry", amount: 1000 },
 ];
 
-// ─── Redirect map ─────────────────────────────────────────────────────────────
-
 const REDIRECT_MAP: Record<string, string> = {
   listing: "/author-dashboard",
   bounty: "/author-dashboard",
@@ -118,14 +112,10 @@ const REDIRECT_MAP: Record<string, string> = {
   competition_entry: "/competitions",
 };
 
-// ─── Navigation helper ────────────────────────────────────────────────────────
-
 const goTo = (path: string) => {
   window.history.pushState({}, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
 };
-
-// ─── Card element styles ──────────────────────────────────────────────────────
 
 const CARD_STYLE = {
   style: {
@@ -138,8 +128,6 @@ const CARD_STYLE = {
     invalid: { color: "#ef4444" },
   },
 };
-
-// ─── CheckoutForm ─────────────────────────────────────────────────────────────
 
 const CheckoutForm = ({ item }: { item: CheckoutItem }) => {
   const stripe = useStripe();
@@ -156,14 +144,12 @@ const CheckoutForm = ({ item }: { item: CheckoutItem }) => {
     setError(null);
 
     try {
-      // 1. Get current user
       const {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
       if (userError || !user) throw new Error("You must be logged in to checkout.");
 
-      // 2. Create PaymentIntent via Edge Function
       const { data, error: fnError } = await supabase.functions.invoke(
         "create-payment-intent",
         {
@@ -183,7 +169,6 @@ const CheckoutForm = ({ item }: { item: CheckoutItem }) => {
       if (fnError || !data?.clientSecret)
         throw new Error(fnError?.message || "Failed to initialize payment.");
 
-      // 3. Confirm card payment
       const cardElement = elements.getElement(CardElement);
       if (!cardElement) throw new Error("Card element not found.");
 
@@ -195,7 +180,6 @@ const CheckoutForm = ({ item }: { item: CheckoutItem }) => {
       if (stripeError) throw new Error(stripeError.message);
 
       if (paymentIntent?.status === "succeeded") {
-        // 4. Log to Supabase
         await supabase.from("payments").insert({
           user_id: user.id,
           stripe_payment_intent_id: paymentIntent.id,
@@ -206,67 +190,47 @@ const CheckoutForm = ({ item }: { item: CheckoutItem }) => {
           status: "succeeded",
         });
 
-        // 5. Handle post-payment DB writes
-const pending = (window as any).__pendingSubmission;
+        const pending = (window as any).__pendingSubmission;
 
-if (pending) {
-  if (item.type === 'listing') {
-    await supabase.from('author_submissions').insert(pending);
+        if (pending) {
+          if (item.type === "listing") {
+            await supabase.from("author_submissions").insert(pending);
+          } else if (item.type === "competition_entry") {
+            await supabase.from("competition_entries").insert({
+              competition_id: pending.competition_id,
+              user_id: user.id,
+              entry_fee_paid: item.amount / 100,
+              is_late_entry: pending.is_late_entry ?? false,
+              paid_at: new Date().toISOString(),
+              status: "active",
+            });
+          } else if (item.type === "time_boost") {
+            const boostCount = pending.boosts ?? item.metadata?.boosts ?? 0;
+            const { data: existing } = await supabase
+              .from("user_boosts")
+              .select("balance")
+              .eq("user_id", user.id)
+              .maybeSingle();
+            if (existing) {
+              await supabase
+                .from("user_boosts")
+                .update({
+                  balance: existing.balance + boostCount,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("user_id", user.id);
+            } else {
+              await supabase
+                .from("user_boosts")
+                .insert({ user_id: user.id, balance: boostCount });
+            }
+          } else if (pending.table) {
+            await supabase.from(pending.table).insert(pending.data);
+          }
 
-  } else if (item.type === 'competition_entry') {
-    await supabase.from('competition_entries').insert({
-      competition_id: pending.competition_id,
-      user_id: user.id,
-      entry_fee_paid: item.amount / 100,
-      is_late_entry: pending.is_late_entry ?? false,
-      paid_at: new Date().toISOString(),
-      status: 'active',
-    });
+          delete (window as any).__pendingSubmission;
+        }
 
-  } else if (item.type === 'time_boost') {
-    const boostCount = pending.boosts ?? item.metadata?.boosts ?? 0;
-    const { data: existing } = await supabase
-      .from('user_boosts')
-      .select('balance')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (existing) {
-      await supabase
-        .from('user_boosts')
-        .update({ balance: existing.balance + boostCount, updated_at: new Date().toISOString() })
-        .eq('user_id', user.id);
-    } else {
-      await supabase
-        .from('user_boosts')
-        .insert({ user_id: user.id, balance: boostCount });
-    }
-
-  } else if (pending.table) {
-    // Generic fallback for readathon_entry, sprint_entry, etc.
-    await supabase.from(pending.table).insert(pending.data);
-  }
-
-  delete (window as any).__pendingSubmission;
-}
-
-// 6. Show success + redirect
-setSuccess(true);
-setTimeout(() => goTo(REDIRECT_MAP[item.type] ?? '/profile'), 2500);
-
-  if (existing) {
-    await supabase
-      .from('user_boosts')
-      .update({ balance: existing.balance + boostCount, updated_at: new Date().toISOString() })
-      .eq('user_id', user.id);
-  } else {
-    await supabase
-      .from('user_boosts')
-      .insert({ user_id: user.id, balance: boostCount });
-  }
-}
-    
-        // 6. Show success + redirect
         setSuccess(true);
         setTimeout(() => goTo(REDIRECT_MAP[item.type] ?? "/profile"), 2500);
       }
@@ -291,7 +255,6 @@ setTimeout(() => goTo(REDIRECT_MAP[item.type] ?? '/profile'), 2500);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Order Summary */}
       <div className="bg-[#1a1a1a] rounded-lg p-5 border border-gray-800">
         <h3 className="text-white font-medium mb-3">Order Summary</h3>
         <div className="flex justify-between text-sm">
@@ -308,7 +271,6 @@ setTimeout(() => goTo(REDIRECT_MAP[item.type] ?? '/profile'), 2500);
         </div>
       </div>
 
-      {/* Card Input */}
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">
           Card Details
@@ -318,14 +280,12 @@ setTimeout(() => goTo(REDIRECT_MAP[item.type] ?? '/profile'), 2500);
         </div>
       </div>
 
-      {/* Error */}
       {error && (
         <div className="p-3 bg-red-900/20 border border-red-900/50 rounded text-red-400 text-sm">
           {error}
         </div>
       )}
 
-      {/* Submit */}
       <button
         type="submit"
         disabled={loading || !stripe}
@@ -340,8 +300,6 @@ setTimeout(() => goTo(REDIRECT_MAP[item.type] ?? '/profile'), 2500);
     </form>
   );
 };
-
-// ─── Checkout page (default export) ──────────────────────────────────────────
 
 const Checkout = () => {
   const item = (window as any).__checkoutItem as CheckoutItem | undefined;
@@ -365,7 +323,6 @@ const Checkout = () => {
   return (
     <div className="min-h-screen bg-[#0f0f0f]">
       <div className="max-w-lg mx-auto px-4 py-16">
-        {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => goTo(-1 as any)}
@@ -376,7 +333,6 @@ const Checkout = () => {
           <h1 className="font-serif text-3xl text-white">Checkout</h1>
         </div>
 
-        {/* Form */}
         <Elements stripe={stripePromise}>
           <CheckoutForm item={item} />
         </Elements>
