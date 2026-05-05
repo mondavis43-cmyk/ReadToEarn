@@ -49,7 +49,6 @@ export const Readathon = () => {
         .order('start_date', { ascending: false });
       if (data) {
         setReadathons(data);
-        // Auto-select the active one if it exists
         const active = data.find((r: Readathon) => r.status === 'active');
         if (active) setSelected(active);
       }
@@ -59,14 +58,16 @@ export const Readathon = () => {
   }, []);
 
   useEffect(() => {
-  if (!selectedReadathon) return;
-  loadLeaderboard();
-  if (selectedReadathon.status === 'active') {
-    const interval = setInterval(loadLeaderboard, 30000);
-    return () => clearInterval(interval);
-  }
-}, [selectedReadathon]);
-    if (user) checkEntry(selected.id);
+    if (!selected) return;
+    loadLeaderboard(selected.id);
+    if (selected.status === 'active') {
+      const interval = setInterval(() => loadLeaderboard(selected.id), 30000);
+      return () => clearInterval(interval);
+    }
+  }, [selected]);
+
+  useEffect(() => {
+    if (user && selected) checkEntry(selected.id);
   }, [selected, user]);
 
   const loadLeaderboard = async (readathonId: string) => {
@@ -77,7 +78,6 @@ export const Readathon = () => {
 
     if (!data) return;
 
-    // Sum pages per user
     const totals: Record<string, { display_name: string; pages: number }> = {};
     for (const row of data as any[]) {
       if (!totals[row.user_id]) {
@@ -112,9 +112,12 @@ export const Readathon = () => {
   };
 
   const handleEnter = async () => {
-  setEntering(true)
-  setEntering(false);
-    if (!selected || !user) { navigateTo('/signup'); return; }
+    setEntering(true);
+    if (!selected || !user) {
+      navigateTo('/signup');
+      setEntering(false);
+      return;
+    }
 
     (window as any).__checkoutItem = {
       type: 'readathon_entry',
@@ -135,6 +138,7 @@ export const Readathon = () => {
 
     window.history.pushState({}, '', '/checkout');
     window.dispatchEvent(new PopStateEvent('popstate'));
+    setEntering(false);
   };
 
   const rankLabel = (i: number) => {
@@ -193,7 +197,7 @@ export const Readathon = () => {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <BookOpen size={16} className="text-[#D4A843]" />
-                    <span className={`text-xs font-semibold uppercase tracking-wide text-[#D4A843]`}>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-[#D4A843]">
                       {selected.status === 'active' ? 'Live Now' : selected.status === 'upcoming' ? 'Upcoming' : 'Ended'}
                     </span>
                   </div>
@@ -227,7 +231,7 @@ export const Readathon = () => {
                   ].map((row) => (
                     <div key={row.place} className="flex justify-between">
                       <span className={`text-sm ${textPrimary}`}>{row.place}</span>
-                      <span className={`text-sm font-semibold text-[#D4A843]`}>
+                      <span className="text-sm font-semibold text-[#D4A843]">
                         {row.pct} of ${(selected.prize_pool * 0.75).toFixed(2)}
                       </span>
                     </div>
@@ -276,23 +280,47 @@ export const Readathon = () => {
                   <h3 className={`font-serif text-lg ${textPrimary}`}>
                     {selected.status === 'completed' ? 'Final Results' : 'Live Standings'}
                   </h3>
+                  {selected.status === 'active' && (
+                    <span className="text-xs bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full">
+                      Live
+                    </span>
+                  )}
                 </div>
                 <div className="space-y-2">
                   {leaderboard.slice(0, 10).map((entry, i) => (
                     <div
                       key={entry.user_id}
-                      className={`flex items-center justify-between py-2 px-3 rounded-lg ${i < 3 ? 'bg-[#D4A843]/10' : ''}`}
+                      className={`flex items-center justify-between py-2 px-3 rounded-lg ${
+                        i < 3
+                          ? 'bg-[#D4A843]/10'
+                          : entry.user_id === user?.id
+                          ? 'bg-blue-500/10 border border-blue-500/20'
+                          : ''
+                      }`}
                     >
                       <div className="flex items-center gap-3">
                         <span className="text-base w-6 text-center">{rankLabel(i)}</span>
-                        <p className={`text-sm font-semibold ${textPrimary}`}>{entry.display_name}</p>
+                        <p className={`text-sm font-semibold ${textPrimary}`}>
+                          {entry.display_name}
+                          {entry.user_id === user?.id && (
+                            <span className="text-xs text-blue-400 ml-1">(you)</span>
+                          )}
+                        </p>
                       </div>
-                      <p className={`text-sm font-bold text-[#D4A843]`}>
+                      <p className="text-sm font-bold text-[#D4A843]">
                         {entry.total_pages.toLocaleString()} pages
                       </p>
                     </div>
                   ))}
+                  {leaderboard.length > 10 && (
+                    <p className={`text-xs text-center pt-1 ${textMuted}`}>
+                      + {leaderboard.length - 10} more participants
+                    </p>
+                  )}
                 </div>
+                {selected.status === 'active' && (
+                  <p className={`text-xs text-center mt-3 ${textMuted}`}>Updates every 30 seconds</p>
+                )}
               </div>
             )}
           </>
