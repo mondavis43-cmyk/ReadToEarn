@@ -44,6 +44,8 @@ import { Tournaments } from '../pages/Tournaments';
 import { TournamentDetail } from '../pages/TournamentDetail';
 import { AMARequest } from '../pages/AMARequest';
 import { AdminRoute } from './AdminRoute';
+import { Readathon } from '../pages/Readathon';
+import { Sprints } from '../pages/Sprints';
 
 const WAITLIST_MODE = true;
 
@@ -147,6 +149,7 @@ export const Router = () => {
     '/ama-request',
     '/author-dashboard',
     '/readathon',
+    '/sprints',
   ];
 
   const isKnownRoute =
@@ -180,6 +183,8 @@ export const Router = () => {
       {route === '/author-sensitivity-readers' && <AuthorSensitivityReaders />}
       {route === '/time-boosts' && <TimeBoosts />}
       {route === '/leaderboard' && <Leaderboard />}
+      {route === '/readathon' && <Readathon />}
+      {route === '/sprints' && <Sprints />}
       {route === '/bulletin-board' && <BulletinBoard />}
       {route === '/bulletin-submit' && <BulletinSubmit />}
       {route === '/account-settings' && <AccountSettings />}
