@@ -46,10 +46,10 @@ import { AMARequest } from '../pages/AMARequest';
 import { AdminRoute } from './AdminRoute';
 import { Readathon } from '../pages/Readathon';
 import { Sprints } from '../pages/Sprints';
-import QuickTasks from './pages/QuickTasks';
-import SurveyFeed from './pages/SurveyFeed';
-import BetaReaderPanel from './pages/BetaReaderPanel';
-import SensitivityReaderPanel from './pages/SensitivityReaderPanel';
+import QuickTasks from '../pages/QuickTasks';
+import SurveyFeed from '../pages/SurveyFeed';
+import BetaReaderPanel from '../pages/BetaReaderPanel';
+import SensitivityReaderPanel from '../pages/SensitivityReaderPanel';
 
 const WAITLIST_MODE = true;
 
