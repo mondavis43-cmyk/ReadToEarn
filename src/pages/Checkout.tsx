@@ -197,13 +197,31 @@ const CheckoutForm = ({ item }: { item: CheckoutItem }) => {
             await supabase.from("author_submissions").insert(pending);
           } else if (item.type === "competition_entry") {
             await supabase.from("competition_entries").insert({
-              competition_id: pending.competition_id,
-              user_id: user.id,
-              entry_fee_paid: item.amount / 100,
-              is_late_entry: pending.is_late_entry ?? false,
-              paid_at: new Date().toISOString(),
-              status: "active",
-            });
+  competition_id: pending.competition_id,
+  user_id: user.id,
+  entry_fee_paid: item.amount / 100,
+  is_late_entry: pending.is_late_entry ?? false,
+  paid_at: new Date().toISOString(),
+  status: "active",
+});
+
+// Increment prize pool by entry fee (after platform fee deduction)
+const entryFee = item.amount / 100;
+const platformFee = entryFee * 0.25;
+const readerShare = entryFee - platformFee;
+
+const { data: comp } = await supabase
+  .from("competitions")
+  .select("prize_pool")
+  .eq("id", pending.competition_id)
+  .single();
+
+if (comp) {
+  await supabase
+    .from("competitions")
+    .update({ prize_pool: (comp.prize_pool ?? 0) + readerShare })
+    .eq("id", pending.competition_id);
+}
           } else if (item.type === "time_boost") {
             const boostCount = pending.boosts ?? item.metadata?.boosts ?? 0;
             const { data: existing } = await supabase
