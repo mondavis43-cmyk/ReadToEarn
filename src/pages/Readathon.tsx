@@ -107,7 +107,8 @@ export const Readathon = () => {
   };
 
   const handleEnter = async () => {
-  setEntering(true);
+  setEntering(true)
+  setEntering(false);
     if (!selected || !user) { navigateTo('/signup'); return; }
 
     (window as any).__checkoutItem = {
