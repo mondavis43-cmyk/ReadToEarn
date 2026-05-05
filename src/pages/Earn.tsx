@@ -343,7 +343,7 @@ export const Earn = () => {
                 );
               })}
               <button
-  onClick={() => navigateTo('/author-quick-tasks')}
+  onClick={() => navigateTo('/quick-tasks')}
   className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline mt-2"
 >
   See all open tasks <ArrowRight size={14} />
