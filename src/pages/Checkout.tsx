@@ -211,15 +211,17 @@ const CheckoutForm = ({ item }: { item: CheckoutItem }) => {
         if (pending) {
   if (item.type === 'listing') {
     await supabase.from('author_submissions').insert(pending);
-  } else if (item.type === 'competition_entry') {
-    await supabase.from('competition_entries').insert({
-      competition_id: pending.competition_id,
-      user_id: user.id,
-      entry_fee_paid: item.amount / 100,
-      is_late_entry: pending.is_late_entry ?? false,
-      paid_at: new Date().toISOString(),
-      status: 'active',
-    });
+  } else if (item.type === 'competition_entry' && pending) {
+  await supabase.from('competition_entries').insert({
+    competition_id: pending.competition_id,
+    user_id: user.id,
+    entry_fee_paid: item.amount / 100,
+    is_late_entry: pending.is_late_entry ?? false,
+    paid_at: new Date().toISOString(),
+    status: 'active',
+  });
+  // ✅ prize_pool update now handled by DB trigger (no code needed here)
+}
   } else if (pending.table) {
     await supabase.from(pending.table).insert(pending.data);
   }
