@@ -22,6 +22,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Earn',
     icon: <DollarSign size={16} />,
     items: [
+      { label: 'Ways to Earn', path: '/earn', icon: <DollarSign size={15} /> },
       { label: 'Library', path: '/library', icon: <BookOpen size={15} /> },
       { label: 'Competitions', path: '/competitions', icon: <Trophy size={15} /> },
       { label: 'Sprints', path: '/sprints', icon: <Zap size={15} /> },
