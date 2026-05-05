@@ -46,6 +46,10 @@ import { AMARequest } from '../pages/AMARequest';
 import { AdminRoute } from './AdminRoute';
 import { Readathon } from '../pages/Readathon';
 import { Sprints } from '../pages/Sprints';
+import QuickTasks from './pages/QuickTasks';
+import SurveyFeed from './pages/SurveyFeed';
+import BetaReaderPanel from './pages/BetaReaderPanel';
+import SensitivityReaderPanel from './pages/SensitivityReaderPanel';
 
 const WAITLIST_MODE = true;
 
@@ -188,6 +192,7 @@ export const Router = () => {
       {route === '/bulletin-board' && <BulletinBoard />}
       {route === '/bulletin-submit' && <BulletinSubmit />}
       {route === '/account-settings' && <AccountSettings />}
+      {route === '/quick-tasks' && <QuickTasks />}
       {route === '/checkout' && <Checkout />}
       {route.startsWith('/quiz/') && (() => {
         const bookId = route.split('/')[2]?.split('?')[0];
