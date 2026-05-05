@@ -3,7 +3,8 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   Home, BookOpen, Trophy, Users, User,
   ChevronDown, Menu, X, Zap, DollarSign,
-  BarChart2, Gift, MessageSquare, Settings, LogOut
+  BarChart2, Gift, MessageSquare, Settings, LogOut,
+  FileText, BookMarked, Eye
 } from 'lucide-react';
 
 const navigate = (path: string) => {
@@ -30,6 +31,10 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Leaderboard', path: '/leaderboard', icon: <BarChart2 size={15} /> },
       { label: 'Time Boosts', path: '/time-boosts', icon: <Zap size={15} /> },
       { label: 'How It Works', path: '/how-it-works', icon: <MessageSquare size={15} /> },
+      { label: 'Quick Tasks', path: '/quick-tasks', icon: <Users size={15} /> },
+      { label: 'Author Surveys', path: '/surveys', icon: <FileText size={15} /> },
+      { label: 'Beta Reader Panels', path: '/beta-reader-panels', icon: <BookMarked size={15} /> },
+      { label: 'Sensitivity Reader Panels', path: '/sensitivity-reader-panels', icon: <Eye size={15} /> },
     ],
   },
   {
