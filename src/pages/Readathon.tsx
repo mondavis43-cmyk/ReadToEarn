@@ -59,8 +59,13 @@ export const Readathon = () => {
   }, []);
 
   useEffect(() => {
-    if (!selected) return;
-    loadLeaderboard(selected.id);
+  if (!selectedReadathon) return;
+  loadLeaderboard();
+  if (selectedReadathon.status === 'active') {
+    const interval = setInterval(loadLeaderboard, 30000);
+    return () => clearInterval(interval);
+  }
+}, [selectedReadathon]);
     if (user) checkEntry(selected.id);
   }, [selected, user]);
 
