@@ -22,11 +22,11 @@ type Competition = {
 // ── Ticker data ────────────────────────────────────────────────────────────
 const TICKER_ITEMS = [
   '🏅 October Sprint Winner: @readfast_jenna',
-  '📚 Read-A-Thon Champion: @pages4days',
-  '🔥 Elimination Bracket: @bookslayer99',
-  '🔐 Subscriber Champion: @quietreader_k',
+  '📚 October Read-A-Thon Winner: @pages4days',
+  '🔥 October Elimination Bracket Winner: @bookslayer99',
+  '🔐 Subscriber Giveaway Winner: @quietreader_k',
   '🏅 November Sprint Winner: @inkandpages',
-  '📚 Read-A-Thon Champion: @nightowlreads',
+  '📚 November Read-A-Thon Winner: @nightowlreads',
 ];
 
 const COMPETITION_TYPE_LABELS: Record<string, string> = {
@@ -396,7 +396,7 @@ export const Home = () => {
           </div>
 
           <p className="text-center text-sm mt-6" style={{ color: textMuted }}>
-            Plus: subscriber-only competitions every month with guaranteed prize pools.
+            Plus: subscriber-only giveaways every month with guaranteed prize pools.
           </p>
         </div>
       </section>
