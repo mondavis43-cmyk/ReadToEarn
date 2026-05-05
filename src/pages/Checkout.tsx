@@ -206,36 +206,53 @@ const CheckoutForm = ({ item }: { item: CheckoutItem }) => {
           status: "succeeded",
         });
 
-        // 5. Insert pending submission if this was a listing purchase
-        const pending = (window as any).__pendingSubmission;
-        if (pending) {
+        // 5. Handle post-payment DB writes
+const pending = (window as any).__pendingSubmission;
+
+if (pending) {
   if (item.type === 'listing') {
     await supabase.from('author_submissions').insert(pending);
-  } else if (item.type === 'competition_entry' && pending) {
-  await supabase.from('competition_entries').insert({
-    competition_id: pending.competition_id,
-    user_id: user.id,
-    entry_fee_paid: item.amount / 100,
-    is_late_entry: pending.is_late_entry ?? false,
-    paid_at: new Date().toISOString(),
-    status: 'active',
-  });
-  // ✅ prize_pool update now handled by DB trigger (no code needed here)
-}
+
+  } else if (item.type === 'competition_entry') {
+    await supabase.from('competition_entries').insert({
+      competition_id: pending.competition_id,
+      user_id: user.id,
+      entry_fee_paid: item.amount / 100,
+      is_late_entry: pending.is_late_entry ?? false,
+      paid_at: new Date().toISOString(),
+      status: 'active',
+    });
+
+  } else if (item.type === 'time_boost') {
+    const boostCount = pending.boosts ?? item.metadata?.boosts ?? 0;
+    const { data: existing } = await supabase
+      .from('user_boosts')
+      .select('balance')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase
+        .from('user_boosts')
+        .update({ balance: existing.balance + boostCount, updated_at: new Date().toISOString() })
+        .eq('user_id', user.id);
+    } else {
+      await supabase
+        .from('user_boosts')
+        .insert({ user_id: user.id, balance: boostCount });
+    }
+
   } else if (pending.table) {
+    // Generic fallback for readathon_entry, sprint_entry, etc.
     await supabase.from(pending.table).insert(pending.data);
   }
+
   delete (window as any).__pendingSubmission;
 }
 
-if (item.type === 'time_boost' && pending) {
-  // ✅ FIX: actually credit the boosts to the user's account
-  const boostCount = pending.boosts ?? item.metadata?.boosts ?? 0;
-  const { data: existing } = await supabase
-    .from('user_boosts')
-    .select('balance')
-    .eq('user_id', user.id)
-    .maybeSingle();
+// 6. Show success + redirect
+setSuccess(true);
+setTimeout(() => goTo(REDIRECT_MAP[item.type] ?? '/profile'), 2500);
 
   if (existing) {
     await supabase
