@@ -602,11 +602,23 @@ return (
           <p className={`text-xs ${subColor}`}>{book?.author}</p>
         </div>
       </div>
-      <div className={`flex items-center gap-1.5 text-sm font-mono font-semibold ${timeLeft < 60 ? 'text-red-400' : headingColor}`}>
-        <Timer size={15} />
-        {formatTime(timeLeft)}
-      </div>
+       <div className="flex items-center gap-3">
+    {/* Boost button */}
+    {!submitted && !alreadyCompleted && boostBalance > 0 && (
+      <button
+        onClick={handleUseBoost}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#D4A843]/15 border border-[#D4A843]/40 text-[#D4A843] text-xs font-semibold hover:bg-[#D4A843]/25 transition"
+      >
+        <Zap size={13} />
+        +2 min ({boostBalance} left)
+      </button>
+    )}
+    <div className={`flex items-center gap-1.5 text-sm font-mono font-semibold ${timeLeft < 60 ? 'text-red-400' : headingColor}`}>
+      <Timer size={15} />
+      {formatTime(timeLeft)}
     </div>
+  </div>
+</div>
 
     {/* Readathon banner */}
     {activeReadathon && isReadathonEntrant && (
