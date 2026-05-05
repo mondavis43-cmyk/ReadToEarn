@@ -163,6 +163,26 @@ const isQuizUnlocked = async (
 const loadQuiz = async () => {
   if (!user) return;
 
+  // Load boost balance
+const { data: boostData } = await supabase
+  .from('user_boosts')
+  .select('balance')
+  .eq('user_id', user.id)
+  .maybeSingle();
+setBoostBalance(boostData?.balance ?? 0);
+
+  const handleUseBoost = async () => {
+  if (boostBalance <= 0 || submitted) return;
+  // Deduct 1 boost from DB
+  await supabase
+    .from('user_boosts')
+    .update({ balance: boostBalance - 1, updated_at: new Date().toISOString() })
+    .eq('user_id', user.id);
+  setBoostBalance((b) => b - 1);
+  setBoostUsedCount((c) => c + 1);
+  setTimeLeft((t) => t + 120); // +2 minutes per boost
+};
+
   const { data: bookData, error: bookError } = await supabase
     .from('books')
     .select('*')
