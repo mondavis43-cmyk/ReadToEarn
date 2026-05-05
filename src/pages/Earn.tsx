@@ -367,22 +367,28 @@ export const Earn = () => {
           ) : (
             <div className="space-y-3">
               {surveys.map((s) => {
-                const spotsLeft = s.max_responses - s.responses_count;
-                return (
-                  <div key={s.id} className={`rounded-xl border p-5 flex items-center justify-between transition-colors ${cardBg}`}>
-                    <div>
-                      <p className={`text-sm font-medium ${textPrimary}`}>{s.title}</p>
-                      <p className={`text-xs ${textMuted}`}>{spotsLeft} spots left</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-[#D4A843]">$1.00</p>
-                    </div>
-                  </div>
-                );
-              })}
+        const spotsLeft = s.max_responses - s.responses_count;
+        return (
+          <div key={s.id} className={`rounded-xl border p-5 flex items-center justify-between transition-colors ${cardBg}`}>
+            <div>
+              <p className={`text-sm font-medium ${textPrimary}`}>{s.title}</p>
+              <p className={`text-xs ${textMuted}`}>{spotsLeft} spots left</p>
             </div>
-          )}
-        </div>
+            <div className="text-right">
+              <p className="text-sm font-semibold text-[#D4A843]">$1.00</p>
+            </div>
+          </div>
+        );
+      })}
+      <button
+        onClick={() => navigateTo('/surveys')}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline mt-2"
+      >
+        See all open surveys <ArrowRight size={14} />
+      </button>
+    </div>
+  )}
+</div>
 
         {/* Beta Panels */}
         <div className="mb-16">
