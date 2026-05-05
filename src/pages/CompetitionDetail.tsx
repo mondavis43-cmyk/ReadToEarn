@@ -478,6 +478,15 @@ export const CompetitionDetail = () => {
           </div>
         )}
 
+{/* ── Live Leaderboard ── */}
+{(competition.status === 'active' || competition.status === 'completed') && (
+  <CompetitionLeaderboard
+    competitionId={competition.id}
+    format={competition.type}
+    status={competition.status}
+  />
+)}
+        
         {/* Active + paid + entered + elimination */}
         {isActive && !competition.is_sponsored && alreadyEntered && competition.type === 'elimination' && (
           eliminated ? (
