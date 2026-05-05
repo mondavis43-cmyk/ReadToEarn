@@ -20,6 +20,7 @@ import { AdminSponsoredPins }   from './admin/AdminSponsoredPins';
 import { AdminGiveaway }        from './admin/AdminGiveaway';
 import { AdminFraudDashboard }  from './admin/AdminFraudDashboard';
 import { AdminReadathon }       from './admin/AdminReadathon';
+import { AdminSprints }         from './admin/AdminSprints';
 
 export const GENRES = [
 'Action & Adventure', 'Biography & Memoir', 'Business', "Children's", 'Chick Lit',
@@ -49,6 +50,7 @@ type Tab =
 | 'giveaway'
 | 'sponsored_pins'
 | 'readathon'
+| 'sprints'
 | 'fraud';
 
 const TABS: { key: Tab; label: string }[] = [
@@ -56,6 +58,7 @@ const TABS: { key: Tab; label: string }[] = [
 { key: 'bounties',       label: 'Bounties'          },
 { key: 'competitions',   label: 'Competitions'      },
 { key: 'readathon',      label: 'Readathons'        },
+{ key: 'sprints',        label: 'Sprints'           },
 { key: 'payouts',        label: 'Payouts'           },
 { key: 'reports',        label: 'Reports'           },
 { key: 'trivia',         label: 'Daily Trivia'      },
@@ -77,7 +80,7 @@ const { theme, toggleTheme } = useTheme();
 const [activeTab, setActiveTab] = useState<Tab>('books');
 
 useEffect(() => {
-  if (user && user.email !== ADMIN_EMAIL) navigateTo('/');
+if (user && user.email !== ADMIN_EMAIL) navigateTo('/');
 }, [user]);
 
 if (!user || user.email !== ADMIN_EMAIL) return null;
@@ -85,67 +88,68 @@ if (!user || user.email !== ADMIN_EMAIL) return null;
 const isDark = theme === 'dark';
 
 return (
-  <div className="min-h-screen bg-[#F5F0E8] dark:bg-gray-900 pb-16">
+<div className="min-h-screen bg-[#F5F0E8] dark:bg-gray-900 pb-16">
 
-    {/* Header */}
-    <div className="bg-white dark:bg-gray-800 border-b border-[#e8e0d5] dark:border-gray-700 px-4 py-3 flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigateTo('/')}
-          className="text-[#6B7280] hover:text-[#1B2A4A] dark:hover:text-[#F5F0E8]"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <h1 className="text-lg font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">
-          Admin Panel
-        </h1>
-      </div>
+  {/* Header */}
+  <div className="bg-white dark:bg-gray-800 border-b border-[#e8e0d5] dark:border-gray-700 px-4 py-3 flex items-center justify-between">
+    <div className="flex items-center gap-3">
       <button
-        onClick={toggleTheme}
+        onClick={() => navigateTo('/')}
         className="text-[#6B7280] hover:text-[#1B2A4A] dark:hover:text-[#F5F0E8]"
       >
-        {isDark ? <Sun size={20} /> : <Moon size={20} />}
+        <ArrowLeft size={20} />
       </button>
+      <h1 className="text-lg font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">
+        Admin Panel
+      </h1>
     </div>
-
-    <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-
-      {/* Tab nav */}
-      <div className="flex flex-wrap gap-2">
-        {TABS.map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setActiveTab(key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === key
-                ? 'bg-[#1B2A4A] text-white dark:text-[#1B2A4A] dark:bg-[#D4A843]'
-                : 'bg-white dark:bg-gray-800 text-[#6B7280] dark:text-gray-400 hover:text-[#1B2A4A] dark:hover:text-[#F5F0E8]'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Active tab content */}
-      {activeTab === 'books'          && <AdminBooks />}
-      {activeTab === 'bounties'       && <AdminBounties />}
-      {activeTab === 'competitions'   && <AdminCompetitions />}
-      {activeTab === 'readathon'      && <AdminReadathon />}
-      {activeTab === 'payouts'        && <AdminPayouts />}
-      {activeTab === 'waitlist'       && <AdminWaitlist />}
-      {activeTab === 'tropes'         && <AdminTropes />}
-      {activeTab === 'reports'        && <AdminReports />}
-      {activeTab === 'trivia'         && <AdminTrivia />}
-      {activeTab === 'tournaments'    && <AdminTournaments />}
-      {activeTab === 'earning'        && <AdminEarning />}
-      {activeTab === 'ama'            && <AdminAMA />}
-      {activeTab === 'submissions'    && <AdminSubmissions />}
-      {activeTab === 'sponsored_pins' && <AdminSponsoredPins />}
-      {activeTab === 'giveaway'       && <AdminGiveaway />}
-      {activeTab === 'fraud'          && <AdminFraudDashboard />}
-
-    </div>
+    <button
+      onClick={toggleTheme}
+      className="text-[#6B7280] hover:text-[#1B2A4A] dark:hover:text-[#F5F0E8]"
+    >
+      {isDark ? <Sun size={20} /> : <Moon size={20} />}
+    </button>
   </div>
+
+  <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+
+    {/* Tab nav */}
+    <div className="flex flex-wrap gap-2">
+      {TABS.map(({ key, label }) => (
+        <button
+          key={key}
+          onClick={() => setActiveTab(key)}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            activeTab === key
+              ? 'bg-[#1B2A4A] text-white dark:text-[#1B2A4A] dark:bg-[#D4A843]'
+              : 'bg-white dark:bg-gray-800 text-[#6B7280] dark:text-gray-400 hover:text-[#1B2A4A] dark:hover:text-[#F5F0E8]'
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+
+    {/* Active tab content */}
+    {activeTab === 'books'          && <AdminBooks />}
+    {activeTab === 'bounties'       && <AdminBounties />}
+    {activeTab === 'competitions'   && <AdminCompetitions />}
+    {activeTab === 'readathon'      && <AdminReadathon />}
+    {activeTab === 'sprints'        && <AdminSprints />}
+    {activeTab === 'payouts'        && <AdminPayouts />}
+    {activeTab === 'waitlist'       && <AdminWaitlist />}
+    {activeTab === 'tropes'         && <AdminTropes />}
+    {activeTab === 'reports'        && <AdminReports />}
+    {activeTab === 'trivia'         && <AdminTrivia />}
+    {activeTab === 'tournaments'    && <AdminTournaments />}
+    {activeTab === 'earning'        && <AdminEarning />}
+    {activeTab === 'ama'            && <AdminAMA />}
+    {activeTab === 'submissions'    && <AdminSubmissions />}
+    {activeTab === 'sponsored_pins' && <AdminSponsoredPins />}
+    {activeTab === 'giveaway'       && <AdminGiveaway />}
+    {activeTab === 'fraud'          && <AdminFraudDashboard />}
+
+  </div>
+</div>
 );
 }
