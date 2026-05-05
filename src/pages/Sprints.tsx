@@ -61,10 +61,17 @@ export const Sprints = () => {
   }, []);
 
   useEffect(() => {
-    if (!selected) return;
-    loadLeaderboard(selected.id);
-    if (user) checkEntry(selected.id);
-  }, [selected, user]);
+  if (!selected) return;
+  loadLeaderboard(selected.id);
+  if (selected.status === 'active') {
+    const interval = setInterval(() => loadLeaderboard(selected.id), 30000);
+    return () => clearInterval(interval);
+  }
+}, [selected]);
+
+useEffect(() => {
+  if (user && selected) checkEntry(selected.id);
+}, [selected, user]);
 
   const loadLeaderboard = async (sprintId: string) => {
     // Rank: highest score first, fastest time as tiebreaker
