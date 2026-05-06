@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
-import { ArrowLeft, PartyPopper, Timer, AlertCircle, Flag, BookOpen } from 'lucide-react';
+import { ArrowLeft, PartyPopper, Timer, AlertCircle, Flag, BookOpen, Zap } from 'lucide-react';
 
 interface Question {
 id: string;
@@ -63,6 +63,13 @@ const s = seconds % 60;
 return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
+const formatMs = (ms: number) => {
+const totalSec = Math.floor(ms / 1000);
+const m = Math.floor(totalSec / 60);
+const s = totalSec % 60;
+return `${m}:${s.toString().padStart(2, '0')}`;
+};
+
 export function Quiz({ bookId, competitionId, competitionRound }: QuizProps) {
 const { user } = useAuth();
 const { navigateTo } = useNavigate();
@@ -81,7 +88,7 @@ const [passed, setPassed] = useState(false);
 const [alreadyCompleted, setAlreadyCompleted] = useState(false);
 const [loading, setLoading] = useState(true);
 const [boostBalance, setBoostBalance] = useState(0);
-const [boostUsedCount, setBoostUsedCount] = useState(0);  
+const [boostUsedCount, setBoostUsedCount] = useState(0);
 const [timeLeft, setTimeLeft] = useState(QUIZ_DURATION);
 const [timedOut, setTimedOut] = useState(false);
 const [streakBonus, setStreakBonus] = useState<number | null>(null);
@@ -92,7 +99,13 @@ const [pagesLogged, setPagesLogged] = useState(0);
 // Readathon state
 const [activeReadathon, setActiveReadathon] = useState<{ id: string; title: string } | null>(null);
 const [isReadathonEntrant, setIsReadathonEntrant] = useState(false);
-const [readathonGate, setReadathonGate] = useState(false); // true = readathon active but user not entered
+const [readathonGate, setReadathonGate] = useState(false);
+
+// Sprint state
+const [activeSprint, setActiveSprint] = useState<{ id: string; title: string } | null>(null);
+const [isSprintEntrant, setIsSprintEntrant] = useState(false);
+const [sprintGate, setSprintGate] = useState(false);
+const [timeSpentMs, setTimeSpentMs] = useState(0);
 
 const [reportOpen, setReportOpen] = useState<string | null>(null);
 const [reportReason, setReportReason] = useState('');
@@ -101,15 +114,25 @@ const [reportLoading, setReportLoading] = useState(false);
 
 const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 const startTimeRef = useRef<number>(Date.now());
-const boostsUsedRef = useRef(0);  
+const boostsUsedRef = useRef(0);
 const reportRef = useRef<HTMLDivElement | null>(null);
-const submittedRef = useRef(false);  
+const submittedRef = useRef(false);
 
 // ── isQuizUnlocked ──────────────────────────────────────────────────────────
 const isQuizUnlocked = async (
   bookId: string,
   _bookType: 'platform' | 'sponsored'
-): Promise<{ unlocked: boolean; readathonActive: boolean; readathonEntrant: boolean; readathon: { id: string; title: string } | null }> => {
+): Promise<{
+  unlocked: boolean;
+  readathonActive: boolean;
+  readathonEntrant: boolean;
+  readathon: { id: string; title: string } | null;
+  sprintActive: boolean;
+  sprintEntrant: boolean;
+  sprint: { id: string; title: string } | null;
+}> => {
+  const noSprint = { sprintActive: false, sprintEntrant: false, sprint: null };
+  const noReadathon = { readathonActive: false, readathonEntrant: false, readathon: null };
 
   // Check active bounty
   const { data: bounty } = await supabase
@@ -119,7 +142,7 @@ const isQuizUnlocked = async (
     .eq('status', 'active')
     .gt('reader_pool', 0)
     .maybeSingle();
-  if (bounty) return { unlocked: true, readathonActive: false, readathonEntrant: false, readathon: null };
+  if (bounty) return { unlocked: true, ...noReadathon, ...noSprint };
 
   // Check active competition containing this book (non-readathon)
   const { data: competitions } = await supabase
@@ -129,8 +152,34 @@ const isQuizUnlocked = async (
   if (competitions) {
     for (const comp of competitions) {
       const ids: string[] = comp.book_ids ?? [];
-      if (ids.includes(bookId)) return { unlocked: true, readathonActive: false, readathonEntrant: false, readathon: null };
+      if (ids.includes(bookId)) return { unlocked: true, ...noReadathon, ...noSprint };
     }
+  }
+
+  // Check active sprint for this book
+  const { data: sprint } = await supabase
+    .from('sprints')
+    .select('id, title')
+    .eq('status', 'active')
+    .eq('book_id', bookId)
+    .maybeSingle();
+
+  if (sprint) {
+    const { data: sprintEntry } = await supabase
+      .from('sprint_entries')
+      .select('id')
+      .eq('sprint_id', sprint.id)
+      .eq('user_id', user!.id)
+      .maybeSingle();
+
+    const entrant = !!sprintEntry;
+    return {
+      unlocked: entrant,
+      ...noReadathon,
+      sprintActive: true,
+      sprintEntrant: entrant,
+      sprint: { id: sprint.id, title: sprint.title },
+    };
   }
 
   // Check active readathon
@@ -141,7 +190,6 @@ const isQuizUnlocked = async (
     .maybeSingle();
 
   if (readathon) {
-    // Check if user is an entrant
     const { data: entry } = await supabase
       .from('readathon_entries')
       .select('id')
@@ -155,36 +203,23 @@ const isQuizUnlocked = async (
       readathonActive: true,
       readathonEntrant: entrant,
       readathon: { id: readathon.id, title: readathon.title },
+      ...noSprint,
     };
   }
 
-  return { unlocked: false, readathonActive: false, readathonEntrant: false, readathon: null };
+  return { unlocked: false, ...noReadathon, ...noSprint };
 };
 
 // ── loadQuiz ────────────────────────────────────────────────────────────────
 const loadQuiz = async () => {
   if (!user) return;
 
-  // Load boost balance
-const { data: boostData } = await supabase
-  .from('user_boosts')
-  .select('balance')
-  .eq('user_id', user.id)
-  .maybeSingle();
-setBoostBalance(boostData?.balance ?? 0);
-
-  const handleUseBoost = async () => {
-  if (boostBalance <= 0 || submitted) return;
-  // Deduct 1 boost from DB
-  await supabase
+  const { data: boostData } = await supabase
     .from('user_boosts')
-    .update({ balance: boostBalance - 1, updated_at: new Date().toISOString() })
-    .eq('user_id', user.id);
-  setBoostBalance((b) => b - 1);
-  boostsUsedRef.current += 1;  
-  setBoostUsedCount((c) => c + 1);
-  setTimeLeft((t) => t + 120); // +2 minutes per boost
-};
+    .select('balance')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  setBoostBalance(boostData?.balance ?? 0);
 
   const { data: bookData, error: bookError } = await supabase
     .from('books')
@@ -202,6 +237,18 @@ setBoostBalance(boostData?.balance ?? 0);
   if (!isCompetitionQuiz) {
     const result = await isQuizUnlocked(bookId, bookData.book_type);
 
+    // Sprint gate
+    if (result.sprintActive) {
+      setActiveSprint(result.sprint);
+      setIsSprintEntrant(result.sprintEntrant);
+      if (!result.sprintEntrant) {
+        setSprintGate(true);
+        setLoading(false);
+        return;
+      }
+    }
+
+    // Readathon gate
     if (result.readathonActive) {
       setActiveReadathon(result.readathon);
       setIsReadathonEntrant(result.readathonEntrant);
@@ -300,8 +347,21 @@ setBoostBalance(boostData?.balance ?? 0);
   setLoading(false);
 };
 
+// ── handleUseBoost ──────────────────────────────────────────────────────────
+const handleUseBoost = async () => {
+  if (boostBalance <= 0 || submitted) return;
+  await supabase
+    .from('user_boosts')
+    .update({ balance: boostBalance - 1, updated_at: new Date().toISOString() })
+    .eq('user_id', user!.id);
+  setBoostBalance((b) => b - 1);
+  boostsUsedRef.current += 1;
+  setBoostUsedCount((c) => c + 1);
+  setTimeLeft((t) => t + 120);
+};
+
 // ── handleSubmit ────────────────────────────────────────────────────────────
-submittedRef.current = true;    
+submittedRef.current = submitted;
 const handleSubmit = async (fromTimer = false) => {
   const timeSpent = Date.now() - startTimeRef.current;
   if (!fromTimer && timeSpent < MIN_QUIZ_TIME) {
@@ -310,7 +370,6 @@ const handleSubmit = async (fromTimer = false) => {
     return;
   }
 
-  // ✅ FIX: clear timer BEFORE async call to prevent race condition
   if (timerRef.current) {
     clearInterval(timerRef.current);
     timerRef.current = null;
@@ -318,6 +377,8 @@ const handleSubmit = async (fromTimer = false) => {
   if (fromTimer) setTimedOut(true);
 
   if (!user || !book) return;
+
+  setTimeSpentMs(timeSpent);
 
   const answerPayload = Object.entries(answers).map(([question_id, selected_answer]) => ({
     question_id,
@@ -349,9 +410,8 @@ const handleSubmit = async (fromTimer = false) => {
     const result = await response.json();
 
     if (!response.ok) {
-      // ✅ FIX: was silently failing with only a console.error
       setScore(result.score ?? 0);
-      setSubmitted(true); // show result screen with score even on error
+      setSubmitted(true);
       console.error('Quiz submission error:', result.error);
       return;
     }
@@ -364,13 +424,12 @@ const handleSubmit = async (fromTimer = false) => {
     setSubmitted(true);
 
   } catch (err) {
-    // ✅ FIX: network failure also now shows result screen
     setScore(0);
     setSubmitted(true);
     console.error('Quiz submission failed:', err);
   }
 };
-  
+
 // ── handleReport ────────────────────────────────────────────────────────────
 const handleReport = async (questionId: string) => {
   if (!user || !reportReason) return;
@@ -390,28 +449,27 @@ const handleReport = async (questionId: string) => {
 useEffect(() => {
   loadQuiz();
   return () => {
-  if (timerRef.current) clearInterval(timerRef.current);
-  // Refund boosts if user exits without submitting
-  if (boostsUsedRef.current > 0 && !submittedRef.current) {
-    supabase
-      .from('user_boosts')
-      .select('balance')
-      .eq('user_id', user?.id)
-      .single()
-      .then(({ data }) => {
-        if (data) {
-          supabase
-            .from('user_boosts')
-            .update({ balance: data.balance + boostsUsedRef.current })
-            .eq('user_id', user?.id);
-        }
-      });
-  }
-};
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (boostsUsedRef.current > 0 && !submittedRef.current) {
+      supabase
+        .from('user_boosts')
+        .select('balance')
+        .eq('user_id', user?.id)
+        .single()
+        .then(({ data }) => {
+          if (data) {
+            supabase
+              .from('user_boosts')
+              .update({ balance: data.balance + boostsUsedRef.current })
+              .eq('user_id', user?.id);
+          }
+        });
+    }
+  };
 }, [bookId]);
 
 useEffect(() => {
-  if (!loading && !submitted && !readathonGate) {
+  if (!loading && !submitted && !readathonGate && !sprintGate) {
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -424,7 +482,7 @@ useEffect(() => {
     }, 1000);
   }
   return () => { if (timerRef.current) clearInterval(timerRef.current); };
-}, [loading, submitted, readathonGate]);
+}, [loading, submitted, readathonGate, sprintGate]);
 
 useEffect(() => {
   const handler = (e: MouseEvent) => {
@@ -453,6 +511,41 @@ const popoverBg = isDark ? 'bg-[#0f1623] border-[#D4A843]/20' : 'bg-white border
 if (loading) return (
   <div className={`min-h-screen ${bg} flex items-center justify-center transition-colors duration-300`}>
     <div className="w-8 h-8 border-2 border-[#D4A843] border-t-transparent rounded-full animate-spin" />
+  </div>
+);
+
+// ── Sprint gate -- user not entered ─────────────────────────────────────────
+if (sprintGate && activeSprint) return (
+  <div className={`min-h-screen ${bg} flex items-center justify-center px-4 transition-colors duration-300`}>
+    <div className={`${cardBg} border ${cardBorder} rounded-2xl p-8 max-w-md w-full text-center space-y-5`}>
+      <div className="w-14 h-14 rounded-full bg-[#D4A843]/15 flex items-center justify-center mx-auto">
+        <Zap size={28} className="text-[#D4A843]" />
+      </div>
+      <div>
+        <h2 className={`text-xl font-bold ${headingColor} mb-2`}>Sprint in Progress</h2>
+        <p className={`${subColor} text-sm leading-relaxed`}>
+          <span className="font-semibold text-[#D4A843]">{activeSprint.title}</span> is currently active.
+          This quiz is locked to sprint participants only.
+        </p>
+      </div>
+      <div className={`${isDark ? 'bg-[#1B2A4A]' : 'bg-[#F5F0E8]'} rounded-xl p-4 text-sm ${subColor} leading-relaxed`}>
+        Enter the sprint to compete for the prize pool. Winner takes all -- fastest reader with the highest score wins.
+      </div>
+      <div className="flex flex-col gap-3">
+        <button
+          onClick={() => navigateTo('/sprints')}
+          className="w-full py-3 rounded-xl bg-[#D4A843] text-white font-semibold hover:bg-[#c49a3a] transition-colors"
+        >
+          View Sprint
+        </button>
+        <button
+          onClick={() => navigateTo('/library')}
+          className={`w-full py-3 rounded-xl border ${cardBorder} ${subColor} text-sm hover:opacity-70 transition-opacity`}
+        >
+          Back to Library
+        </button>
+      </div>
+    </div>
   </div>
 );
 
@@ -519,6 +612,55 @@ const renderResult = () => {
           >
             Back to Competition
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Sprint result
+  if (activeSprint && isSprintEntrant) {
+    return (
+      <div className={`min-h-screen ${bg} flex items-center justify-center px-4`}>
+        <div className={`${cardBg} border ${cardBorder} rounded-2xl p-8 max-w-md w-full text-center space-y-4`}>
+          {passed ? (
+            <>
+              <PartyPopper size={40} className="text-[#D4A843] mx-auto" />
+              <h2 className={`text-2xl font-bold ${headingColor}`}>Sprint Complete!</h2>
+              <p className={subColor}>Score: {score}/{questions.length}</p>
+              <div className={`${isDark ? 'bg-[#1B2A4A]' : 'bg-[#F5F0E8]'} rounded-xl p-4 space-y-2`}>
+                <p className={`text-sm font-semibold ${headingColor}`}>
+                  ⚡ {activeSprint.title}
+                </p>
+                <p className={`text-sm ${subColor}`}>
+                  Time: {formatMs(timeSpentMs)}
+                </p>
+                <p className={`text-xs ${subColor}`}>
+                  Leaderboard ranks by score first, then fastest time. Check your standing below.
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              <AlertCircle size={40} className="text-red-400 mx-auto" />
+              <h2 className={`text-2xl font-bold ${headingColor}`}>Quiz Failed</h2>
+              <p className={subColor}>Score: {score}/{questions.length} -- need {STANDARD_PASS_THRESHOLD} to pass</p>
+              <p className={`text-sm ${subColor}`}>You can retake the quiz to improve your score and time.</p>
+            </>
+          )}
+          <div className="flex gap-3 mt-4">
+            <button
+              onClick={() => navigateTo('/library')}
+              className={`flex-1 py-2 rounded-xl border ${cardBorder} ${subColor} text-sm hover:opacity-70 transition-opacity`}
+            >
+              Library
+            </button>
+            <button
+              onClick={() => navigateTo('/sprints')}
+              className="flex-1 py-2 rounded-xl bg-[#D4A843] text-white font-semibold hover:bg-[#c49a3a] transition-colors text-sm"
+            >
+              Leaderboard
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -624,23 +766,31 @@ return (
           <p className={`text-xs ${subColor}`}>{book?.author}</p>
         </div>
       </div>
-       <div className="flex items-center gap-3">
-    {/* Boost button */}
-    {!submitted && !alreadyCompleted && boostBalance > 0 && (
-      <button
-        onClick={handleUseBoost}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#D4A843]/15 border border-[#D4A843]/40 text-[#D4A843] text-xs font-semibold hover:bg-[#D4A843]/25 transition"
-      >
-        <Zap size={13} />
-        +2 min ({boostBalance} left)
-      </button>
-    )}
-    <div className={`flex items-center gap-1.5 text-sm font-mono font-semibold ${timeLeft < 60 ? 'text-red-400' : headingColor}`}>
-      <Timer size={15} />
-      {formatTime(timeLeft)}
+      <div className="flex items-center gap-3">
+        {!submitted && !alreadyCompleted && boostBalance > 0 && (
+          <button
+            onClick={handleUseBoost}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#D4A843]/15 border border-[#D4A843]/40 text-[#D4A843] text-xs font-semibold hover:bg-[#D4A843]/25 transition"
+          >
+            <Zap size={13} />
+            +2 min ({boostBalance} left)
+          </button>
+        )}
+        <div className={`flex items-center gap-1.5 text-sm font-mono font-semibold ${timeLeft < 60 ? 'text-red-400' : headingColor}`}>
+          <Timer size={15} />
+          {formatTime(timeLeft)}
+        </div>
+      </div>
     </div>
-  </div>
-</div>
+
+    {/* Sprint banner */}
+    {activeSprint && isSprintEntrant && (
+      <div className="bg-[#D4A843]/10 border-b border-[#D4A843]/20 px-4 py-2 text-center">
+        <p className="text-xs text-[#D4A843] font-medium">
+          ⚡ Sprint: {activeSprint.title} -- score high and finish fast to win the prize pool
+        </p>
+      </div>
+    )}
 
     {/* Readathon banner */}
     {activeReadathon && isReadathonEntrant && (
