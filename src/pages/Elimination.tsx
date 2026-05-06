@@ -1,256 +1,403 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from '../hooks/useNavigate';
-import { Trophy, ArrowRight, Users, DollarSign, Clock } from 'lucide-react';
+import { Trophy, Users, DollarSign, Clock, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 type Competition = {
-id: string;
-title: string;
-format: 'sprint' | 'readathon' | 'elimination';
-book_title?: string;
-book_author?: string;
-entry_fee: number;
-prize_pool: number;
-status: 'upcoming' | 'active' | 'completed' | 'canceled';
-is_sponsored: boolean;
-starts_at: string;
-ends_at: string;
-pre_registration_count?: number;
+  id: string;
+  title: string;
+  format: 'elimination';
+  book_title?: string;
+  book_author?: string;
+  entry_fee: number;
+  prize_pool: number;
+  status: 'upcoming' | 'active' | 'completed' | 'canceled';
+  is_sponsored: boolean;
+  starts_at: string;
+  ends_at: string;
+  pre_registration_count?: number;
 };
 
 type Tab = 'active' | 'upcoming' | 'past';
 
+const MIN_PRE_REG = 12;
+
 export const Elimination = () => {
-const { isDark, toggleTheme } = useTheme();
-const { navigateTo } = useNavigate();
+  const { isDark } = useTheme();
+  const { navigateTo } = useNavigate();
 
-const textPrimary = isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]';
-const textMuted = isDark ? 'text-[#F5F0E8]/70' : 'text-[#1B2A4A]/70';
-const cardBg = isDark ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20' : 'bg-white border-[#D4A843]/30';
+  const [tab, setTab] = useState<Tab>('active');
+  const [competitions, setCompetitions] = useState<Competition[]>([]);
+  const [sponsored, setSponsored] = useState<Competition[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [preRegged, setPreRegged] = useState<Set<string>>(new Set());
+  const [preRegCounts, setPreRegCounts] = useState<Record<string, number>>({});
+  const [userId, setUserId] = useState<string | null>(null);
+  const [preRegLoading, setPreRegLoading] = useState(false);
 
-const [tab, setTab] = useState<Tab>('upcoming');
-const [competitions, setCompetitions] = useState<Competition[]>([]);
-const [sponsored, setSponsored] = useState<Competition[]>([]);
-const [loading, setLoading] = useState(true);
-const [preRegged, setPreRegged] = useState<Set<string>>(new Set());
-const [userId, setUserId] = useState<string | null>(null);
+  const bg = isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]';
+  const cardBg = isDark ? 'bg-[#1a2235]' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-[#1B2A4A]';
+  const textMuted = isDark ? 'text-gray-400' : 'text-gray-500';
+  const border = isDark ? 'border-gray-700' : 'border-gray-200';
 
-useEffect(() => {
-  const load = async () => {
-    setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) setUserId(user.id);
-
-    const statusMap: Record<Tab, string[]> = {
-      active: ['active'],
-      upcoming: ['upcoming'],
-      past: ['completed', 'canceled'],
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUserId(data.user?.id ?? null);
     };
+    getUser();
+  }, []);
+
+  useEffect(() => {
+    fetchCompetitions();
+  }, [tab]);
+
+  useEffect(() => {
+    if (userId) fetchPreRegs();
+  }, [userId]);
+
+  const fetchCompetitions = async () => {
+    setLoading(true);
+    const statusMap = { active: 'active', upcoming: 'upcoming', past: 'completed' };
 
     const { data } = await supabase
       .from('competitions')
       .select('*')
       .eq('format', 'elimination')
-      .in('status', statusMap[tab])
+      .eq('status', statusMap[tab])
+      .eq('is_sponsored', false)
       .order('starts_at', { ascending: true });
 
-    if (data) {
-      setCompetitions(data.filter((c: Competition) => !c.is_sponsored));
-      setSponsored(data.filter((c: Competition) => c.is_sponsored));
-    }
+    const { data: sponsoredData } = await supabase
+      .from('competitions')
+      .select('*')
+      .eq('format', 'elimination')
+      .eq('status', statusMap[tab])
+      .eq('is_sponsored', true)
+      .order('starts_at', { ascending: true });
 
-    if (user) {
-      const { data: regs } = await supabase
-        .from('pre_registrations')
-        .select('competition_id')
-        .eq('user_id', user.id);
-      if (regs) setPreRegged(new Set(regs.map((r: any) => r.competition_id)));
+    const list = data ?? [];
+    const sponsoredList = sponsoredData ?? [];
+
+    setCompetitions(list);
+    setSponsored(sponsoredList);
+
+    // Fetch pre-reg counts for upcoming
+    if (tab === 'upcoming') {
+      const allIds = [...list, ...sponsoredList].map((c) => c.id);
+      if (allIds.length > 0) {
+        const { data: counts } = await supabase
+          .from('elimination_pre_registrations')
+          .select('competition_id')
+          .in('competition_id', allIds);
+
+        const countMap: Record<string, number> = {};
+        (counts ?? []).forEach((r) => {
+          countMap[r.competition_id] = (countMap[r.competition_id] ?? 0) + 1;
+        });
+        setPreRegCounts(countMap);
+      }
     }
 
     setLoading(false);
   };
-  load();
-}, [tab]);
 
-const handlePreRegister = async (competitionId: string) => {
-  if (!userId) { navigateTo('/signup'); return; }
-  if (preRegged.has(competitionId)) return;
-  await supabase.from('pre_registrations').insert({ user_id: userId, competition_id: competitionId });
-  setPreRegged(prev => new Set([...prev, competitionId]));
-};
+  const fetchPreRegs = async () => {
+    if (!userId) return;
+    const { data } = await supabase
+      .from('elimination_pre_registrations')
+      .select('competition_id')
+      .eq('user_id', userId);
+    setPreRegged(new Set((data ?? []).map((r) => r.competition_id)));
+  };
 
-const tabClass = (t: Tab) =>
-  `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-    tab === t
-      ? 'bg-[#D4A843] text-[#1B2A4A]'
-      : isDark
-      ? 'text-[#F5F0E8]/60 hover:text-[#F5F0E8]'
-      : 'text-[#1B2A4A]/60 hover:text-[#1B2A4A]'
-  }`;
+  const handlePreRegister = async (competitionId: string) => {
+    if (!userId || preRegged.has(competitionId)) return;
+    setPreRegLoading(true);
+    const { error } = await supabase
+      .from('elimination_pre_registrations')
+      .insert({ user_id: userId, competition_id: competitionId, converted: false });
+    if (!error) {
+      setPreRegged((prev) => new Set([...prev, competitionId]));
+      setPreRegCounts((prev) => ({
+        ...prev,
+        [competitionId]: (prev[competitionId] ?? 0) + 1,
+      }));
+    }
+    setPreRegLoading(false);
+  };
 
-const renderCard = (c: Competition) => (
-  <div key={c.id} className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
-    <div className="flex items-center gap-2 mb-3">
-      <Trophy size={14} className="text-[#D4A843]" />
-      <span className="text-xs font-semibold text-[#D4A843] uppercase tracking-wide">Elimination Bracket</span>
-      {c.is_sponsored
-        ? <span className="text-xs ml-auto font-semibold text-[#D4A843]">Free Entry</span>
-        : <span className={`text-xs ml-auto ${textMuted}`}>Entry: ${c.entry_fee}</span>
-      }
-    </div>
-    <h3 className={`font-serif text-lg mb-1 ${textPrimary}`}>{c.title}</h3>
-    {c.book_title && (
-      <p className={`text-sm mb-3 ${textMuted}`}>
-        Books: {c.book_title}{c.book_author ? ` — ${c.book_author}` : ''}
-      </p>
-    )}
-    <div className="flex flex-wrap gap-4 mb-4">
-      <div className="flex items-center gap-1.5">
-        <Clock size={13} className="text-[#D4A843]" />
-        <span className={`text-xs ${textMuted}`}>
-          {tab === 'past'
-            ? `Ended ${new Date(c.ends_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-            : `Opens ${new Date(c.starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`}
-        </span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <DollarSign size={13} className="text-[#D4A843]" />
-        <span className={`text-xs ${textMuted}`}>Prize pool: ${c.prize_pool.toFixed(2)}</span>
-      </div>
-      {c.pre_registration_count !== undefined && tab === 'upcoming' && (
-        <div className="flex items-center gap-1.5">
-          <Users size={13} className="text-[#D4A843]" />
-          <span className={`text-xs ${textMuted}`}>{c.pre_registration_count} pre-registered</span>
+  const handleEnter = (competition: Competition) => {
+    window.pendingSubmission = {
+      type: 'competition_entry',
+      competition_id: competition.id,
+      entry_fee: competition.entry_fee,
+    };
+    window.checkoutItem = {
+      name: `Elimination Entry: ${competition.title}`,
+      price: competition.entry_fee,
+      type: 'competition_entry',
+      referenceId: competition.id,
+    };
+    navigateTo('/checkout');
+  };
+
+  const handleLateEnter = (competition: Competition) => {
+    const lateFee = competition.entry_fee * 2;
+    window.pendingSubmission = {
+      type: 'competition_entry',
+      competition_id: competition.id,
+      entry_fee: lateFee,
+      is_late: true,
+    };
+    window.checkoutItem = {
+      name: `Elimination Entry (Late): ${competition.title}`,
+      price: lateFee,
+      type: 'competition_entry',
+      referenceId: competition.id,
+    };
+    navigateTo('/checkout');
+  };
+
+  const isWithin48HrWindow = (competition: Competition) => {
+    const start = new Date(competition.starts_at).getTime();
+    const now = Date.now();
+    return now <= start + 48 * 60 * 60 * 1000;
+  };
+
+  const tabClass = (t: Tab) =>
+    `px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+      tab === t
+        ? 'bg-[#D4A843] text-white'
+        : isDark
+        ? 'text-gray-400 hover:text-white'
+        : 'text-gray-500 hover:text-[#1B2A4A]'
+    }`;
+
+  const renderCard = (competition: Competition) => {
+    const count = preRegCounts[competition.id] ?? 0;
+    const atRisk = tab === 'upcoming' && count < MIN_PRE_REG;
+    const alreadyPreRegged = preRegged.has(competition.id);
+    const withinWindow = isWithin48HrWindow(competition);
+
+    return (
+      <div
+        key={competition.id}
+        className={`${cardBg} rounded-xl p-5 border ${border}`}
+      >
+        {/* Status + pre-reg count */}
+        <div className="flex items-center justify-between mb-3">
+          <span
+            className={`text-xs font-semibold px-2 py-1 rounded-full ${
+              competition.status === 'active'
+                ? 'bg-green-500/20 text-green-400'
+                : competition.status === 'upcoming'
+                ? 'bg-blue-500/20 text-blue-400'
+                : 'bg-gray-500/20 text-gray-400'
+            }`}
+          >
+            {competition.status === 'active'
+              ? '🟢 Live'
+              : competition.status === 'upcoming'
+              ? '🔵 Upcoming'
+              : '⚫ Ended'}
+          </span>
+          {tab === 'upcoming' && (
+            <span
+              className={`text-xs flex items-center gap-1 ${
+                atRisk ? 'text-red-400' : 'text-green-400'
+              }`}
+            >
+              {atRisk && <AlertTriangle size={12} />}
+              <Users size={12} />
+              {count} / {MIN_PRE_REG} min
+            </span>
+          )}
+          {competition.is_sponsored && (
+            <span className="text-xs bg-[#D4A843]/20 text-[#D4A843] px-2 py-1 rounded-full font-semibold">
+              Sponsored
+            </span>
+          )}
         </div>
-      )}
-    </div>
-    {tab === 'upcoming' && (
-      <button
-        onClick={() => handlePreRegister(c.id)}
-        className={`inline-flex items-center gap-1.5 text-sm font-medium transition-colors ${
-          preRegged.has(c.id)
-            ? 'text-[#D4A843]/50 cursor-default'
-            : 'text-[#D4A843] hover:underline'
-        }`}
-      >
-        {preRegged.has(c.id) ? '✓ Pre-Registered' : 'Pre-Register — Free'}
-        {!preRegged.has(c.id) && <ArrowRight size={14} />}
-      </button>
-    )}
-    {tab === 'active' && (
-      <button
-        onClick={() => navigateTo(`/competition/${c.id}`)}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
-      >
-        Enter Now <ArrowRight size={14} />
-      </button>
-    )}
-    {tab === 'past' && (
-      <button
-        onClick={() => navigateTo(`/competition/${c.id}`)}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
-      >
-        View Results <ArrowRight size={14} />
-      </button>
-    )}
-  </div>
-);
 
-return (
-  <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]'}`}>
+        <h2 className={`font-bold ${textPrimary} mb-1`}>{competition.title}</h2>
+        {competition.book_title && (
+          <p className={`text-sm ${textMuted} mb-3`}>
+            {competition.book_title}
+            {competition.book_author && ` · ${competition.book_author}`}
+          </p>
+        )}
 
-    {/* Header */}
-    <div className={`border-b transition-colors duration-300 ${isDark ? 'border-[#1B2A4A] bg-[#0f1623]' : 'border-[#D4A843]/30 bg-[#F5F0E8]'}`}>
-      <div className="max-w-3xl mx-auto px-4 py-4 flex justify-between items-center">
-        <button
-          onClick={() => navigateTo('/')}
-          className={`font-serif text-lg font-bold transition-colors ${isDark ? 'text-[#D4A843]' : 'text-[#1B2A4A]'}`}
-        >
-          Read to Earn
-        </button>
-        <button
-          onClick={toggleTheme}
-          className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
-            isDark
-              ? 'border-[#D4A843]/40 text-[#D4A843] hover:bg-[#D4A843]/10'
-              : 'border-[#1B2A4A]/30 text-[#1B2A4A] hover:bg-[#1B2A4A]/10'
-          }`}
-        >
-          {isDark ? '☀ Light' : '☾ Dark'}
-        </button>
-      </div>
-    </div>
-
-    <div className="max-w-3xl mx-auto px-4 py-16">
-
-      {/* Hero */}
-      <div className="text-center mb-12">
-        <div className="flex justify-center mb-4">
-          <Trophy size={36} className="text-[#D4A843]" />
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className={`${isDark ? 'bg-[#0f1623]' : 'bg-gray-50'} rounded-lg p-2 text-center`}>
+            <p className="text-xs text-[#D4A843] font-semibold">Entry</p>
+            <p className={`text-sm font-bold ${textPrimary}`}>
+              {competition.entry_fee === 0 ? 'Free' : `$${competition.entry_fee}`}
+            </p>
+          </div>
+          <div className={`${isDark ? 'bg-[#0f1623]' : 'bg-gray-50'} rounded-lg p-2 text-center`}>
+            <p className="text-xs text-[#D4A843] font-semibold">Prize Pool</p>
+            <p className={`text-sm font-bold ${textPrimary}`}>${competition.prize_pool}</p>
+          </div>
+          <div className={`${isDark ? 'bg-[#0f1623]' : 'bg-gray-50'} rounded-lg p-2 text-center`}>
+            <p className="text-xs text-[#D4A843] font-semibold">
+              {tab === 'upcoming' ? 'Starts' : tab === 'active' ? 'Ends' : 'Ended'}
+            </p>
+            <p className={`text-sm font-bold ${textPrimary}`}>
+              {new Date(
+                tab === 'upcoming' ? competition.starts_at : competition.ends_at
+              ).toLocaleDateString()}
+            </p>
+          </div>
         </div>
-        <h1 className={`font-serif text-4xl md:text-5xl mb-4 ${textPrimary}`}>Elimination Bracket</h1>
-        <p className={`text-base max-w-xl mx-auto ${textMuted}`}>
-          Three books. Three rounds. Survive each round by outscoring your competition. The last three readers standing take the prize pool.
-        </p>
-        <button
-          onClick={() => navigateTo('/how-it-works')}
-          className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
-        >
-          How it works <ArrowRight size={14} />
-        </button>
-      </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-8">
-        <button className={tabClass('active')} onClick={() => setTab('active')}>Active</button>
-        <button className={tabClass('upcoming')} onClick={() => setTab('upcoming')}>Upcoming</button>
-        <button className={tabClass('past')} onClick={() => setTab('past')}>Past Results</button>
-      </div>
-
-      {/* Cards */}
-      {loading ? (
-        <div className="space-y-4">
-          {[1, 2].map(i => (
-            <div key={i} className={`rounded-xl border p-6 animate-pulse ${cardBg}`}>
-              <div className={`h-4 w-1/3 rounded mb-3 ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#1B2A4A]/10'}`} />
-              <div className={`h-3 w-2/3 rounded mb-2 ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#1B2A4A]/10'}`} />
-              <div className={`h-3 w-1/2 rounded ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#1B2A4A]/10'}`} />
+        {/* Prize split */}
+        <div className="flex gap-2 mb-4">
+          {[
+            { label: '1st', pct: '50%' },
+            { label: '2nd', pct: '30%' },
+            { label: '3rd', pct: '20%' },
+          ].map((p) => (
+            <div
+              key={p.label}
+              className={`flex-1 ${isDark ? 'bg-[#0f1623]' : 'bg-gray-50'} rounded-lg p-2 text-center`}
+            >
+              <p className={`text-xs ${textMuted}`}>{p.label}</p>
+              <p className={`text-sm font-bold ${textPrimary}`}>{p.pct}</p>
             </div>
           ))}
         </div>
-      ) : competitions.length === 0 && sponsored.length === 0 ? (
-        <div className={`rounded-xl border p-10 text-center transition-colors ${cardBg}`}>
-          <p className={`text-sm ${textMuted}`}>No elimination brackets right now. Check back soon.</p>
-        </div>
-      ) : (
-        <div className="space-y-4 mb-12">
-          {competitions.map(renderCard)}
-        </div>
-      )}
 
-      {/* Pre-Registration Info */}
-      <div className={`rounded-xl border p-5 mb-16 transition-colors ${cardBg}`}>
-        <p className={`text-sm font-semibold mb-2 ${textPrimary}`}>How pre-registration works</p>
-        <p className={`text-sm ${textMuted}`}>
-          Pre-registration is free and saves your spot. When the bracket goes live, you'll get notified and have 48 hours to pay your entry fee. No payment required until then. If a bracket is canceled due to low demand, you pay nothing.
-        </p>
+        {/* CTA */}
+        {tab === 'upcoming' && (
+          <button
+            onClick={() => handlePreRegister(competition.id)}
+            disabled={alreadyPreRegged || preRegLoading}
+            className={`w-full py-2 rounded-lg text-sm font-semibold transition-colors ${
+              alreadyPreRegged
+                ? 'bg-green-500/20 text-green-400 cursor-default'
+                : 'bg-[#D4A843] text-white hover:bg-[#c49a3a]'
+            }`}
+          >
+            {alreadyPreRegged ? '✓ Pre-Registered' : 'Pre-Register (Free)'}
+          </button>
+        )}
+
+        {tab === 'active' && (
+          <div className="space-y-2">
+            {withinWindow ? (
+              <button
+                onClick={() => handleEnter(competition)}
+                className="w-full py-2 rounded-lg text-sm font-semibold bg-[#D4A843] text-white hover:bg-[#c49a3a]"
+              >
+                Enter Now — ${competition.entry_fee}
+              </button>
+            ) : (
+              <div className="space-y-1">
+                <button
+                  onClick={() => handleLateEnter(competition)}
+                  className="w-full py-2 rounded-lg text-sm font-semibold bg-orange-500 text-white hover:bg-orange-600"
+                >
+                  Enter Late — ${competition.entry_fee * 2}
+                </button>
+                <p className={`text-xs text-center ${textMuted}`}>
+                  48hr window passed · late fee applies
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === 'past' && (
+          <button
+            onClick={() => navigateTo(`/competition/${competition.id}`)}
+            className={`w-full py-2 rounded-lg text-sm font-semibold border ${border} ${textMuted} hover:${textPrimary}`}
+          >
+            View Results
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className={`min-h-screen ${bg} pb-20`}>
+      {/* Header */}
+      <div className={`${cardBg} border-b ${border} px-4 py-4 flex items-center gap-3`}>
+        <button onClick={() => navigateTo('/home')} className={`${textMuted} hover:${textPrimary}`}>
+          <ArrowLeft size={20} />
+        </button>
+        <div className="flex items-center gap-2">
+          <Trophy size={20} className="text-[#D4A843]" />
+          <h1 className={`text-lg font-bold ${textPrimary}`}>Elimination Bracket</h1>
+        </div>
       </div>
 
-      {/* Author-Sponsored */}
-      {sponsored.length > 0 && (
-        <div className="mb-16">
-          <h2 className={`font-serif text-3xl mb-2 ${textPrimary}`}>Free to Enter — Author-Sponsored</h2>
-          <p className={`text-sm mb-8 ${textMuted}`}>
-            Fully funded by the author whose books are featured. No entry fee. Same real prize pool.
-          </p>
-          <div className="space-y-4">
-            {sponsored.map(renderCard)}
-          </div>
-        </div>
-      )}
+      <div className="px-4 py-6 max-w-2xl mx-auto">
+        <p className={`${textMuted} text-sm mb-6`}>
+          Survive every round. Progressive difficulty, elimination-based. Last reader standing takes the prize.
+        </p>
 
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6">
+          {(['active', 'upcoming', 'past'] as const).map((t) => (
+            <button key={t} className={tabClass(t)} onClick={() => setTab(t)}>
+              {t === 'active' ? 'Active' : t === 'upcoming' ? 'Upcoming' : 'Past Results'}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2].map((i) => (
+              <div key={i} className={`${cardBg} rounded-xl h-48 animate-pulse`} />
+            ))}
+          </div>
+        ) : competitions.length === 0 && sponsored.length === 0 ? (
+          <div className={`${cardBg} rounded-xl p-8 text-center ${textMuted}`}>
+            No {tab} elimination brackets right now.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {competitions.map(renderCard)}
+          </div>
+        )}
+
+        {/* Pre-reg info box */}
+        {tab === 'upcoming' && (
+          <div
+            className={`mt-6 border rounded-xl p-4 ${
+              isDark
+                ? 'bg-blue-900/20 border-blue-700'
+                : 'bg-blue-50 border-blue-200'
+            }`}
+          >
+            <p className={`text-sm font-semibold ${textPrimary} mb-1`}>
+              How Pre-Registration Works
+            </p>
+            <ul className={`text-xs ${textMuted} space-y-1 list-disc list-inside`}>
+              <li>Free to pre-register — no payment required</li>
+              <li>Minimum 12 pre-registrants needed to run the bracket</li>
+              <li>Once confirmed, dates are locked — no changes after threshold is met</li>
+              <li>When the bracket goes live, you'll be notified to pay your entry fee</li>
+              <li>48-hour window to pay after launch — late entries pay double the entry fee</li>
+            </ul>
+          </div>
+        )}
+
+        {/* Sponsored section */}
+        {sponsored.length > 0 && (
+          <div className="mt-8">
+            <h2 className={`text-sm font-semibold ${textMuted} uppercase tracking-wide mb-4`}>
+              Author-Sponsored Brackets
+            </h2>
+            <div className="space-y-4">{sponsored.map(renderCard)}</div>
+          </div>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
 };
