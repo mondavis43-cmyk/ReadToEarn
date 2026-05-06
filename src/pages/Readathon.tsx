@@ -3,17 +3,20 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
-import { BookOpen, Trophy, ArrowLeft } from 'lucide-react';
+import { BookOpen, ArrowLeft, Trophy, Users, AlertTriangle, Clock } from 'lucide-react';
 
 interface Readathon {
   id: string;
   title: string;
   description: string;
-  entry_fee: number;
-  prize_pool: number;
-  status: 'upcoming' | 'active' | 'completed';
   start_date: string;
   end_date: string;
+  entry_fee: number;
+  prize_pool: number;
+  first_place_pct: number;
+  second_place_pct: number;
+  third_place_pct: number;
+  status: 'upcoming' | 'active' | 'completed' | 'canceled';
 }
 
 interface LeaderboardEntry {
@@ -22,312 +25,398 @@ interface LeaderboardEntry {
   total_pages: number;
 }
 
+const MIN_PRE_REG = 12;
+
 export const Readathon = () => {
   const { user } = useAuth();
   const { navigateTo } = useNavigate();
   const { isDark } = useTheme();
 
+  const [tab, setTab] = useState<'active' | 'upcoming' | 'past'>('active');
   const [readathons, setReadathons] = useState<Readathon[]>([]);
   const [selected, setSelected] = useState<Readathon | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isEntered, setIsEntered] = useState(false);
+  const [preRegged, setPreRegged] = useState<Set<string>>(new Set());
+  const [preRegCounts, setPreRegCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const [entering, setEntering] = useState(false);
+  const [preRegLoading, setPreRegLoading] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const bg = isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]';
-  const cardBg = isDark ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20' : 'bg-white border-[#D4A843]/30';
-  const textPrimary = isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]';
-  const textMuted = isDark ? 'text-[#F5F0E8]/60' : 'text-[#1B2A4A]/60';
+  const cardBg = isDark ? 'bg-[#1a2235]' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-[#1B2A4A]';
+  const textMuted = isDark ? 'text-gray-400' : 'text-gray-500';
+  const border = isDark ? 'border-gray-700' : 'border-gray-200';
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const { data } = await supabase
-        .from('readathons')
-        .select('*')
-        .in('status', ['upcoming', 'active', 'completed'])
-        .order('start_date', { ascending: false });
-      if (data) {
-        setReadathons(data);
-        const active = data.find((r: Readathon) => r.status === 'active');
-        if (active) setSelected(active);
-      }
-      setLoading(false);
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUserId(data.user?.id ?? null);
     };
-    load();
+    getUser();
   }, []);
 
   useEffect(() => {
-    if (!selected) return;
-    loadLeaderboard(selected.id);
-    if (selected.status === 'active') {
-      const interval = setInterval(() => loadLeaderboard(selected.id), 30000);
-      return () => clearInterval(interval);
+    fetchReadathons();
+  }, [tab]);
+
+  useEffect(() => {
+    if (userId) fetchPreRegs();
+  }, [userId]);
+
+  useEffect(() => {
+    if (selected) {
+      checkEntry();
+      if (tab === 'active') loadLeaderboard();
     }
   }, [selected]);
 
-  useEffect(() => {
-    if (user && selected) checkEntry(selected.id);
-  }, [selected, user]);
-
-  const loadLeaderboard = async (readathonId: string) => {
+  const fetchReadathons = async () => {
+    setLoading(true);
+    const statusMap = { active: 'active', upcoming: 'upcoming', past: 'completed' };
     const { data } = await supabase
-      .from('readathon_progress')
-      .select('user_id, pages_logged, profiles(display_name)')
-      .eq('readathon_id', readathonId);
+      .from('readathons')
+      .select('*')
+      .eq('status', statusMap[tab])
+      .order('start_date', { ascending: true });
 
-    if (!data) return;
+    const list = data ?? [];
+    setReadathons(list);
+    setSelected(list[0] ?? null);
 
-    const totals: Record<string, { display_name: string; pages: number }> = {};
-    for (const row of data as any[]) {
-      if (!totals[row.user_id]) {
-        totals[row.user_id] = {
-          display_name: row.profiles?.display_name ?? 'Reader',
-          pages: 0,
-        };
-      }
-      totals[row.user_id].pages += row.pages_logged ?? 0;
+    if (tab === 'upcoming' && list.length > 0) {
+      const ids = list.map((r) => r.id);
+      const { data: counts } = await supabase
+        .from('readathon_pre_registrations')
+        .select('readathon_id')
+        .in('readathon_id', ids);
+
+      const countMap: Record<string, number> = {};
+      (counts ?? []).forEach((r) => {
+        countMap[r.readathon_id] = (countMap[r.readathon_id] ?? 0) + 1;
+      });
+      setPreRegCounts(countMap);
     }
 
-    const sorted = Object.entries(totals)
-      .sort((a, b) => b[1].pages - a[1].pages)
-      .map(([user_id, val]) => ({
-        user_id,
-        display_name: val.display_name,
-        total_pages: val.pages,
-      }));
-
-    setLeaderboard(sorted);
+    setLoading(false);
   };
 
-  const checkEntry = async (readathonId: string) => {
-    if (!user) return;
+  const fetchPreRegs = async () => {
+    if (!userId) return;
+    const { data } = await supabase
+      .from('readathon_pre_registrations')
+      .select('readathon_id')
+      .eq('user_id', userId);
+    setPreRegged(new Set((data ?? []).map((r) => r.readathon_id)));
+  };
+
+  const checkEntry = async () => {
+    if (!selected || !userId) return;
     const { data } = await supabase
       .from('readathon_entries')
       .select('id')
-      .eq('readathon_id', readathonId)
-      .eq('user_id', user.id)
+      .eq('readathon_id', selected.id)
+      .eq('user_id', userId)
       .maybeSingle();
     setIsEntered(!!data);
   };
 
-  const handleEnter = async () => {
-    setEntering(true);
-    if (!selected || !user) {
-      navigateTo('/signup');
-      setEntering(false);
-      return;
-    }
+  const loadLeaderboard = async () => {
+    if (!selected) return;
+    const { data } = await supabase
+      .from('readathon_progress')
+      .select('user_id, pages_read, profiles(display_name)')
+      .eq('readathon_id', selected.id);
 
-    (window as any).__checkoutItem = {
-      type: 'readathon_entry',
-      label: `Readathon Entry -- ${selected.title}`,
-      amount: Math.round(selected.entry_fee * 100),
-      metadata: { readathon_id: selected.id },
-    };
+    // Aggregate pages by user
+    const totals: Record<string, { display_name: string; total_pages: number }> = {};
+    (data ?? []).forEach((e: any) => {
+      if (!totals[e.user_id]) {
+        totals[e.user_id] = { display_name: e.profiles?.display_name ?? 'Anonymous', total_pages: 0 };
+      }
+      totals[e.user_id].total_pages += e.pages_read ?? 0;
+    });
 
-    (window as any).__pendingSubmission = {
-      table: 'readathon_entries',
-      data: {
-        readathon_id: selected.id,
-        user_id: user.id,
-        paid_at: new Date().toISOString(),
-        status: 'active',
-      },
-    };
-
-    window.history.pushState({}, '', '/checkout');
-    window.dispatchEvent(new PopStateEvent('popstate'));
-    setEntering(false);
-  };
-
-  const rankLabel = (i: number) => {
-    if (i === 0) return '🥇';
-    if (i === 1) return '🥈';
-    if (i === 2) return '🥉';
-    return `#${i + 1}`;
-  };
-
-  if (loading) {
-    return (
-      <div className={`min-h-screen flex items-center justify-center ${bg}`}>
-        <div className="w-6 h-6 border-2 border-[#D4A843] border-t-transparent rounded-full animate-spin" />
-      </div>
+    setLeaderboard(
+      Object.entries(totals)
+        .map(([user_id, v]) => ({ user_id, ...v }))
+        .sort((a, b) => b.total_pages - a.total_pages)
+        .slice(0, 10)
     );
-  }
+  };
+
+  const handlePreRegister = async (readathonId: string) => {
+    if (!userId || preRegged.has(readathonId)) return;
+    setPreRegLoading(true);
+    const { error } = await supabase
+      .from('readathon_pre_registrations')
+      .insert({ user_id: userId, readathon_id: readathonId, converted: false });
+    if (!error) {
+      setPreRegged((prev) => new Set([...prev, readathonId]));
+      setPreRegCounts((prev) => ({ ...prev, [readathonId]: (prev[readathonId] ?? 0) + 1 }));
+    }
+    setPreRegLoading(false);
+  };
+
+  const handleEnter = (readathon: Readathon) => {
+    window.pendingSubmission = {
+      type: 'readathon_entry',
+      readathon_id: readathon.id,
+      entry_fee: readathon.entry_fee,
+    };
+    window.checkoutItem = {
+      name: `Read-A-Thon Entry: ${readathon.title}`,
+      price: readathon.entry_fee,
+      type: 'readathon_entry',
+      referenceId: readathon.id,
+    };
+    navigateTo('/checkout');
+  };
+
+  const handleLateEnter = (readathon: Readathon) => {
+    const lateFee = readathon.entry_fee * 2;
+    window.pendingSubmission = {
+      type: 'readathon_entry',
+      readathon_id: readathon.id,
+      entry_fee: lateFee,
+      is_late: true,
+    };
+    window.checkoutItem = {
+      name: `Read-A-Thon Entry (Late): ${readathon.title}`,
+      price: lateFee,
+      type: 'readathon_entry',
+      referenceId: readathon.id,
+    };
+    navigateTo('/checkout');
+  };
+
+  const isWithin48HrWindow = (readathon: Readathon) => {
+    const start = new Date(readathon.start_date).getTime();
+    const now = Date.now();
+    return now <= start + 48 * 60 * 60 * 1000;
+  };
+
+  const prizeBreakdown = (r: Readathon) => [
+    { label: '1st Place', pct: r.first_place_pct },
+    { label: '2nd Place', pct: r.second_place_pct },
+    { label: '3rd Place', pct: r.third_place_pct },
+  ];
+
+  const rankLabel = (i: number) => ['🥇', '🥈', '🥉'][i] ?? `#${i + 1}`;
+
+  const tabClass = (t: string) =>
+    `px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+      tab === t
+        ? 'bg-[#D4A843] text-white'
+        : isDark
+        ? 'text-gray-400 hover:text-white'
+        : 'text-gray-500 hover:text-[#1B2A4A]'
+    }`;
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${bg}`}>
+    <div className={`min-h-screen ${bg} pb-20`}>
       {/* Header */}
-      <div className={`border-b ${isDark ? 'border-[#1B2A4A] bg-[#0f1623]' : 'border-[#D4A843]/30 bg-[#F5F0E8]'}`}>
-        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
-          <button onClick={() => navigateTo('/competitions')} className={`${textMuted} hover:${textPrimary} transition`}>
-            <ArrowLeft size={20} />
-          </button>
-          <h1 className={`font-serif text-xl font-bold ${textPrimary}`}>Readathons</h1>
+      <div className={`${cardBg} border-b ${border} px-4 py-4 flex items-center gap-3`}>
+        <button onClick={() => navigateTo('/home')} className={`${textMuted} hover:${textPrimary}`}>
+          <ArrowLeft size={20} />
+        </button>
+        <div className="flex items-center gap-2">
+          <BookOpen size={20} className="text-[#D4A843]" />
+          <h1 className={`text-lg font-bold ${textPrimary}`}>Read-A-Thon</h1>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+      <div className="px-4 py-6 max-w-2xl mx-auto">
+        <p className={`${textMuted} text-sm mb-6`}>
+          A marathon, not a sprint. Read as many pages as possible across the competition window. Most pages wins.
+        </p>
 
-        {/* Readathon selector */}
-        {readathons.length > 1 && (
-          <div className="flex gap-2 flex-wrap">
-            {readathons.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => setSelected(r)}
-                className={`px-4 py-2 rounded-full text-sm font-medium border transition ${
-                  selected?.id === r.id
-                    ? 'bg-[#D4A843] text-[#1B2A4A] border-[#D4A843]'
-                    : `${cardBg} ${textMuted} border-transparent`
-                }`}
-              >
-                {r.title}
-              </button>
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6">
+          {(['active', 'upcoming', 'past'] as const).map((t) => (
+            <button key={t} className={tabClass(t)} onClick={() => setTab(t)}>
+              {t === 'active' ? 'Active' : t === 'upcoming' ? 'Upcoming' : 'Past Results'}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2].map((i) => (
+              <div key={i} className={`${cardBg} rounded-xl h-40 animate-pulse`} />
             ))}
+          </div>
+        ) : readathons.length === 0 ? (
+          <div className={`${cardBg} rounded-xl p-8 text-center ${textMuted}`}>
+            No {tab} read-a-thons right now.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {readathons.map((r) => {
+              const count = preRegCounts[r.id] ?? 0;
+              const atRisk = tab === 'upcoming' && count < MIN_PRE_REG;
+              const alreadyPreRegged = preRegged.has(r.id);
+              const withinWindow = isWithin48HrWindow(r);
+
+              return (
+                <div
+                  key={r.id}
+                  className={`${cardBg} rounded-xl p-5 border ${border} cursor-pointer ${
+                    selected?.id === r.id ? 'ring-2 ring-[#D4A843]' : ''
+                  }`}
+                  onClick={() => setSelected(r)}
+                >
+                  {/* Status + pre-reg count */}
+                  <div className="flex items-center justify-between mb-3">
+                    <span
+                      className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                        r.status === 'active'
+                          ? 'bg-green-500/20 text-green-400'
+                          : r.status === 'upcoming'
+                          ? 'bg-blue-500/20 text-blue-400'
+                          : 'bg-gray-500/20 text-gray-400'
+                      }`}
+                    >
+                      {r.status === 'active' ? '🟢 Live' : r.status === 'upcoming' ? '🔵 Upcoming' : '⚫ Ended'}
+                    </span>
+                    {tab === 'upcoming' && (
+                      <span className={`text-xs ${atRisk ? 'text-red-400' : 'text-green-400'} flex items-center gap-1`}>
+                        {atRisk && <AlertTriangle size={12} />}
+                        <Users size={12} />
+                        {count} / {MIN_PRE_REG} min
+                      </span>
+                    )}
+                  </div>
+
+                  <h2 className={`font-bold ${textPrimary} mb-3`}>{r.title}</h2>
+
+                  {/* Stats */}
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    <div className={`${isDark ? 'bg-[#0f1623]' : 'bg-gray-50'} rounded-lg p-2 text-center`}>
+                      <p className="text-xs text-[#D4A843] font-semibold">Entry</p>
+                      <p className={`text-sm font-bold ${textPrimary}`}>${r.entry_fee}</p>
+                    </div>
+                    <div className={`${isDark ? 'bg-[#0f1623]' : 'bg-gray-50'} rounded-lg p-2 text-center`}>
+                      <p className="text-xs text-[#D4A843] font-semibold">Prize Pool</p>
+                      <p className={`text-sm font-bold ${textPrimary}`}>${r.prize_pool}</p>
+                    </div>
+                    <div className={`${isDark ? 'bg-[#0f1623]' : 'bg-gray-50'} rounded-lg p-2 text-center`}>
+                      <p className="text-xs text-[#D4A843] font-semibold">
+                        {tab === 'upcoming' ? 'Starts' : 'Ends'}
+                      </p>
+                      <p className={`text-sm font-bold ${textPrimary}`}>
+                        {new Date(tab === 'upcoming' ? r.start_date : r.end_date).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Prize breakdown */}
+                  <div className="flex gap-2 mb-4">
+                    {prizeBreakdown(r).map((p) => (
+                      <div key={p.label} className={`flex-1 ${isDark ? 'bg-[#0f1623]' : 'bg-gray-50'} rounded-lg p-2 text-center`}>
+                        <p className={`text-xs ${textMuted}`}>{p.label}</p>
+                        <p className={`text-sm font-bold ${textPrimary}`}>{p.pct}%</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* CTA */}
+                  {tab === 'upcoming' && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handlePreRegister(r.id); }}
+                      disabled={alreadyPreRegged || preRegLoading}
+                      className={`w-full py-2 rounded-lg text-sm font-semibold transition-colors ${
+                        alreadyPreRegged
+                          ? 'bg-green-500/20 text-green-400 cursor-default'
+                          : 'bg-[#D4A843] text-white hover:bg-[#c49a3a]'
+                      }`}
+                    >
+                      {alreadyPreRegged ? '✓ Pre-Registered' : 'Pre-Register (Free)'}
+                    </button>
+                  )}
+
+                  {tab === 'active' && !isEntered && (
+                    <div className="space-y-2">
+                      {withinWindow ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleEnter(r); }}
+                          className="w-full py-2 rounded-lg text-sm font-semibold bg-[#D4A843] text-white hover:bg-[#c49a3a]"
+                        >
+                          Enter Now — ${r.entry_fee}
+                        </button>
+                      ) : (
+                        <div className="space-y-1">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleLateEnter(r); }}
+                            className="w-full py-2 rounded-lg text-sm font-semibold bg-orange-500 text-white hover:bg-orange-600"
+                          >
+                            Enter Late — ${r.entry_fee * 2}
+                          </button>
+                          <p className={`text-xs text-center ${textMuted}`}>
+                            48hr window passed · late fee applies
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {tab === 'active' && isEntered && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); navigateTo(`/library`); }}
+                      className="w-full py-2 rounded-lg text-sm font-semibold bg-green-500 text-white hover:bg-green-600"
+                    >
+                      Go Read
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
-        {selected ? (
-          <>
-            {/* Competition card */}
-            <div className={`rounded-xl border p-6 ${cardBg}`}>
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <BookOpen size={16} className="text-[#D4A843]" />
-                    <span className="text-xs font-semibold uppercase tracking-wide text-[#D4A843]">
-                      {selected.status === 'active' ? 'Live Now' : selected.status === 'upcoming' ? 'Upcoming' : 'Ended'}
-                    </span>
-                  </div>
-                  <h2 className={`font-serif text-2xl ${textPrimary}`}>{selected.title}</h2>
-                  <p className={`text-sm mt-1 ${textMuted}`}>{selected.description}</p>
-                </div>
-              </div>
+        {/* Pre-reg info box */}
+        {tab === 'upcoming' && (
+          <div className={`mt-6 ${isDark ? 'bg-blue-900/20 border-blue-700' : 'bg-blue-50 border-blue-200'} border rounded-xl p-4`}>
+            <p className={`text-sm font-semibold ${textPrimary} mb-1`}>How Pre-Registration Works</p>
+            <ul className={`text-xs ${textMuted} space-y-1 list-disc list-inside`}>
+              <li>Free to pre-register — no payment required</li>
+              <li>Minimum 12 pre-registrants needed to run</li>
+              <li>When the read-a-thon goes live, you'll be notified to pay your entry fee</li>
+              <li>48-hour window to pay after launch — late entries pay double the entry fee</li>
+            </ul>
+          </div>
+        )}
 
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-4 mb-5">
-                {[
-                  { label: 'Entry Fee', value: `$${selected.entry_fee.toFixed(2)}` },
-                  { label: 'Prize Pool', value: `$${selected.prize_pool.toFixed(2)}` },
-                  { label: 'Ends', value: new Date(selected.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) },
-                ].map((stat) => (
-                  <div key={stat.label} className={`rounded-lg p-3 text-center ${isDark ? 'bg-[#0f1623]/60' : 'bg-[#F5F0E8]'}`}>
-                    <p className="text-[#D4A843] font-bold text-lg">{stat.value}</p>
-                    <p className={`text-xs ${textMuted}`}>{stat.label}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Prize breakdown */}
-              <div className={`rounded-lg p-4 mb-5 ${isDark ? 'bg-[#0f1623]/60' : 'bg-[#F5F0E8]'}`}>
-                <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${textMuted}`}>Prize Breakdown</p>
-                <div className="space-y-1">
-                  {[
-                    { place: '🥇 1st Place', pct: '50%' },
-                    { place: '🥈 2nd Place', pct: '30%' },
-                    { place: '🥉 3rd Place', pct: '20%' },
-                  ].map((row) => (
-                    <div key={row.place} className="flex justify-between">
-                      <span className={`text-sm ${textPrimary}`}>{row.place}</span>
-                      <span className="text-sm font-semibold text-[#D4A843]">
-                        {row.pct} of ${(selected.prize_pool * 0.75).toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <p className={`text-xs mt-2 ${textMuted}`}>25% platform fee applied. Payouts within 5 business days of close.</p>
-              </div>
-
-              {/* How to win */}
-              <div className={`rounded-lg p-4 mb-5 ${isDark ? 'bg-[#0f1623]/60' : 'bg-[#F5F0E8]'}`}>
-                <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${textMuted}`}>How to Win</p>
-                <p className={`text-sm ${textPrimary}`}>
-                  Read books from the library and pass their quizzes during the readathon window. Every page from a passed quiz counts toward your total. The reader with the most pages at close wins 1st place.
-                </p>
-              </div>
-
-              {/* Entry button */}
-              {selected.status === 'active' && (
-                isEntered ? (
-                  <div className="flex items-center gap-2 text-[#D4A843] text-sm font-semibold">
-                    <span>✓</span> You're entered -- keep reading to climb the leaderboard!
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleEnter}
-                    disabled={entering}
-                    className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-3 rounded-xl hover:bg-[#c49a3a] transition disabled:opacity-50"
-                  >
-                    {entering ? 'Processing...' : `Enter for $${selected.entry_fee.toFixed(2)}`}
-                  </button>
-                )
-              )}
-
-              {selected.status === 'upcoming' && (
-                <p className={`text-sm text-center ${textMuted}`}>
-                  Opens {new Date(selected.start_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
-                </p>
-              )}
+        {/* Leaderboard */}
+        {tab === 'active' && selected && leaderboard.length > 0 && (
+          <div className={`mt-6 ${cardBg} rounded-xl p-4 border ${border}`}>
+            <div className="flex items-center gap-2 mb-4">
+              <Trophy size={16} className="text-[#D4A843]" />
+              <h3 className={`font-bold ${textPrimary}`}>Leaderboard</h3>
+              <span className={`text-xs ${textMuted} ml-auto flex items-center gap-1`}>
+                <Clock size={12} /> updates every 30s
+              </span>
             </div>
-
-            {/* Leaderboard */}
-            {leaderboard.length > 0 && (
-              <div className={`rounded-xl border p-5 ${cardBg}`}>
-                <div className="flex items-center gap-2 mb-4">
-                  <Trophy size={16} className="text-[#D4A843]" />
-                  <h3 className={`font-serif text-lg ${textPrimary}`}>
-                    {selected.status === 'completed' ? 'Final Results' : 'Live Standings'}
-                  </h3>
-                  {selected.status === 'active' && (
-                    <span className="text-xs bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full">
-                      Live
-                    </span>
-                  )}
+            <div className="space-y-2">
+              {leaderboard.map((entry, i) => (
+                <div
+                  key={entry.user_id}
+                  className={`flex items-center justify-between py-2 px-3 rounded-lg ${
+                    entry.user_id === userId
+                      ? 'bg-[#D4A843]/20 border border-[#D4A843]/40'
+                      : isDark ? 'bg-[#0f1623]' : 'bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm w-6">{rankLabel(i)}</span>
+                    <span className={`text-sm ${textPrimary}`}>{entry.display_name}</span>
+                    {entry.user_id === userId && <span className="text-xs text-[#D4A843]">you</span>}
+                  </div>
+                  <p className={`text-sm font-bold ${textPrimary}`}>{entry.total_pages} pages</p>
                 </div>
-                <div className="space-y-2">
-                  {leaderboard.slice(0, 10).map((entry, i) => (
-                    <div
-                      key={entry.user_id}
-                      className={`flex items-center justify-between py-2 px-3 rounded-lg ${
-                        i < 3
-                          ? 'bg-[#D4A843]/10'
-                          : entry.user_id === user?.id
-                          ? 'bg-blue-500/10 border border-blue-500/20'
-                          : ''
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-base w-6 text-center">{rankLabel(i)}</span>
-                        <p className={`text-sm font-semibold ${textPrimary}`}>
-                          {entry.display_name}
-                          {entry.user_id === user?.id && (
-                            <span className="text-xs text-blue-400 ml-1">(you)</span>
-                          )}
-                        </p>
-                      </div>
-                      <p className="text-sm font-bold text-[#D4A843]">
-                        {entry.total_pages.toLocaleString()} pages
-                      </p>
-                    </div>
-                  ))}
-                  {leaderboard.length > 10 && (
-                    <p className={`text-xs text-center pt-1 ${textMuted}`}>
-                      + {leaderboard.length - 10} more participants
-                    </p>
-                  )}
-                </div>
-                {selected.status === 'active' && (
-                  <p className={`text-xs text-center mt-3 ${textMuted}`}>Updates every 30 seconds</p>
-                )}
-              </div>
-            )}
-          </>
-        ) : (
-          <div className={`text-center py-16 ${textMuted}`}>
-            <BookOpen size={32} className="mx-auto mb-3 opacity-40" />
-            <p>No readathons running right now. Check back soon.</p>
+              ))}
+            </div>
           </div>
         )}
       </div>
