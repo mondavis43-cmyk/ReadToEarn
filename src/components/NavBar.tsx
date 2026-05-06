@@ -26,7 +26,6 @@ const NAV_GROUPS: NavGroup[] = [
     { label: 'How It Works', path: '/how-it-works', icon: <MessageSquare size={15} /> },
     { label: 'Ways to Earn', path: '/earn', icon: <DollarSign size={15} /> },
     { label: 'Library', path: '/library', icon: <BookOpen size={15} /> },
-    { label: 'Competitions', path: '/competitions', icon: <Trophy size={15} /> },
     { label: 'Sprints', path: '/sprints', icon: <Zap size={15} /> },
     { label: 'Readathon', path: '/readathon', icon: <BookOpen size={15} /> },
     { label: 'Elimination', path: '/elimination', icon: <Trophy size={15} /> },
