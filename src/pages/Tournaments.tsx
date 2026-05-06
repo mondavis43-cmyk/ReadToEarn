@@ -315,7 +315,7 @@ export const Tournaments = () => {
 
       <div className="max-w-xl mx-auto px-4 py-16">
         <h1 className={`font-serif text-4xl mb-2 ${textPrimary}`}>Create a Tournament</h1>
-        <p className={`text-sm mb-10 ${textMuted}`}>Set the rules, pick the book(s), and invite your readers.</p>
+        <p className={`text-sm mb-10 ${textMuted}`}>Any reader can create a public or private tournament. Pick the book, format, rules, and entry fee. Prize pool grows from entry fees — platform keeps 25%.</p>
 
         <div className="space-y-6">
 
