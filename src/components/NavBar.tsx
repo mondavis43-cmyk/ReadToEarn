@@ -24,6 +24,7 @@ const NAV_GROUPS: NavGroup[] = [
   icon: <DollarSign size={16} />,
   items: [
     { label: 'How It Works', path: '/how-it-works', icon: <MessageSquare size={15} /> },
+    { label: 'Ways to Earn', path: '/earn', icon: <DollarSign size={15} /> },
     { label: 'Library', path: '/library', icon: <BookOpen size={15} /> },
     { label: 'Competitions', path: '/competitions', icon: <Trophy size={15} /> },
     { label: 'Sprints', path: '/sprints', icon: <Zap size={15} /> },
@@ -35,7 +36,6 @@ const NAV_GROUPS: NavGroup[] = [
     { label: 'Author Surveys', path: '/surveys', icon: <FileText size={15} /> },
     { label: 'Beta Reader Panels', path: '/beta-reader-panels', icon: <BookMarked size={15} /> },
     { label: 'Sensitivity Reader Panels', path: '/sensitivity-reader-panels', icon: <Eye size={15} /> },
-    { label: 'Ways to Earn', path: '/earn', icon: <DollarSign size={15} /> },
   ],
 },
 {
