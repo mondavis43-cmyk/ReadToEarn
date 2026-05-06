@@ -32,6 +32,7 @@ import { BulletinBoard } from '../pages/BulletinBoard';
 import { BulletinSubmit } from '../pages/BulletinSubmit';
 import { HowItWorks } from '../pages/HowItWorks';
 import { Competitions } from '../pages/Competitions';
+import { Elimination } from '../pages/Elimination';
 import { Earn } from '../pages/Earn';
 import { AuthorAMA } from '../pages/AuthorAMA';
 import { AMASession } from '../pages/AMASession';
@@ -54,162 +55,164 @@ import SensitivityReaderPanel from '../pages/SensitivityReaderPanel';
 const WAITLIST_MODE = true;
 
 export const Router = () => {
-  const { user, loading } = useAuth();
-  const [route, setRoute] = useState(window.location.pathname);
+const { user, loading } = useAuth();
+const [route, setRoute] = useState(window.location.pathname);
 
-  useEffect(() => {
-    const handleRouteChange = () => setRoute(window.location.pathname);
-    window.addEventListener('popstate', handleRouteChange);
-    return () => window.removeEventListener('popstate', handleRouteChange);
-  }, []);
+useEffect(() => {
+  const handleRouteChange = () => setRoute(window.location.pathname);
+  window.addEventListener('popstate', handleRouteChange);
+  return () => window.removeEventListener('popstate', handleRouteChange);
+}, []);
 
-  useEffect(() => {
-    if (
-      !loading &&
-      !user &&
-      route !== '/login' &&
-      route !== '/signup' &&
-      route !== '/admin' &&
-      route !== '/admin/submissions' &&
-      route !== '/reset-password'
-    ) {
-      if (!WAITLIST_MODE) {
-        window.history.pushState({}, '', '/login');
-        setRoute('/login');
-      }
+useEffect(() => {
+  if (
+    !loading &&
+    !user &&
+    route !== '/login' &&
+    route !== '/signup' &&
+    route !== '/admin' &&
+    route !== '/admin/submissions' &&
+    route !== '/reset-password'
+  ) {
+    if (!WAITLIST_MODE) {
+      window.history.pushState({}, '', '/login');
+      setRoute('/login');
     }
-  }, [user, loading, route]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
-        <div className="text-white">Loading...</div>
-      </div>
-    );
   }
+}, [user, loading, route]);
 
-  // Public routes — no NavBar, no auth required
-  if (route === '/admin') return <AdminRoute><Admin /></AdminRoute>;
-  if (route === '/admin/submissions') return <AdminRoute><AdminSubmissions /></AdminRoute>;
-  if (route === '/reset-password') return <ResetPassword />;
-  if (route === '/terms') return <TermsOfService />;
-  if (route === '/privacy') return <PrivacyPolicy />;
-
-  if (route === '/ama') return <AuthorAMA />;
-  if (route === '/ama-request') return <AMARequest />;
-  if (route.startsWith('/ama/')) {
-    const sessionId = route.replace('/ama/', '');
-    return <AMASession sessionId={sessionId} />;
-  }
-
-  if (route === '/pricing') return <Pricing />;
-
-  if (WAITLIST_MODE && !user) return <Waitlist />;
-
-  if (!user && route === '/signup') return <Signup />;
-  if (!user) return <Login />;
-
-  // Dynamic routes — no NavBar
-  if (route.startsWith('/competition/')) {
-    const competitionId = route.replace('/competition/', '');
-    return <CompetitionDetail competitionId={competitionId} />;
-  }
-
-  if (route.startsWith('/tournament/')) {
-    const tournamentId = route.replace('/tournament/', '');
-    return <TournamentDetail tournamentId={tournamentId} />;
-  }
-
-  if (route === '/tournaments/create') return <Tournaments />;
-
-  const KNOWN_ROUTES = [
-    '/',
-    '/home',
-    '/library',
-    '/how-it-works',
-    '/competitions',
-    '/earn',
-    '/pricing',
-    '/profile',
-    '/cashout',
-    '/refer',
-    '/request-book',
-    '/authors',
-    '/author-submit',
-    '/author-bounty',
-    '/author-competition',
-    '/author-quick-tasks',
-    '/author-survey',
-    '/author-beta-readers',
-    '/author-sensitivity-readers',
-    '/bulletin-board',
-    '/bulletin-submit',
-    '/faq',
-    '/checkout',
-    '/time-boosts',
-    '/leaderboard',
-    '/account-settings',
-    '/tournaments/create',
-    '/ama-request',
-    '/author-dashboard',
-    '/readathon',
-    '/sprints',
-    '/quick-tasks',
-    '/surveys',
-    '/beta-reader-panels',
-    '/sensitivity-reader-panels',
-  ];
-
-  const isKnownRoute =
-    KNOWN_ROUTES.includes(route) ||
-    route.startsWith('/quiz/') ||
-    route.startsWith('/book/') ||
-    route.startsWith('/competition/') ||
-    route.startsWith('/tournament/');
-
+if (loading) {
   return (
-    <>
-      <NavBar />
-      {(route === '/' || route === '/home') && <Home />}
-      {route === '/library' && <Library />}
-      {route === '/how-it-works' && <HowItWorks />}
-      {route === '/competitions' && <Competitions />}
-      {route === '/earn' && <Earn />}
-      {route === '/profile' && <Profile />}
-      {route === '/cashout' && <Cashout />}
-      {route === '/refer' && <Refer />}
-      {route === '/request-book' && <RequestBook />}
-      {route === '/faq' && <FAQ />}
-      {route === '/authors' && <Authors />}
-      {route === '/author-dashboard' && <AuthorDashboard />}
-      {route === '/author-submit' && <AuthorSubmit />}
-      {route === '/author-bounty' && <AuthorBounty />}
-      {route === '/author-competition' && <AuthorCompetition />}
-      {route === '/author-quick-tasks' && <AuthorQuickTasks />}
-      {route === '/author-survey' && <AuthorSurvey />}
-      {route === '/author-beta-readers' && <AuthorBetaReaders />}
-      {route === '/author-sensitivity-readers' && <AuthorSensitivityReaders />}
-      {route === '/time-boosts' && <TimeBoosts />}
-      {route === '/leaderboard' && <Leaderboard />}
-      {route === '/readathon' && <Readathon />}
-      {route === '/sprints' && <Sprints />}
-      {route === '/bulletin-board' && <BulletinBoard />}
-      {route === '/bulletin-submit' && <BulletinSubmit />}
-      {route === '/account-settings' && <AccountSettings />}
-      {route === '/quick-tasks' && <QuickTasks />}
-      {route === '/surveys' && <SurveyFeed />}
-      {route === '/beta-reader-panels' && <BetaReaderPanel />}
-      {route === '/sensitivity-reader-panels' && <SensitivityReaderPanel />}
-      {route === '/checkout' && <Checkout />}
-      {route.startsWith('/quiz/') && (() => {
-        const bookId = route.split('/')[2]?.split('?')[0];
-        const params = new URLSearchParams(window.location.search);
-        const competitionId = params.get('competition') ?? undefined;
-        const competitionRound = params.get('round') ? Number(params.get('round')) : undefined;
-        return <Quiz bookId={bookId} competitionId={competitionId} competitionRound={competitionRound} />;
-      })()}
-      {route.startsWith('/book/') && <BookPage />}
-      {!isKnownRoute && <Home />}
-    </>
+    <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
+      <div className="text-white">Loading...</div>
+    </div>
   );
+}
+
+// Public routes — no NavBar, no auth required
+if (route === '/admin') return <AdminRoute><Admin /></AdminRoute>;
+if (route === '/admin/submissions') return <AdminRoute><AdminSubmissions /></AdminRoute>;
+if (route === '/reset-password') return <ResetPassword />;
+if (route === '/terms') return <TermsOfService />;
+if (route === '/privacy') return <PrivacyPolicy />;
+
+if (route === '/ama') return <AuthorAMA />;
+if (route === '/ama-request') return <AMARequest />;
+if (route.startsWith('/ama/')) {
+  const sessionId = route.replace('/ama/', '');
+  return <AMASession sessionId={sessionId} />;
+}
+
+if (route === '/pricing') return <Pricing />;
+
+if (WAITLIST_MODE && !user) return <Waitlist />;
+
+if (!user && route === '/signup') return <Signup />;
+if (!user) return <Login />;
+
+// Dynamic routes — no NavBar
+if (route.startsWith('/competition/')) {
+  const competitionId = route.replace('/competition/', '');
+  return <CompetitionDetail competitionId={competitionId} />;
+}
+
+if (route.startsWith('/tournament/')) {
+  const tournamentId = route.replace('/tournament/', '');
+  return <TournamentDetail tournamentId={tournamentId} />;
+}
+
+if (route === '/tournaments/create') return <Tournaments />;
+
+const KNOWN_ROUTES = [
+  '/',
+  '/home',
+  '/library',
+  '/how-it-works',
+  '/competitions',
+  '/elimination',
+  '/earn',
+  '/pricing',
+  '/profile',
+  '/cashout',
+  '/refer',
+  '/request-book',
+  '/authors',
+  '/author-submit',
+  '/author-bounty',
+  '/author-competition',
+  '/author-quick-tasks',
+  '/author-survey',
+  '/author-beta-readers',
+  '/author-sensitivity-readers',
+  '/bulletin-board',
+  '/bulletin-submit',
+  '/faq',
+  '/checkout',
+  '/time-boosts',
+  '/leaderboard',
+  '/account-settings',
+  '/tournaments/create',
+  '/ama-request',
+  '/author-dashboard',
+  '/readathon',
+  '/sprints',
+  '/quick-tasks',
+  '/surveys',
+  '/beta-reader-panels',
+  '/sensitivity-reader-panels',
+];
+
+const isKnownRoute =
+  KNOWN_ROUTES.includes(route) ||
+  route.startsWith('/quiz/') ||
+  route.startsWith('/book/') ||
+  route.startsWith('/competition/') ||
+  route.startsWith('/tournament/');
+
+return (
+  <>
+    <NavBar />
+    {(route === '/' || route === '/home') && <Home />}
+    {route === '/library' && <Library />}
+    {route === '/how-it-works' && <HowItWorks />}
+    {route === '/competitions' && <Competitions />}
+    {route === '/elimination' && <Elimination />}
+    {route === '/earn' && <Earn />}
+    {route === '/profile' && <Profile />}
+    {route === '/cashout' && <Cashout />}
+    {route === '/refer' && <Refer />}
+    {route === '/request-book' && <RequestBook />}
+    {route === '/faq' && <FAQ />}
+    {route === '/authors' && <Authors />}
+    {route === '/author-dashboard' && <AuthorDashboard />}
+    {route === '/author-submit' && <AuthorSubmit />}
+    {route === '/author-bounty' && <AuthorBounty />}
+    {route === '/author-competition' && <AuthorCompetition />}
+    {route === '/author-quick-tasks' && <AuthorQuickTasks />}
+    {route === '/author-survey' && <AuthorSurvey />}
+    {route === '/author-beta-readers' && <AuthorBetaReaders />}
+    {route === '/author-sensitivity-readers' && <AuthorSensitivityReaders />}
+    {route === '/time-boosts' && <TimeBoosts />}
+    {route === '/leaderboard' && <Leaderboard />}
+    {route === '/readathon' && <Readathon />}
+    {route === '/sprints' && <Sprints />}
+    {route === '/bulletin-board' && <BulletinBoard />}
+    {route === '/bulletin-submit' && <BulletinSubmit />}
+    {route === '/account-settings' && <AccountSettings />}
+    {route === '/quick-tasks' && <QuickTasks />}
+    {route === '/surveys' && <SurveyFeed />}
+    {route === '/beta-reader-panels' && <BetaReaderPanel />}
+    {route === '/sensitivity-reader-panels' && <SensitivityReaderPanel />}
+    {route === '/checkout' && <Checkout />}
+    {route.startsWith('/quiz/') && (() => {
+      const bookId = route.split('/')[2]?.split('?')[0];
+      const params = new URLSearchParams(window.location.search);
+      const competitionId = params.get('competition') ?? undefined;
+      const competitionRound = params.get('round') ? Number(params.get('round')) : undefined;
+      return <Quiz bookId={bookId} competitionId={competitionId} competitionRound={competitionRound} />;
+    })()}
+    {route.startsWith('/book/') && <BookPage />}
+    {!isKnownRoute && <Home />}
+  </>
+);
 };
