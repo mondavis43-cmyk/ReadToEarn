@@ -31,7 +31,6 @@ import { PrivacyPolicy } from '../pages/PrivacyPolicy';
 import { BulletinBoard } from '../pages/BulletinBoard';
 import { BulletinSubmit } from '../pages/BulletinSubmit';
 import { HowItWorks } from '../pages/HowItWorks';
-import { Competitions } from '../pages/Competitions';
 import { Elimination } from '../pages/Elimination';
 import { Earn } from '../pages/Earn';
 import { AuthorAMA } from '../pages/AuthorAMA';
@@ -128,7 +127,6 @@ const KNOWN_ROUTES = [
   '/home',
   '/library',
   '/how-it-works',
-  '/competitions',
   '/elimination',
   '/earn',
   '/pricing',
@@ -175,7 +173,6 @@ return (
     {(route === '/' || route === '/home') && <Home />}
     {route === '/library' && <Library />}
     {route === '/how-it-works' && <HowItWorks />}
-    {route === '/competitions' && <Competitions />}
     {route === '/elimination' && <Elimination />}
     {route === '/earn' && <Earn />}
     {route === '/profile' && <Profile />}
