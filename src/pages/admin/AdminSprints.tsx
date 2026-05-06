@@ -61,6 +61,7 @@ const [loadingLeaderboard, setLoadingLeaderboard] = useState<string | null>(null
 const [payingOut, setPayingOut] = useState<string | null>(null);
 const [books, setBooks] = useState<Book[]>([]);
 const [bookSearch, setBookSearch] = useState('');
+const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
 const load = async () => {
   setLoading(true);
@@ -171,18 +172,17 @@ const handleCloseAndPay = async (id: string, title: string) => {
 
 const handleCreate = async () => {
   setError('');
-  if (!form.title || !form.book_id || !form.entry_fee || !form.start_date || !form.end_date) {
+  if (!form.title || !form.book_id || !selectedBook || !form.entry_fee || !form.start_date || !form.end_date) {
     setError('Title, book, entry fee, and dates are required.');
     return;
   }
-  const selectedBook = books.find(b => b.id === form.book_id);
   setSaving(true);
   const { error: insertError } = await supabase.from('sprints').insert({
     title: form.title,
     description: form.description || null,
     book_id: form.book_id,
-    book_title: selectedBook?.title ?? '',
-    book_author: selectedBook?.author ?? '',
+    book_title: selectedBook.title,
+    book_author: selectedBook.author,
     entry_fee: Number(form.entry_fee),
     prize_pool: Number(form.prize_pool) || 0,
     start_date: new Date(form.start_date).toISOString(),
@@ -196,6 +196,7 @@ const handleCreate = async () => {
   }
   setForm(EMPTY_FORM);
   setBookSearch('');
+  setSelectedBook(null);
   setCreating(false);
   load();
 };
@@ -287,19 +288,29 @@ return (
             <label className="block text-xs font-medium text-[#6B7280] dark:text-gray-400 mb-1">Book *</label>
             <input
               value={bookSearch}
-              onChange={e => setBookSearch(e.target.value)}
+              onChange={e => { setBookSearch(e.target.value); setSelectedBook(null); setForm(p => ({ ...p, book_id: '' })); }}
               placeholder="Search books by title..."
               className="w-full px-3 py-2 rounded-xl border border-[#e8e0d5] dark:border-gray-600 bg-[#F5F0E8] dark:bg-gray-700 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none focus:border-[#D4A843] mb-2"
             />
-            {books.length > 0 && (
+            {selectedBook && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#D4A843]/10 border border-[#D4A843]/30 text-sm">
+                <span className="text-[#D4A843]">✓</span>
+                <span className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8]">{selectedBook.title}</span>
+                <span className="text-[#6B7280] dark:text-gray-400">by {selectedBook.author}</span>
+              </div>
+            )}
+            {books.length > 0 && !selectedBook && (
               <div className="border border-[#e8e0d5] dark:border-gray-600 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
                 {books.map(b => (
                   <button
                     key={b.id}
-                    onClick={() => { setForm(p => ({ ...p, book_id: b.id })); setBookSearch(b.title); setBooks([]); }}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-[#D4A843]/10 transition-colors ${
-                      form.book_id === b.id ? 'bg-[#D4A843]/10 text-[#D4A843]' : 'text-[#1B2A4A] dark:text-[#F5F0E8]'
-                    }`}
+                    onClick={() => {
+                      setSelectedBook(b);
+                      setForm(p => ({ ...p, book_id: b.id }));
+                      setBookSearch(b.title);
+                      setBooks([]);
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-[#D4A843]/10 transition-colors text-[#1B2A4A] dark:text-[#F5F0E8]"
                   >
                     <span className="font-medium">{b.title}</span>
                     <span className="text-[#6B7280] dark:text-gray-400 ml-2">by {b.author}</span>
@@ -362,7 +373,7 @@ return (
             {saving ? 'Creating...' : 'Create Sprint'}
           </button>
           <button
-            onClick={() => { setCreating(false); setForm(EMPTY_FORM); setBookSearch(''); setError(''); }}
+            onClick={() => { setCreating(false); setForm(EMPTY_FORM); setBookSearch(''); setSelectedBook(null); setError(''); }}
             className="px-5 py-2 rounded-xl border border-[#e8e0d5] dark:border-gray-600 text-[#6B7280] dark:text-gray-400 text-sm hover:opacity-70 transition-opacity"
           >
             Cancel
