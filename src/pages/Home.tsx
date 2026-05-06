@@ -219,11 +219,11 @@ export const Home = () => {
 
         <div className="text-center">
           <button
-            onClick={() => navigateTo('/competitions')}
+            onClick={() => navigateTo('/how-it-works')}
             className="px-6 py-3 rounded-lg text-sm font-semibold transition"
             style={{ backgroundColor: gold, color: navy }}
           >
-            Browse Upcoming Competitions
+            Learn More
           </button>
         </div>
       </section>
@@ -283,11 +283,11 @@ export const Home = () => {
 
           <div className="text-center">
             <button
-              onClick={() => navigateTo('/competitions')}
+              onClick={() => navigateTo('/how-it-works')}
               className="px-6 py-3 rounded-lg text-sm font-semibold border transition"
               style={{ borderColor: navy, color: textPrimary, backgroundColor: 'transparent' }}
             >
-              Explore All Competitions
+              Learn More
             </button>
           </div>
         </div>
