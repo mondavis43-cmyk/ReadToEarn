@@ -117,6 +117,7 @@ const startTimeRef = useRef<number>(Date.now());
 const boostsUsedRef = useRef(0);
 const reportRef = useRef<HTMLDivElement | null>(null);
 const submittedRef = useRef(false);
+const isSubmittingRef = useRef(false); // prevents duplicate concurrent submissions
 
 // ── isQuizUnlocked ──────────────────────────────────────────────────────────
 const isQuizUnlocked = async (
@@ -363,8 +364,13 @@ const handleUseBoost = async () => {
 // ── handleSubmit ────────────────────────────────────────────────────────────
 submittedRef.current = submitted;
 const handleSubmit = async (fromTimer = false) => {
+  // GUARD: prevent duplicate concurrent submissions
+  if (isSubmittingRef.current || submittedRef.current) return;
+  isSubmittingRef.current = true;
+
   const timeSpent = Date.now() - startTimeRef.current;
   if (!fromTimer && timeSpent < MIN_QUIZ_TIME) {
+    isSubmittingRef.current = false;
     setIsSpeeding(true);
     setTimeout(() => setIsSpeeding(false), 3000);
     return;
@@ -376,7 +382,10 @@ const handleSubmit = async (fromTimer = false) => {
   }
   if (fromTimer) setTimedOut(true);
 
-  if (!user || !book) return;
+  if (!user || !book) {
+    isSubmittingRef.current = false;
+    return;
+  }
 
   setTimeSpentMs(timeSpent);
 
@@ -410,9 +419,10 @@ const handleSubmit = async (fromTimer = false) => {
     const result = await response.json();
 
     if (!response.ok) {
-      setScore(result.score ?? 0);
-      setSubmitted(true);
+      // Don't overwrite score with 0 on error -- just show result screen as-is
+      // (handles "already submitted" 400 from duplicate clicks gracefully)
       console.error('Quiz submission error:', result.error);
+      setSubmitted(true);
       return;
     }
 
@@ -424,9 +434,8 @@ const handleSubmit = async (fromTimer = false) => {
     setSubmitted(true);
 
   } catch (err) {
-    setScore(0);
-    setSubmitted(true);
     console.error('Quiz submission failed:', err);
+    setSubmitted(true);
   }
 };
 
