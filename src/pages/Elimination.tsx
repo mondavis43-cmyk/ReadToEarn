@@ -191,7 +191,7 @@ return (
         </div>
         <h1 className={`font-serif text-4xl md:text-5xl mb-4 ${textPrimary}`}>Elimination Bracket</h1>
         <p className={`text-base max-w-xl mx-auto ${textMuted}`}>
-          Three books. Three rounds. One winner. Survive each round by outscoring your competition — the last reader standing takes the prize pool.
+          Three books. Three rounds. Survive each round by outscoring your competition. The last three readers standing take the prize pool.
         </p>
         <button
           onClick={() => navigateTo('/how-it-works')}
@@ -199,23 +199,6 @@ return (
         >
           How it works <ArrowRight size={14} />
         </button>
-      </div>
-
-      {/* How it works quick summary */}
-      <div className={`rounded-xl border p-5 mb-10 transition-colors ${cardBg}`}>
-        <p className={`text-sm font-semibold mb-3 ${textPrimary}`}>The format</p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {[
-            { round: 'Round 1', desc: 'All entrants read Book 1 and take the quiz. Bottom half eliminated.' },
-            { round: 'Round 2', desc: 'Survivors read Book 2. Bottom half eliminated again.' },
-            { round: 'Final', desc: 'Last readers standing face Book 3. Highest score wins the prize pool.' },
-          ].map(({ round, desc }) => (
-            <div key={round}>
-              <p className="text-xs font-semibold text-[#D4A843] mb-1">{round}</p>
-              <p className={`text-xs ${textMuted}`}>{desc}</p>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Tabs */}
