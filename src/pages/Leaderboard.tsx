@@ -6,20 +6,25 @@ import { supabase } from '../lib/supabase';
 
 type Format = 'sprint' | 'readathon' | 'elimination';
 type Tab = 'live' | 'archived' | 'champions';
+
 type LeaderboardEntry = {
 rank: number;
 user_id: string;
 display_name: string;
 username?: string | null;
 avatar_url?: string | null;
+// sprint
 accuracy?: number;
 completion_time_seconds?: number;
+// readathon
 pages_read?: number;
 books_completed?: number;
+// elimination
 round_reached?: number;
 eliminated?: boolean;
 prize_amount?: number;
 };
+
 type CompetitionItem = {
 id: string;
 title: string;
@@ -30,7 +35,9 @@ status: 'active' | 'completed';
 ends_at: string;
 starts_at: string;
 isSprint?: boolean;
+isReadathon?: boolean;
 };
+
 type MonthlyChampion = {
 id: string;
 user_id: string;
@@ -43,6 +50,8 @@ prize_won: number;
 month: string;
 book_title?: string;
 };
+
+// ─── helpers ──────────────────────────────────────────────────────────────────
 
 const formatIcon = (format: Format, size = 14) => {
 if (format === 'sprint') return <Zap size={size} className="text-[#D4A843]" />;
@@ -66,24 +75,30 @@ return `#${rank}`;
 const formatTime = (seconds: number) => {
 const m = Math.floor(seconds / 60);
 const s = seconds % 60;
-return `${m}:${s.toString().padStart(2, '0')}`;
+return m > 0 ? `${m}m ${s}s` : `${s}s`;
 };
 
-const formatMs = (ms: number) => {
-const totalSec = Math.floor(ms / 1000);
-const m = Math.floor(totalSec / 60);
-const s = totalSec % 60;
-return `${m}:${s.toString().padStart(2, '0')}`;
-};
-
-const resolveDisplayName = (username?: string | null, display_name?: string) => {
+const resolveDisplayName = (username?: string | null, displayName?: string) => {
 if (username) return `@${username}`;
-return display_name || 'Anonymous';
+return displayName || 'Reader';
 };
+
+const prizeForRank = (rank: number, format: Format, pool: number): number | null => {
+if (format === 'sprint') return rank === 1 ? pool : null;
+if (format === 'readathon' || format === 'elimination') {
+  if (rank === 1) return pool * 0.5;
+  if (rank === 2) return pool * 0.3;
+  if (rank === 3) return pool * 0.2;
+}
+return null;
+};
+
+// ─── component ────────────────────────────────────────────────────────────────
 
 export const Leaderboard = () => {
 const { isDark, toggleTheme } = useTheme();
 const { navigateTo } = useNavigate();
+
 const textPrimary = isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]';
 const textMuted = isDark ? 'text-[#F5F0E8]/70' : 'text-[#1B2A4A]/70';
 const cardBg = isDark ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20' : 'bg-white border-[#D4A843]/30';
@@ -97,12 +112,34 @@ const [loadingComps, setLoadingComps] = useState(true);
 const [loadingEntries, setLoadingEntries] = useState(false);
 const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
+const selectedComp = competitions.find((c) => c.id === selectedId) ?? null;
+
+const tabClass = (t: Tab) =>
+  `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+    tab === t
+      ? 'bg-[#D4A843] text-[#1B2A4A]'
+      : isDark
+      ? 'text-[#F5F0E8]/60 hover:text-[#F5F0E8]'
+      : 'text-[#1B2A4A]/60 hover:text-[#1B2A4A]'
+  }`;
+
+const compTabClass = (id: string) =>
+  `w-full text-left px-4 py-3 rounded-xl border transition-colors ${
+    selectedId === id
+      ? 'border-[#D4A843] bg-[#D4A843]/10'
+      : isDark
+      ? 'border-[#1B2A4A] bg-[#1B2A4A]/20 hover:border-[#D4A843]/40'
+      : 'border-[#D4A843]/20 bg-white hover:border-[#D4A843]/50'
+  }`;
+
+// ── auth ──────────────────────────────────────────────────────────────────
 useEffect(() => {
   supabase.auth.getUser().then(({ data: { user } }) => {
     if (user) setCurrentUserId(user.id);
   });
 }, []);
 
+// ── load competitions + sprints + readathons ───────────────────────────────
 useEffect(() => {
   const load = async () => {
     setLoadingComps(true);
@@ -122,8 +159,8 @@ useEffect(() => {
 
     const status = tab === 'live' ? 'active' : 'completed';
 
-    // Fetch competitions and sprints in parallel
-    const [compResult, sprintResult] = await Promise.all([
+    // Fetch competitions, sprints, and readathons in parallel
+    const [compResult, sprintResult, readathonResult] = await Promise.all([
       supabase
         .from('competitions')
         .select('id, title, format, book_title, prize_pool, status, starts_at, ends_at')
@@ -132,6 +169,12 @@ useEffect(() => {
         .limit(20),
       supabase
         .from('sprints')
+        .select('id, title, book_title, prize_pool, status, start_date, end_date')
+        .eq('status', status)
+        .order('start_date', { ascending: false })
+        .limit(20),
+      supabase
+        .from('readathons')
         .select('id, title, book_title, prize_pool, status, start_date, end_date')
         .eq('status', status)
         .order('start_date', { ascending: false })
@@ -152,7 +195,19 @@ useEffect(() => {
       isSprint: true,
     }));
 
-    const merged = [...sprintList, ...compList];
+    const readathonList: CompetitionItem[] = (readathonResult.data ?? []).map((r: any) => ({
+      id: r.id,
+      title: r.title,
+      format: 'readathon' as Format,
+      book_title: r.book_title,
+      prize_pool: r.prize_pool ?? 0,
+      status: r.status === 'active' ? 'active' : 'completed',
+      starts_at: r.start_date,
+      ends_at: r.end_date,
+      isReadathon: true,
+    }));
+
+    const merged = [...sprintList, ...readathonList, ...compList];
     setCompetitions(merged);
     if (merged.length > 0) setSelectedId(merged[0].id);
     setLoadingComps(false);
@@ -160,46 +215,109 @@ useEffect(() => {
   load();
 }, [tab]);
 
+// ── load entries when selection changes ───────────────────────────────────
 useEffect(() => {
   if (!selectedId) return;
   const selected = competitions.find((c) => c.id === selectedId);
   if (!selected) return;
-  loadEntries(selectedId, selected.format, selected.isSprint ?? false);
-}, [selectedId]);
+  loadEntries(selected);
+}, [selectedId, competitions]);
 
-const loadEntries = async (id: string, format: Format, isSprint: boolean) => {
+// ── loadEntries ───────────────────────────────────────────────────────────
+const loadEntries = async (comp: CompetitionItem) => {
   setLoadingEntries(true);
 
-  if (isSprint) {
-    // Sprints use sprint_entries table, joined with profiles
-    const { data } = await supabase
+  if (comp.isSprint) {
+    // ── Sprint: query sprint_entries, then fetch profiles separately ──────
+    const { data: rows } = await supabase
       .from('sprint_entries')
-      .select('user_id, score, time_spent_ms, profiles(display_name, username)')
-      .eq('sprint_id', id)
+      .select('user_id, score, time_spent_ms')
+      .eq('sprint_id', comp.id)
       .not('score', 'is', null)
       .order('score', { ascending: false })
       .order('time_spent_ms', { ascending: true })
       .limit(50);
 
-    if (data) {
-      const mapped: LeaderboardEntry[] = data.map((row: any, i: number) => ({
-        rank: i + 1,
-        user_id: row.user_id,
-        display_name: row.profiles?.display_name ?? 'Reader',
-        username: row.profiles?.username ?? null,
-        // Store score as accuracy (out of 10 -> percentage)
-        accuracy: row.score !== null ? Math.round((row.score / 10) * 100) : undefined,
-        completion_time_seconds: row.time_spent_ms !== null ? Math.floor(row.time_spent_ms / 1000) : undefined,
-      }));
-      setEntries(mapped);
-    } else {
+    if (!rows || rows.length === 0) {
       setEntries([]);
+      setLoadingEntries(false);
+      return;
     }
+
+    const userIds = rows.map((r: any) => r.user_id);
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, display_name, username')
+      .in('id', userIds);
+
+    const profileMap: Record<string, { display_name: string; username: string | null }> = {};
+    (profiles ?? []).forEach((p: any) => {
+      profileMap[p.id] = { display_name: p.display_name ?? 'Reader', username: p.username ?? null };
+    });
+
+    const mapped: LeaderboardEntry[] = rows.map((row: any, i: number) => ({
+      rank: i + 1,
+      user_id: row.user_id,
+      display_name: profileMap[row.user_id]?.display_name ?? 'Reader',
+      username: profileMap[row.user_id]?.username ?? null,
+      accuracy: row.score !== null ? row.score : undefined,
+      completion_time_seconds: row.time_spent_ms !== null ? Math.floor(row.time_spent_ms / 1000) : undefined,
+    }));
+    setEntries(mapped);
+
+  } else if (comp.isReadathon) {
+    // ── Readathon: aggregate from readathon_progress ──────────────────────
+    const { data: progress } = await supabase
+      .from('readathon_progress')
+      .select('user_id, pages_read, book_id')
+      .eq('readathon_id', comp.id);
+
+    if (!progress || progress.length === 0) {
+      setEntries([]);
+      setLoadingEntries(false);
+      return;
+    }
+
+    // Aggregate per user
+    const userMap: Record<string, { total_pages: number; books: Set<string> }> = {};
+    for (const row of progress) {
+      if (!userMap[row.user_id]) {
+        userMap[row.user_id] = { total_pages: 0, books: new Set() };
+      }
+      userMap[row.user_id].total_pages += row.pages_read ?? 0;
+      if (row.book_id) userMap[row.user_id].books.add(row.book_id);
+    }
+
+    const userIds = Object.keys(userMap);
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, display_name, username')
+      .in('id', userIds);
+
+    const nameMap: Record<string, { display_name: string; username: string | null }> = {};
+    (profiles ?? []).forEach((p: any) => {
+      nameMap[p.id] = { display_name: p.display_name ?? 'Reader', username: p.username ?? null };
+    });
+
+    const sorted = Object.entries(userMap)
+      .sort(([, a], [, b]) => b.total_pages - a.total_pages)
+      .map(([userId, data], i) => ({
+        rank: i + 1,
+        user_id: userId,
+        display_name: nameMap[userId]?.display_name ?? 'Reader',
+        username: nameMap[userId]?.username ?? null,
+        pages_read: data.total_pages,
+        books_completed: data.books.size,
+      }));
+
+    setEntries(sorted);
+
   } else {
+    // ── Competition (elimination etc): query competition_leaderboard ───────
     const { data } = await supabase
       .from('competition_leaderboard')
       .select('*')
-      .eq('competition_id', id)
+      .eq('competition_id', comp.id)
       .order('rank', { ascending: true })
       .limit(50);
     setEntries(data ?? []);
@@ -208,34 +326,10 @@ const loadEntries = async (id: string, format: Format, isSprint: boolean) => {
   setLoadingEntries(false);
 };
 
-const selectedComp = competitions.find((c) => c.id === selectedId) ?? null;
-
-const tabClass = (t: Tab) => `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-  tab === t
-    ? 'bg-[#D4A843] text-[#1B2A4A]'
-    : isDark
-    ? 'text-[#F5F0E8]/60 hover:text-[#F5F0E8]'
-    : 'text-[#1B2A4A]/60 hover:text-[#1B2A4A]'
-}`;
-
-const compTabClass = (id: string) => `w-full text-left px-4 py-3 rounded-xl border transition-colors ${
-  selectedId === id
-    ? 'border-[#D4A843] bg-[#D4A843]/10'
-    : isDark
-    ? 'border-[#D4A843]/10 hover:border-[#D4A843]/30'
-    : 'border-[#1B2A4A]/10 hover:border-[#1B2A4A]/20'
-}`;
-
-const prizeForRank = (rank: number, format: Format, pool: number) => {
-  if (format === 'sprint') return rank === 1 ? pool : null;
-  if (rank === 1) return pool * 0.5;
-  if (rank === 2) return pool * 0.3;
-  if (rank === 3) return pool * 0.2;
-  return null;
-};
-
+// ─── render ───────────────────────────────────────────────────────────────
 return (
   <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]'}`}>
+
     {/* Header */}
     <div className={`border-b transition-colors duration-300 ${
       isDark ? 'border-[#1B2A4A] bg-[#0f1623]' : 'border-[#D4A843]/30 bg-[#F5F0E8]'
@@ -243,9 +337,7 @@ return (
       <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
         <button
           onClick={() => navigateTo('/')}
-          className={`font-serif text-lg font-bold transition-colors ${
-            isDark ? 'text-[#D4A843]' : 'text-[#1B2A4A]'
-          }`}
+          className={`font-serif text-lg font-bold transition-colors ${isDark ? 'text-[#D4A843]' : 'text-[#1B2A4A]'}`}
         >
           Read to Earn
         </button>
@@ -263,6 +355,7 @@ return (
     </div>
 
     <div className="max-w-5xl mx-auto px-4 py-16">
+
       {/* Hero */}
       <div className="text-center mb-12">
         <div className="flex justify-center mb-4">
@@ -281,7 +374,7 @@ return (
         <button className={tabClass('champions')} onClick={() => setTab('champions')}>🏆 Monthly Champions</button>
       </div>
 
-      {/* Monthly Champions View */}
+      {/* Monthly Champions */}
       {tab === 'champions' && (
         loadingComps ? (
           <div className="space-y-3">
@@ -328,7 +421,7 @@ return (
         )
       )}
 
-      {/* Live / Archived View */}
+      {/* Live / Archived */}
       {(tab === 'live' || tab === 'archived') && (
         loadingComps ? (
           <div className="space-y-3">
@@ -355,17 +448,14 @@ return (
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Competition selector */}
+
+            {/* Sidebar selector */}
             <div className="md:col-span-1 space-y-2">
               <p className={`text-xs font-semibold uppercase tracking-wide mb-3 ${textMuted}`}>
-                {tab === 'live' ? 'Active Competitions' : 'Past Competitions'}
+                {tab === 'live' ? 'Active' : 'Past'}
               </p>
               {competitions.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setSelectedId(c.id)}
-                  className={compTabClass(c.id)}
-                >
+                <button key={c.id} onClick={() => setSelectedId(c.id)} className={compTabClass(c.id)}>
                   <div className="flex items-center gap-2 mb-1">
                     {formatIcon(c.format)}
                     <span className="text-xs font-semibold text-[#D4A843] uppercase tracking-wide">
@@ -388,10 +478,11 @@ return (
               ))}
             </div>
 
-            {/* Leaderboard table */}
+            {/* Leaderboard panel */}
             <div className="md:col-span-2">
               {selectedComp && (
                 <div className={`rounded-xl border overflow-hidden ${cardBg}`}>
+
                   {/* Competition header */}
                   <div className="px-5 py-4 border-b border-[#D4A843]/20">
                     <div className="flex items-center gap-2 mb-1">
@@ -454,9 +545,7 @@ return (
                             key={entry.user_id}
                             className={`px-5 py-3.5 flex items-center gap-3 transition-colors ${
                               isCurrentUser
-                                ? isDark
-                                  ? 'bg-[#D4A843]/10'
-                                  : 'bg-[#D4A843]/5'
+                                ? isDark ? 'bg-[#D4A843]/10' : 'bg-[#D4A843]/5'
                                 : ''
                             }`}
                           >
@@ -466,6 +555,7 @@ return (
                                 {rankMedal(entry.rank)}
                               </span>
                             </div>
+
                             {/* Name + stats */}
                             <div className="flex-1 min-w-0">
                               <p className={`text-sm font-medium truncate ${isCurrentUser ? 'text-[#D4A843]' : textPrimary}`}>
@@ -474,7 +564,7 @@ return (
                               </p>
                               {selectedComp.format === 'sprint' && entry.accuracy !== undefined && (
                                 <p className={`text-xs ${textMuted}`}>
-                                  {Math.round(entry.accuracy / 10)}/10
+                                  {entry.accuracy}/10
                                   {entry.completion_time_seconds !== undefined && ` · ${formatTime(entry.completion_time_seconds)}`}
                                 </p>
                               )}
@@ -486,10 +576,13 @@ return (
                               )}
                               {selectedComp.format === 'elimination' && (
                                 <p className={`text-xs ${textMuted}`}>
-                                  {entry.eliminated ? `Eliminated — Round ${entry.round_reached}` : entry.rank === 1 ? 'Champion' : `Round ${entry.round_reached}`}
+                                  {entry.eliminated
+                                    ? `Eliminated — Round ${entry.round_reached}`
+                                    : entry.rank === 1 ? 'Champion' : `Round ${entry.round_reached}`}
                                 </p>
                               )}
                             </div>
+
                             {/* Prize */}
                             {isPrizePosition && (
                               <div className="text-right shrink-0">
@@ -503,7 +596,7 @@ return (
                     </div>
                   )}
 
-                  {/* Footer note for live */}
+                  {/* Footer note */}
                   {tab === 'live' && entries.length > 0 && (
                     <div className={`px-5 py-3 border-t border-[#D4A843]/10 text-xs ${textMuted}`}>
                       Standings update in real time. Prize amounts shown are based on current rankings.
