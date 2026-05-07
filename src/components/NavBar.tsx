@@ -70,6 +70,7 @@ const ACCOUNT_ITEMS = [
 { label: 'Profile', path: '/profile', icon: <User size={15} /> },
 { label: 'Cashout', path: '/cashout', icon: <DollarSign size={15} /> },
 { label: 'Account Settings', path: '/account-settings', icon: <Settings size={15} /> },
+{ label: 'Pricing', path: '/pricing', icon: <Sparkles size={15} /> },
 { label: 'Tournaments', path: '/tournaments/create', icon: <Trophy size={15} /> },
 ];
 
