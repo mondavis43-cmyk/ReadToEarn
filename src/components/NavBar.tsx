@@ -159,6 +159,8 @@ return (
         ))}
       </div>
 
+      <NotificationBell userId={user?.id ?? null} />
+      
       <div className="relative">
         <button
           onClick={() => setOpenGroup(openGroup === 'account' ? null : 'account')}
@@ -213,14 +215,19 @@ return (
       >
         ReadToEarn
       </button>
-      <button
-        onClick={() => setMobileOpen(!mobileOpen)}
-        className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition"
-      >
-        {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-      </button>
-    </nav>
 
+<div className="flex items-center gap-2">
+    <NotificationBell userId={user?.id ?? null} />
+    <button
+      onClick={() => setMobileOpen(!mobileOpen)}
+      className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition"
+    >
+      {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+    </button>
+  </div>
+
+</nav>
+      
     {mobileOpen && (
       <div className="md:hidden fixed inset-0 z-40 pt-14">
         <div
