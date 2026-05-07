@@ -1,58 +1,40 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseClient';
 
-interface Notification {
+export interface AppNotification {
   id: string;
   type: string;
   title: string;
   body: string;
   read: boolean;
   created_at: string;
+  deliver_at: string;
 }
 
-export const useNotifications = (userId: string | null) => {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+export function useNotifications(userId: string | null) {
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  useEffect(() => {
-    if (!userId) return;
-    fetchNotifications();
-
-    // Realtime subscription
-    const channel = supabase
-      .channel('notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          setNotifications((prev) => [payload.new as Notification, ...prev]);
-          setUnreadCount((prev) => prev + 1);
-        }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [userId]);
-
   const fetchNotifications = async () => {
+    if (!userId) return;
+    const now = new Date().toISOString();
+
     const { data } = await supabase
       .from('notifications')
       .select('*')
       .eq('user_id', userId)
+      .lte('deliver_at', now)          // only show if deliver_at has passed
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(30);
 
-    const list = data ?? [];
-    setNotifications(list);
-    setUnreadCount(list.filter((n) => !n.read).length);
+    if (data) {
+      setNotifications(data);
+      setUnreadCount(data.filter((n) => !n.read).length);
+    }
   };
 
   const markAllRead = async () => {
+    if (!userId) return;
     await supabase
       .from('notifications')
       .update({ read: true })
@@ -63,13 +45,38 @@ export const useNotifications = (userId: string | null) => {
   };
 
   const markOneRead = async (id: string) => {
-    await supabase
-      .from('notifications').update({ read: true }).eq('id', id);
+    await supabase.from('notifications').update({ read: true }).eq('id', id);
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     );
     setUnreadCount((prev) => Math.max(0, prev - 1));
   };
 
+  useEffect(() => {
+    fetchNotifications();
+
+    const channel = supabase
+      .channel(`notifications:${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        () => fetchNotifications()
+      )
+      .subscribe();
+
+    // Re-check every 5 mins in case deliver_at window just passed
+    const interval = setInterval(fetchNotifications, 5 * 60 * 1000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
+  }, [userId]);
+
   return { notifications, unreadCount, markAllRead, markOneRead };
-};
+}
