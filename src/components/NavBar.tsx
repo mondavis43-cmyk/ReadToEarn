@@ -4,7 +4,7 @@ import { NotificationBell } from './NotificationBell';
 import {
 Home, BookOpen, Trophy, Users, User,
 ChevronDown, Menu, X, Zap, DollarSign,
-BarChart2, Gift, MessageSquare, Settings, LogOut,
+BarChart2, Gift, Sparkles, MessageSquare, Settings, LogOut,
 FileText, BookMarked, Eye
 } from 'lucide-react';
 
