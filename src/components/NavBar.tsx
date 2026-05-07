@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { NotificationBell } from './NotificationBell';
 import {
 Home, BookOpen, Trophy, Users, User,
 ChevronDown, Menu, X, Zap, DollarSign,
@@ -74,6 +75,7 @@ const ACCOUNT_ITEMS = [
 
 export const NavBar = () => {
 const { user, signOut } = useAuth();
+const { user } = useAuth();
 const [openGroup, setOpenGroup] = useState<string | null>(null);
 const [mobileOpen, setMobileOpen] = useState(false);
 const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
