@@ -59,7 +59,7 @@ export const CompetitionDetail = () => {
   const [notFound, setNotFound] = useState(false);
   const [alreadyEntered, setAlreadyEntered] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const [isUpgraded, setIsUpgraded] = useState(false);           // #12 + #13
+  const [isUpgraded, setIsUpgraded] = useState(false);
   const [error, setError] = useState('');
   const [preRegistered, setPreRegistered] = useState(false);
   const [preRegLoading, setPreRegLoading] = useState(false);
@@ -73,7 +73,6 @@ export const CompetitionDetail = () => {
       if (user) {
         setUserId(user.id);
 
-        // #12: fetch subscriber status
         const { data: profile } = await supabase
           .from('profiles')
           .select('is_upgraded')
@@ -88,14 +87,6 @@ export const CompetitionDetail = () => {
           .eq('user_id', user.id)
           .maybeSingle();
         if (entry) setAlreadyEntered(true);
-
-        const { data: preReg } = await supabase
-          .from('pre_registrations')
-          .select('id')
-          .eq('competition_id', id)
-          .eq('user_id', user.id)
-          .maybeSingle();
-        if (preReg) setPreRegistered(true);
 
         const { data: progress } = await supabase
           .from('elimination_progress')
@@ -116,6 +107,27 @@ export const CompetitionDetail = () => {
         setNotFound(true);
       } else {
         setCompetition(data);
+
+        // Fix #4: type-specific pre-registration table
+        if (user) {
+          const preRegTable =
+            data.type === 'sprint'    ? 'sprint_pre_registrations' :
+            data.type === 'readathon' ? 'readathon_pre_registrations' :
+            'elimination_pre_registrations';
+
+          const preRegFk =
+            data.type === 'sprint'    ? 'sprint_id' :
+            data.type === 'readathon' ? 'readathon_id' :
+            'competition_id';
+
+          const { data: preReg } = await supabase
+            .from(preRegTable)
+            .select('id')
+            .eq(preRegFk, id)
+            .eq('user_id', user.id)
+            .maybeSingle();
+          if (preReg) setPreRegistered(true);
+        }
       }
 
       setLoading(false);
@@ -138,10 +150,21 @@ export const CompetitionDetail = () => {
     if (!competition) return;
     setError('');
 
+    // Fix #4: type-specific pre-registration table
+    const preRegTable =
+      competition.type === 'sprint'    ? 'sprint_pre_registrations' :
+      competition.type === 'readathon' ? 'readathon_pre_registrations' :
+      'elimination_pre_registrations';
+
+    const preRegFk =
+      competition.type === 'sprint'    ? 'sprint_id' :
+      competition.type === 'readathon' ? 'readathon_id' :
+      'competition_id';
+
     const { data: preReg } = await supabase
-      .from('pre_registrations')
+      .from(preRegTable)
       .select('id')
-      .eq('competition_id', competition.id)
+      .eq(preRegFk, competition.id)
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -151,11 +174,10 @@ export const CompetitionDetail = () => {
     const baseFee = competition.entry_fee;
     const actualFee = isLate ? baseFee * LATE_FEE_MULTIPLIER : baseFee;
 
-    // #12: apply 30% subscriber discount once per calendar month
     let discountedFee = actualFee;
     let usedMonthlyDiscount = false;
     if (isUpgraded && !isLate) {
-      const currentMonth = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+      const currentMonth = new Date().toISOString().slice(0, 7);
       const { data: existingDiscount } = await supabase
         .from('subscriber_monthly_discounts')
         .select('id')
@@ -164,7 +186,7 @@ export const CompetitionDetail = () => {
         .maybeSingle();
 
       if (!existingDiscount) {
-        discountedFee = Math.round(actualFee * 0.70 * 100) / 100; // 30% off, rounded to cents
+        discountedFee = Math.round(actualFee * 0.70 * 100) / 100;
         usedMonthlyDiscount = true;
         await supabase.from('subscriber_monthly_discounts').insert({
           user_id:        userId,
@@ -199,8 +221,9 @@ export const CompetitionDetail = () => {
     };
 
     if (preReg) {
+      // Fix #4: update converted flag in type-specific table
       await supabase
-        .from('pre_registrations')
+        .from(preRegTable)
         .update({ converted: true })
         .eq('id', preReg.id);
     }
@@ -215,12 +238,23 @@ export const CompetitionDetail = () => {
     setPreRegLoading(true);
     setError('');
 
+    // Fix #4: insert into type-specific pre-registration table
+    const preRegTable =
+      competition.type === 'sprint'    ? 'sprint_pre_registrations' :
+      competition.type === 'readathon' ? 'readathon_pre_registrations' :
+      'elimination_pre_registrations';
+
+    const preRegFk =
+      competition.type === 'sprint'    ? 'sprint_id' :
+      competition.type === 'readathon' ? 'readathon_id' :
+      'competition_id';
+
     const { error } = await supabase
-      .from('pre_registrations')
+      .from(preRegTable)
       .insert({
-        competition_id: competition.id,
-        user_id:        userId,
-        converted:      false,
+        [preRegFk]: competition.id,
+        user_id:    userId,
+        converted:  false,
       });
 
     if (error) {
@@ -275,8 +309,8 @@ export const CompetitionDetail = () => {
   const ends     = new Date(competition.end_date);
   const isLateEntry = isActive && now > starts;
 
-  const lateFee     = competition.entry_fee * LATE_FEE_MULTIPLIER;
-  const timeLabel   = isActive
+  const lateFee   = competition.entry_fee * LATE_FEE_MULTIPLIER;
+  const timeLabel = isActive
     ? ends.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     : isUpcoming
     ? starts.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -289,10 +323,6 @@ export const CompetitionDetail = () => {
   const roundLabels     = ['Round 1', 'Round 2', 'Final Round'];
   const roundThresholds = ['Score 7/10 to advance', 'Score 8/10 to advance', 'Top 3 win prizes'];
 
-  // #12: compute display price for the enter button
-  // (we can't know at render time if discount is available without an async check,
-  //  so we show the potential discounted price if subscriber and discount not yet used this month)
-  // The actual deduction happens inside handleEnter — this is display only.
   const displayEntryFee = competition.entry_fee;
 
   return (
@@ -479,15 +509,15 @@ export const CompetitionDetail = () => {
           </div>
         )}
 
-{/* ── Live Leaderboard ── */}
-{(competition.status === 'active' || competition.status === 'completed') && (
-  <CompetitionLeaderboard
-    competitionId={competition.id}
-    format={competition.type}
-    status={competition.status}
-  />
-)}
-        
+        {/* Live Leaderboard */}
+        {(competition.status === 'active' || competition.status === 'completed') && (
+          <CompetitionLeaderboard
+            competitionId={competition.id}
+            format={competition.type}
+            status={competition.status}
+          />
+        )}
+
         {/* Active + paid + entered + elimination */}
         {isActive && !competition.is_sponsored && alreadyEntered && competition.type === 'elimination' && (
           eliminated ? (
