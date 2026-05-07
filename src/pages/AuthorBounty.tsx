@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
+import { supabase } from '../lib/supabase';
 import { CheckCircle, Zap } from 'lucide-react';
 import { BookSearchInput } from '../components/BookSearchInput';
 
@@ -49,40 +50,44 @@ export const AuthorBounty = () => {
   const isFormValid = () =>
     authorName.trim() && email.trim() && bookTitle.trim() && bookId.trim();
 
-  const handleCheckout = () => {
-    if (!isFormValid()) {
-      setError('Please fill in all required fields and select a book from the dropdown.');
-      return;
-    }
-    setError('');
+  const handleCheckout = async () => {
+  if (!isFormValid()) {
+    setError('Please fill in all required fields and select a book from the dropdown.');
+    return;
+  }
+  setError('');
 
-    ;(window as any).__checkoutItem = {
-      type:   'bounty',
-      label:  `Author Bounty — ${selectedPool.label} for "${bookTitle}"`,
-      amount: POOL_CENTS[selectedPool.size],
-      metadata: { pool_size: selectedPool.size, per_pass: perPass },
-    };
+  // Get the logged-in user's ID
+  const { data: { user } } = await supabase.auth.getUser();
 
-    ;(window as any).__pendingSubmission = {
-      table: 'author_bounty_submissions',
-      data: {
-        author_name:       authorName.trim(),
-        email:             email.trim(),
-        book_title:        bookTitle.trim(),
-        book_id:           bookId,
-        pool_size:         selectedPool.size,
-        platform_fee:      selectedPool.platform,
-        reader_pool:       selectedPool.readerPool,
-        per_pass_amount:   perPass,
-        estimated_readers: estimatedReaders,
-        notes:             notes.trim(),
-        status:            'pending',
-      },
-    };
-
-    window.history.pushState({}, '', '/checkout');
-    window.dispatchEvent(new PopStateEvent('popstate'));
+  ;(window as any).__checkoutItem = {
+    type:   'bounty',
+    label:  `Author Bounty — ${selectedPool.label} for "${bookTitle}"`,
+    amount: POOL_CENTS[selectedPool.size],
+    metadata: { pool_size: selectedPool.size, per_pass: perPass },
   };
+
+  ;(window as any).__pendingSubmission = {
+    table: 'author_bounty_submissions',
+    data: {
+      author_id:         user?.id ?? null,
+      author_name:       authorName.trim(),
+      email:             email.trim(),
+      book_title:        bookTitle.trim(),
+      book_id:           bookId,
+      pool_size:         selectedPool.size,
+      platform_fee:      selectedPool.platform,
+      reader_pool:       selectedPool.readerPool,
+      per_pass_amount:   perPass,
+      estimated_readers: estimatedReaders,
+      notes:             notes.trim(),
+      status:            'pending',
+    },
+  };
+
+  window.history.pushState({}, '', '/checkout');
+  window.dispatchEvent(new PopStateEvent('popstate'));
+};
 
   return (
     <div className={`min-h-screen ${bg} transition-colors duration-300`}>
@@ -262,7 +267,7 @@ export const AuthorBounty = () => {
 
         {/* Submit */}
         <button
-          onClick={handleCheckout}
+          onClick={() => { handleCheckout(); }}
           disabled={!isFormValid()}
           className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-4 rounded-xl hover:bg-[#c49a3a] transition text-lg disabled:opacity-40 disabled:cursor-not-allowed"
         >
