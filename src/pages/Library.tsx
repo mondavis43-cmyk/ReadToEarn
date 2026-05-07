@@ -208,57 +208,6 @@ export const Library = () => {
   return (
     <div className="min-h-screen bg-[#F5F0E8] dark:bg-[#1B2A4A]">
 
-      {/* ── Header ── */}
-      <header className="bg-[#1B2A4A] dark:bg-[#111827] px-4 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          <h1 className="text-xl font-bold text-[#F5F0E8]">Read to Earn</h1>
-          <div className="flex items-center gap-2 flex-wrap justify-end">
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg text-[#F5F0E8] hover:bg-white/10 transition"
-            >
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-            {user && (
-              <>
-                <button
-                  onClick={() => navigateTo('profile')}
-                  className="px-3 py-1.5 text-sm rounded-lg bg-white/10 text-[#F5F0E8] hover:bg-white/20 transition"
-                >
-                  Profile
-                </button>
-                <button
-                  onClick={() => navigateTo('bulletin-board')}
-                  className="px-3 py-1.5 text-sm rounded-lg bg-white/10 text-[#F5F0E8] hover:bg-white/20 transition"
-                >
-                  Bulletin Board
-                </button>
-                <button
-                  onClick={() => navigateTo('cashout')}
-                  className="px-3 py-1.5 text-sm rounded-lg bg-[#D4A843] text-[#1B2A4A] font-medium hover:bg-[#c49a3a] transition"
-                >
-                  Cash Out
-                </button>
-                <button
-                  onClick={async () => { await supabase.auth.signOut(); }}
-                  className="px-3 py-1.5 text-sm rounded-lg bg-white/10 text-[#F5F0E8] hover:bg-white/20 transition"
-                >
-                  Logout
-                </button>
-              </>
-            )}
-            {!user && (
-              <button
-                onClick={() => navigateTo('auth')}
-                className="px-3 py-1.5 text-sm rounded-lg bg-[#D4A843] text-[#1B2A4A] font-medium hover:bg-[#c49a3a] transition"
-              >
-                Sign In
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
-
       {/* ── Main ── */}
       <main className="max-w-7xl mx-auto px-4 py-8">
 
