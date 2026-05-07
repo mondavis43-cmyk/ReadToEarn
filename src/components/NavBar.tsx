@@ -75,7 +75,6 @@ const ACCOUNT_ITEMS = [
 
 export const NavBar = () => {
 const { user, signOut } = useAuth();
-const { user } = useAuth();
 const [openGroup, setOpenGroup] = useState<string | null>(null);
 const [mobileOpen, setMobileOpen] = useState(false);
 const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
