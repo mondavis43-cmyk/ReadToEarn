@@ -102,8 +102,6 @@ if (route.startsWith('/ama/')) {
   return <AMASession sessionId={sessionId} />;
 }
 
-if (route === '/pricing') return <Pricing />;
-
 if (WAITLIST_MODE && !user) return <Waitlist />;
 
 if (!user && route === '/signup') return <Signup />;
@@ -201,6 +199,7 @@ return (
     {route === '/beta-reader-panels' && <BetaReaderPanel />}
     {route === '/sensitivity-reader-panels' && <SensitivityReaderPanel />}
     {route === '/checkout' && <Checkout />}
+    {route === '/pricing' && <Pricing />}
     {route.startsWith('/quiz/') && (() => {
       const bookId = route.split('/')[2]?.split('?')[0];
       const params = new URLSearchParams(window.location.search);
