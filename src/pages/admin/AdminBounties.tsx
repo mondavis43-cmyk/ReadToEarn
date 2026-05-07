@@ -40,7 +40,7 @@ export function AdminBounties() {
   const [success, setSuccess] = useState('');
 
   const inputClass =
-    'w-full px-3 py-2 rounded-lg border border-[#e8e0d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none focus:ring-2';
+    'w-full px-3 py-2 rounded-lg border border-[#e8e8d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none focus:ring-2';
   const selectClass = inputClass;
 
   useEffect(() => { loadData(); }, []);
@@ -58,32 +58,34 @@ export function AdminBounties() {
     if (!newBounty.book_id) { setError('Select a book for this bounty.'); return; }
     setSaving(true);
     setError('');
+
     const platform_fee = Math.round(newBounty.pool_size * 0.2 * 100) / 100;
     const reader_pool = Math.round(newBounty.pool_size * 0.8 * 100) / 100;
-    const { error: err } = await supabase.from('bounties').insert({
-      book_id: newBounty.book_id,
-      pool_size: newBounty.pool_size,
-      per_pass_amount: newBounty.per_pass_amount,
-      platform_fee,
-      reader_pool,
-      status: 'active',
+
+    const { data, error: err } = await supabase
+      .from('bounties')
+      .insert({
+        book_id: newBounty.book_id,
+        pool_size: newBounty.pool_size,
+        per_pass_amount: newBounty.per_pass_amount,
+        platform_fee,
+        reader_pool,
+        status: 'active',
+      })
+      .select()
+      .single();
+
+    if (err || !data) {
+      setError('Failed to save bounty.');
+      setSaving(false);
+      return;
+    }
+
+    // Notify subscribers and standard users (2hr delay)
+    await supabase.functions.invoke('notify-content-live', {
+      body: { content_type: 'bounty', content_id: data.id },
     });
-    if (err) { setError('Failed to save bounty.'); setSaving(false); return; }
-      // #11: notify subscribers
-  const { data: newBountyRow } = await supabase
-    .from('bounties')
-    .select('id, books(title)')
-    .eq('book_id', newBounty.book_id)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
-  if (newBountyRow) {
-    await supabase.rpc('notify_subscribers_new_earning', {
-      p_type:  'bounty',
-      p_title: (newBountyRow.books as any)?.title ?? 'New Bounty',
-      p_id:    newBountyRow.id,
-    });
-  }
+
     setSuccess('Bounty created!');
     setNewBounty(emptyBounty);
     setShowForm(false);
@@ -93,6 +95,14 @@ export function AdminBounties() {
 
   async function handleUpdateStatus(id: string, status: 'active' | 'completed' | 'paused') {
     await supabase.from('bounties').update({ status }).eq('id', id);
+
+    // Only notify when going live (not pause or complete)
+    if (status === 'active') {
+      await supabase.functions.invoke('notify-content-live', {
+        body: { content_type: 'bounty', content_id: id },
+      });
+    }
+
     loadData();
   }
 
@@ -134,7 +144,7 @@ export function AdminBounties() {
 
       {/* Create form */}
       {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-6 space-y-4">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e8d5] dark:border-gray-700 p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Create Bounty</h3>
             <button onClick={() => { setShowForm(false); setNewBounty(emptyBounty); }} className="text-[#6B7280]">
@@ -200,7 +210,7 @@ export function AdminBounties() {
             <button onClick={handleSave} disabled={saving} className="px-4 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-semibold hover:bg-[#c49a3a] disabled:opacity-50">
               {saving ? 'Saving...' : 'Create Bounty'}
             </button>
-            <button onClick={() => { setShowForm(false); setNewBounty(emptyBounty); }} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-[#6B7280] hover:bg-gray-50 dark:hover:bg-gray-700">
+            <button onClick={() => { setShowForm(false); setNewBounty(emptyBounty); }} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-[#6B7280] hover:bg-gray-50">
               Cancel
             </button>
           </div>
@@ -209,15 +219,16 @@ export function AdminBounties() {
 
       {/* Bounty list */}
       {bounties.length === 0 ? (
-        <p className="text-sm text-[#6B7280] dark:text-gray-400">No bounties yet.</p>
+        <p className="text-sm text-gray-400">No bounties yet.</p>
       ) : (
         <div className="space-y-3">
           {bounties.map((bounty) => {
             const passesTotal = bounty.per_pass_amount > 0
               ? Math.floor(bounty.reader_pool / bounty.per_pass_amount)
               : 0;
+
             return (
-              <div key={bounty.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-4">
+              <div key={bounty.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e8d5] dark:border-gray-700 p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <p className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8]">
@@ -269,7 +280,7 @@ export function AdminBounties() {
                       Mark Completed
                     </button>
                   )}
-                  <button onClick={() => handleDelete(bounty.id)} className="text-xs px-3 py-1.5 rounded-lg border border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition ml-auto">
+                  <button onClick={() => handleDelete(bounty.id)} className="text-xs px-3 py-1.5 rounded-lg border border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
                     Delete
                   </button>
                 </div>
