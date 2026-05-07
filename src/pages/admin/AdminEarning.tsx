@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Plus, X, Trash2 } from 'lucide-react';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// — Types ————————————————————————————————————————
 
 interface QuickTask {
   id: string;
@@ -50,12 +50,12 @@ interface SensitivityPanel {
 
 type ActiveTab = 'quick_tasks' | 'surveys' | 'beta' | 'sensitivity';
 
-// ─── Shared styles ────────────────────────────────────────────────────────────
+// — Shared styles ————————————————————————————————
 
 const inputClass =
-  'w-full px-3 py-2 rounded-lg border border-[#e8e0d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none focus:ring-2';
+  'w-full px-3 py-2 rounded-lg border border-[#e8e8d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none focus:ring-2';
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// — Sub-components ———————————————————————————————
 
 function QuickTasksPanel() {
   const [tasks, setTasks] = useState<QuickTask[]>([]);
@@ -75,19 +75,18 @@ function QuickTasksPanel() {
   async function handleSave() {
     if (!form.title) return;
     setSaving(true);
-    setSaving(true);
-    const { data: newTask } = await supabase
+    const { data: newTask, error } = await supabase
       .from('quick_tasks')
       .insert({ ...form, is_active: true })
       .select('id, title')
       .single();
-    if (newTask) {
-      await supabase.rpc('notify_subscribers_new_earning', {
-        p_type:  'quick_task',
-        p_title: newTask.title,
-        p_id:    newTask.id,
+
+    if (!error && newTask) {
+      await supabase.functions.invoke('notify-content-live', {
+        body: { content_type: 'quick_task', content_id: newTask.id },
       });
     }
+
     setForm({ title: '', description: '', payout: 0.35, task_type: 'social' });
     setShowForm(false);
     setSaving(false);
@@ -96,6 +95,14 @@ function QuickTasksPanel() {
 
   async function handleToggle(id: string, current: boolean) {
     await supabase.from('quick_tasks').update({ is_active: !current }).eq('id', id);
+
+    // Notify when going live
+    if (!current) {
+      await supabase.functions.invoke('notify-content-live', {
+        body: { content_type: 'quick_task', content_id: id },
+      });
+    }
+
     load();
   }
 
@@ -117,7 +124,7 @@ function QuickTasksPanel() {
       </div>
 
       {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-4 space-y-3">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e8d5] dark:border-gray-700 p-4 space-y-3">
           <input className={inputClass} placeholder="Task title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           <input className={inputClass} placeholder="Description (optional)" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           <div className="grid grid-cols-2 gap-3">
@@ -146,7 +153,7 @@ function QuickTasksPanel() {
       ) : (
         <div className="space-y-2">
           {tasks.map((task) => (
-            <div key={task.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-3 flex items-center justify-between gap-3">
+            <div key={task.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e8d5] dark:border-gray-700 p-3 flex items-center justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-[#1B2A4A] dark:text-[#F5F0E8] truncate">{task.title}</p>
                 <p className="text-xs text-[#6B7280] dark:text-gray-400">{task.task_type} · ${task.payout.toFixed(2)}</p>
@@ -185,19 +192,19 @@ function SurveysPanel() {
 
   async function handleSave() {
     if (!form.title) return;
-      setSaving(true);
-    const { data: newSurvey } = await supabase
+    setSaving(true);
+    const { data: newSurvey, error } = await supabase
       .from('surveys')
       .insert({ ...form, is_active: true })
       .select('id, title')
       .single();
-    if (newSurvey) {
-      await supabase.rpc('notify_subscribers_new_earning', {
-        p_type:  'survey',
-        p_title: newSurvey.title,
-        p_id:    newSurvey.id,
+
+    if (!error && newSurvey) {
+      await supabase.functions.invoke('notify-content-live', {
+        body: { content_type: 'survey', content_id: newSurvey.id },
       });
     }
+
     setForm({ title: '', description: '', payout: 1.00, question_count: 5 });
     setShowForm(false);
     setSaving(false);
@@ -206,6 +213,13 @@ function SurveysPanel() {
 
   async function handleToggle(id: string, current: boolean) {
     await supabase.from('surveys').update({ is_active: !current }).eq('id', id);
+
+    if (!current) {
+      await supabase.functions.invoke('notify-content-live', {
+        body: { content_type: 'survey', content_id: id },
+      });
+    }
+
     load();
   }
 
@@ -227,7 +241,7 @@ function SurveysPanel() {
       </div>
 
       {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-4 space-y-3">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e8d5] dark:border-gray-700 p-4 space-y-3">
           <input className={inputClass} placeholder="Survey title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           <input className={inputClass} placeholder="Description (optional)" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           <div className="grid grid-cols-2 gap-3">
@@ -254,7 +268,7 @@ function SurveysPanel() {
       ) : (
         <div className="space-y-2">
           {surveys.map((s) => (
-            <div key={s.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-3 flex items-center justify-between gap-3">
+            <div key={s.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e8d5] dark:border-gray-700 p-3 flex items-center justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-[#1B2A4A] dark:text-[#F5F0E8] truncate">{s.title}</p>
                 <p className="text-xs text-[#6B7280] dark:text-gray-400">{s.question_count} questions · ${s.payout.toFixed(2)}</p>
@@ -294,18 +308,18 @@ function BetaPanel_() {
   async function handleSave() {
     if (!form.title) return;
     setSaving(true);
-    const { data: newPanel } = await supabase
+    const { data: newPanel, error } = await supabase
       .from('beta_panels')
       .insert({ ...form, genre: form.genre || null, spots_filled: 0, is_active: true })
       .select('id, title')
       .single();
-    if (newPanel) {
-      await supabase.rpc('notify_subscribers_new_earning', {
-        p_type:  'beta_panel',
-        p_title: newPanel.title,
-        p_id:    newPanel.id,
+
+    if (!error && newPanel) {
+      await supabase.functions.invoke('notify-content-live', {
+        body: { content_type: 'beta_panel', content_id: newPanel.id },
       });
     }
+
     setForm({ title: '', description: '', payout: 1.50, genre: '', spots_total: 10 });
     setShowForm(false);
     setSaving(false);
@@ -314,6 +328,13 @@ function BetaPanel_() {
 
   async function handleToggle(id: string, current: boolean) {
     await supabase.from('beta_panels').update({ is_active: !current }).eq('id', id);
+
+    if (!current) {
+      await supabase.functions.invoke('notify-content-live', {
+        body: { content_type: 'beta_panel', content_id: id },
+      });
+    }
+
     load();
   }
 
@@ -335,7 +356,7 @@ function BetaPanel_() {
       </div>
 
       {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-4 space-y-3">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e8d5] dark:border-gray-700 p-4 space-y-3">
           <input className={inputClass} placeholder="Panel title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           <input className={inputClass} placeholder="Description (optional)" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           <div className="grid grid-cols-3 gap-3">
@@ -366,7 +387,7 @@ function BetaPanel_() {
       ) : (
         <div className="space-y-2">
           {panels.map((p) => (
-            <div key={p.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-3 flex items-center justify-between gap-3">
+            <div key={p.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e8d5] dark:border-gray-700 p-3 flex items-center justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-[#1B2A4A] dark:text-[#F5F0E8] truncate">{p.title}</p>
                 <p className="text-xs text-[#6B7280] dark:text-gray-400">
@@ -410,18 +431,18 @@ function SensitivityPanel_() {
   async function handleSave() {
     if (!form.title) return;
     setSaving(true);
-    const { data: newPanel } = await supabase
+    const { data: newPanel, error } = await supabase
       .from('sensitivity_panels')
       .insert({ ...form, sensitivity_type: form.sensitivity_type || null, spots_filled: 0, is_active: true })
       .select('id, title')
       .single();
-    if (newPanel) {
-      await supabase.rpc('notify_subscribers_new_earning', {
-        p_type:  'sensitivity_panel',
-        p_title: newPanel.title,
-        p_id:    newPanel.id,
+
+    if (!error && newPanel) {
+      await supabase.functions.invoke('notify-content-live', {
+        body: { content_type: 'sensitivity_panel', content_id: newPanel.id },
       });
     }
+
     setForm({ title: '', description: '', payout: 10.00, sensitivity_type: '', spots_total: 5 });
     setShowForm(false);
     setSaving(false);
@@ -430,6 +451,13 @@ function SensitivityPanel_() {
 
   async function handleToggle(id: string, current: boolean) {
     await supabase.from('sensitivity_panels').update({ is_active: !current }).eq('id', id);
+
+    if (!current) {
+      await supabase.functions.invoke('notify-content-live', {
+        body: { content_type: 'sensitivity_panel', content_id: id },
+      });
+    }
+
     load();
   }
 
@@ -451,7 +479,7 @@ function SensitivityPanel_() {
       </div>
 
       {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-4 space-y-3">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e8d5] dark:border-gray-700 p-4 space-y-3">
           <input className={inputClass} placeholder="Panel title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           <input className={inputClass} placeholder="Description (optional)" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           <div className="grid grid-cols-3 gap-3">
@@ -485,7 +513,7 @@ function SensitivityPanel_() {
       ) : (
         <div className="space-y-2">
           {panels.map((p) => (
-            <div key={p.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-3 flex items-center justify-between gap-3">
+            <div key={p.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e8d5] dark:border-gray-700 p-3 flex items-center justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-[#1B2A4A] dark:text-[#F5F0E8] truncate">{p.title}</p>
                 <p className="text-xs text-[#6B7280] dark:text-gray-400">
@@ -511,7 +539,7 @@ function SensitivityPanel_() {
   );
 }
 
-// ─── Main export ──────────────────────────────────────────────────────────────
+// — Main export ——————————————————————————————————
 
 export function AdminEarning() {
   const [tab, setTab] = useState<ActiveTab>('quick_tasks');
@@ -536,7 +564,7 @@ export function AdminEarning() {
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
               tab === key
                 ? 'bg-[#1B2A4A] text-white dark:bg-[#D4A843] dark:text-[#1B2A4A]'
-                : 'bg-white dark:bg-gray-800 text-[#6B7280] dark:text-gray-400 border border-[#e8e0d5] dark:border-gray-700 hover:text-[#1B2A4A] dark:hover:text-[#F5F0E8]'
+                : 'bg-white dark:bg-gray-800 text-[#6B7280] dark:text-gray-400 border border-[#e8e8d5] dark:border-gray-700 hover:text-[#1B2A4A] dark:hover:text-[#F5F0E8]'
             }`}
           >
             {label}
