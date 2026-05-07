@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Plus, X, Trash2 } from 'lucide-react';
 
-// — Types ————————————————————————————————————————
+// -- Types -----------------------------------------------
 
 interface QuickTask {
   id: string;
@@ -48,20 +48,172 @@ interface SensitivityPanel {
   created_at: string;
 }
 
+interface QuestionInput {
+  question_text: string;
+  options: string[];
+  correct_answer: string;
+}
+
 type ActiveTab = 'quick_tasks' | 'surveys' | 'beta' | 'sensitivity';
 
-// — Shared styles ————————————————————————————————
+// -- Shared styles ----------------------------------------
 
 const inputClass =
   'w-full px-3 py-2 rounded-lg border border-[#e8e8d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none focus:ring-2';
 
-// — Sub-components ———————————————————————————————
+// -- Question Builder sub-component -----------------------
+
+function QuestionBuilder({
+  questions,
+  onChange,
+}: {
+  questions: QuestionInput[];
+  onChange: (q: QuestionInput[]) => void;
+}) {
+  const addQuestion = () =>
+    onChange([...questions, { question_text: '', options: ['', '', '', ''], correct_answer: '' }]);
+
+  const removeQuestion = (idx: number) =>
+    onChange(questions.filter((_, i) => i !== idx));
+
+  const updateQuestion = (idx: number, field: keyof QuestionInput, value: string | string[]) => {
+    const updated = questions.map((q, i) => (i === idx ? { ...q, [field]: value } : q));
+    onChange(updated);
+  };
+
+  const updateOption = (qIdx: number, oIdx: number, value: string) => {
+    const updated = questions.map((q, i) => {
+      if (i !== qIdx) return q;
+      const opts = [...q.options];
+      opts[oIdx] = value;
+      return { ...q, options: opts };
+    });
+    onChange(updated);
+  };
+
+  const addOption = (qIdx: number) => {
+    const updated = questions.map((q, i) =>
+      i === qIdx ? { ...q, options: [...q.options, ''] } : q
+    );
+    onChange(updated);
+  };
+
+  const removeOption = (qIdx: number, oIdx: number) => {
+    const updated = questions.map((q, i) => {
+      if (i !== qIdx) return q;
+      const opts = q.options.filter((_, oi) => oi !== oIdx);
+      return { ...q, options: opts };
+    });
+    onChange(updated);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <label className="text-xs font-medium text-[#6B7280] dark:text-gray-400">
+          Questions ({questions.length})
+        </label>
+        <button
+          type="button"
+          onClick={addQuestion}
+          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#D4A843]/10 text-[#D4A843] text-xs font-medium hover:bg-[#D4A843]/20 transition-colors"
+        >
+          <Plus size={12} /> Add Question
+        </button>
+      </div>
+
+      {questions.length === 0 && (
+        <p className="text-xs text-[#6B7280] dark:text-gray-500 italic">
+          No questions yet. Click "Add Question" to start building.
+        </p>
+      )}
+
+      {questions.map((q, qIdx) => (
+        <div
+          key={qIdx}
+          className="border border-[#e8e8d5] dark:border-gray-700 rounded-xl p-4 space-y-3 bg-[#fafaf7] dark:bg-gray-800/50"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-xs font-semibold text-[#D4A843]">Q{qIdx + 1}</span>
+            <button
+              type="button"
+              onClick={() => removeQuestion(qIdx)}
+              className="text-red-400 hover:text-red-600 transition-colors"
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          <input
+            className={inputClass}
+            placeholder="Question text"
+            value={q.question_text}
+            onChange={(e) => updateQuestion(qIdx, 'question_text', e.target.value)}
+          />
+
+          <div className="space-y-2">
+            <label className="text-xs text-[#6B7280] dark:text-gray-400">Answer options</label>
+            {q.options.map((opt, oIdx) => (
+              <div key={oIdx} className="flex items-center gap-2">
+                <input
+                  className={inputClass}
+                  placeholder={`Option ${oIdx + 1}`}
+                  value={opt}
+                  onChange={(e) => updateOption(qIdx, oIdx, e.target.value)}
+                />
+                {q.options.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => removeOption(qIdx, oIdx)}
+                    className="text-red-400 hover:text-red-600 transition-colors shrink-0"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            ))}
+            {q.options.length < 6 && (
+              <button
+                type="button"
+                onClick={() => addOption(qIdx)}
+                className="text-xs text-[#6B7280] hover:text-[#D4A843] transition-colors"
+              >
+                + Add option
+              </button>
+            )}
+          </div>
+
+          <div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 block mb-1">
+              Correct answer
+            </label>
+            <select
+              className={inputClass}
+              value={q.correct_answer}
+              onChange={(e) => updateQuestion(qIdx, 'correct_answer', e.target.value)}
+            >
+              <option value="">Select correct answer...</option>
+              {q.options.filter(Boolean).map((opt, oIdx) => (
+                <option key={oIdx} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// -- Sub-components ---------------------------------------
 
 function QuickTasksPanel() {
   const [tasks, setTasks] = useState<QuickTask[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ title: '', description: '', payout: 0.35, task_type: 'social' });
+  const [questions, setQuestions] = useState<QuestionInput[]>([]);
 
   const TASK_TYPES = ['social', 'review', 'share', 'follow', 'other'];
 
@@ -75,6 +227,7 @@ function QuickTasksPanel() {
   async function handleSave() {
     if (!form.title) return;
     setSaving(true);
+
     const { data: newTask, error } = await supabase
       .from('quick_tasks')
       .insert({ ...form, is_active: true })
@@ -82,12 +235,26 @@ function QuickTasksPanel() {
       .single();
 
     if (!error && newTask) {
+      // Insert questions if any
+      if (questions.length > 0) {
+        const rows = questions.map((q, idx) => ({
+          task_id: newTask.id,
+          task_type: 'quick_task',
+          question_text: q.question_text,
+          options: q.options.filter(Boolean),
+          correct_answer: q.correct_answer,
+          order_index: idx,
+        }));
+        await supabase.from('earning_task_questions').insert(rows);
+      }
+
       await supabase.functions.invoke('notify-content-live', {
         body: { content_type: 'quick_task', content_id: newTask.id },
       });
     }
 
     setForm({ title: '', description: '', payout: 0.35, task_type: 'social' });
+    setQuestions([]);
     setShowForm(false);
     setSaving(false);
     load();
@@ -95,14 +262,11 @@ function QuickTasksPanel() {
 
   async function handleToggle(id: string, current: boolean) {
     await supabase.from('quick_tasks').update({ is_active: !current }).eq('id', id);
-
-    // Notify when going live
     if (!current) {
       await supabase.functions.invoke('notify-content-live', {
         body: { content_type: 'quick_task', content_id: id },
       });
     }
-
     load();
   }
 
@@ -117,7 +281,10 @@ function QuickTasksPanel() {
       <div className="flex items-center justify-between">
         <p className="text-sm text-[#6B7280] dark:text-gray-400">{tasks.filter((t) => t.is_active).length} active tasks</p>
         {!showForm && (
-          <button onClick={() => setShowForm(true)} className="flex items-center gap-1 px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-xs font-medium hover:bg-[#c49a3a]">
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-1 px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-xs font-medium hover:bg-[#c49a3e]"
+          >
             <Plus size={13} /> Add Task
           </button>
         )}
@@ -139,11 +306,14 @@ function QuickTasksPanel() {
               </select>
             </div>
           </div>
+
+          <QuestionBuilder questions={questions} onChange={setQuestions} />
+
           <div className="flex gap-2">
-            <button onClick={handleSave} disabled={saving} className="px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-xs font-semibold hover:bg-[#c49a3a] disabled:opacity-50">
+            <button onClick={handleSave} disabled={saving} className="px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-xs font-semibold hover:bg-[#c49a3e] disabled:opacity-50">
               {saving ? 'Saving...' : 'Add'}
             </button>
-            <button onClick={() => setShowForm(false)} className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs text-[#6B7280]">Cancel</button>
+            <button onClick={() => { setShowForm(false); setQuestions([]); }} className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs text-[#6B7280]">Cancel</button>
           </div>
         </div>
       )}
@@ -182,6 +352,7 @@ function SurveysPanel() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ title: '', description: '', payout: 1.00, question_count: 5 });
+  const [questions, setQuestions] = useState<QuestionInput[]>([]);
 
   useEffect(() => { load(); }, []);
 
@@ -193,6 +364,7 @@ function SurveysPanel() {
   async function handleSave() {
     if (!form.title) return;
     setSaving(true);
+
     const { data: newSurvey, error } = await supabase
       .from('surveys')
       .insert({ ...form, is_active: true })
@@ -200,12 +372,25 @@ function SurveysPanel() {
       .single();
 
     if (!error && newSurvey) {
+      if (questions.length > 0) {
+        const rows = questions.map((q, idx) => ({
+          task_id: newSurvey.id,
+          task_type: 'survey',
+          question_text: q.question_text,
+          options: q.options.filter(Boolean),
+          correct_answer: q.correct_answer,
+          order_index: idx,
+        }));
+        await supabase.from('earning_task_questions').insert(rows);
+      }
+
       await supabase.functions.invoke('notify-content-live', {
         body: { content_type: 'survey', content_id: newSurvey.id },
       });
     }
 
     setForm({ title: '', description: '', payout: 1.00, question_count: 5 });
+    setQuestions([]);
     setShowForm(false);
     setSaving(false);
     load();
@@ -213,13 +398,11 @@ function SurveysPanel() {
 
   async function handleToggle(id: string, current: boolean) {
     await supabase.from('surveys').update({ is_active: !current }).eq('id', id);
-
     if (!current) {
       await supabase.functions.invoke('notify-content-live', {
         body: { content_type: 'survey', content_id: id },
       });
     }
-
     load();
   }
 
@@ -234,7 +417,7 @@ function SurveysPanel() {
       <div className="flex items-center justify-between">
         <p className="text-sm text-[#6B7280] dark:text-gray-400">{surveys.filter((s) => s.is_active).length} active surveys</p>
         {!showForm && (
-          <button onClick={() => setShowForm(true)} className="flex items-center gap-1 px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-xs font-medium hover:bg-[#c49a3a]">
+          <button onClick={() => setShowForm(true)} className="flex items-center gap-1 px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-xs font-medium hover:bg-[#c49a3e]">
             <Plus size={13} /> Add Survey
           </button>
         )}
@@ -254,11 +437,14 @@ function SurveysPanel() {
               <input type="number" min="1" className={inputClass} value={form.question_count} onChange={(e) => setForm({ ...form, question_count: parseInt(e.target.value) || 1 })} />
             </div>
           </div>
+
+          <QuestionBuilder questions={questions} onChange={setQuestions} />
+
           <div className="flex gap-2">
-            <button onClick={handleSave} disabled={saving} className="px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-xs font-semibold hover:bg-[#c49a3a] disabled:opacity-50">
+            <button onClick={handleSave} disabled={saving} className="px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-xs font-semibold hover:bg-[#c49a3e] disabled:opacity-50">
               {saving ? 'Saving...' : 'Add'}
             </button>
-            <button onClick={() => setShowForm(false)} className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs text-[#6B7280]">Cancel</button>
+            <button onClick={() => { setShowForm(false); setQuestions([]); }} className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs text-[#6B7280]">Cancel</button>
           </div>
         </div>
       )}
@@ -297,6 +483,7 @@ function BetaPanel_() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ title: '', description: '', payout: 1.50, genre: '', spots_total: 10 });
+  const [questions, setQuestions] = useState<QuestionInput[]>([]);
 
   useEffect(() => { load(); }, []);
 
@@ -308,6 +495,7 @@ function BetaPanel_() {
   async function handleSave() {
     if (!form.title) return;
     setSaving(true);
+
     const { data: newPanel, error } = await supabase
       .from('beta_panels')
       .insert({ ...form, genre: form.genre || null, spots_filled: 0, is_active: true })
@@ -315,12 +503,25 @@ function BetaPanel_() {
       .single();
 
     if (!error && newPanel) {
+      if (questions.length > 0) {
+        const rows = questions.map((q, idx) => ({
+          task_id: newPanel.id,
+          task_type: 'beta_panel',
+          question_text: q.question_text,
+          options: q.options.filter(Boolean),
+          correct_answer: q.correct_answer,
+          order_index: idx,
+        }));
+        await supabase.from('earning_task_questions').insert(rows);
+      }
+
       await supabase.functions.invoke('notify-content-live', {
         body: { content_type: 'beta_panel', content_id: newPanel.id },
       });
     }
 
     setForm({ title: '', description: '', payout: 1.50, genre: '', spots_total: 10 });
+    setQuestions([]);
     setShowForm(false);
     setSaving(false);
     load();
@@ -328,13 +529,11 @@ function BetaPanel_() {
 
   async function handleToggle(id: string, current: boolean) {
     await supabase.from('beta_panels').update({ is_active: !current }).eq('id', id);
-
     if (!current) {
       await supabase.functions.invoke('notify-content-live', {
         body: { content_type: 'beta_panel', content_id: id },
       });
     }
-
     load();
   }
 
@@ -349,7 +548,7 @@ function BetaPanel_() {
       <div className="flex items-center justify-between">
         <p className="text-sm text-[#6B7280] dark:text-gray-400">{panels.filter((p) => p.is_active).length} active panels</p>
         {!showForm && (
-          <button onClick={() => setShowForm(true)} className="flex items-center gap-1 px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-xs font-medium hover:bg-[#c49a3a]">
+          <button onClick={() => setShowForm(true)} className="flex items-center gap-1 px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-xs font-medium hover:bg-[#c49a3e]">
             <Plus size={13} /> Add Panel
           </button>
         )}
@@ -373,11 +572,14 @@ function BetaPanel_() {
               <input className={inputClass} placeholder="Optional" value={form.genre} onChange={(e) => setForm({ ...form, genre: e.target.value })} />
             </div>
           </div>
+
+          <QuestionBuilder questions={questions} onChange={setQuestions} />
+
           <div className="flex gap-2">
-            <button onClick={handleSave} disabled={saving} className="px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-xs font-semibold hover:bg-[#c49a3a] disabled:opacity-50">
+            <button onClick={handleSave} disabled={saving} className="px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-xs font-semibold hover:bg-[#c49a3e] disabled:opacity-50">
               {saving ? 'Saving...' : 'Add'}
             </button>
-            <button onClick={() => setShowForm(false)} className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs text-[#6B7280]">Cancel</button>
+            <button onClick={() => { setShowForm(false); setQuestions([]); }} className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs text-[#6B7280]">Cancel</button>
           </div>
         </div>
       )}
@@ -418,6 +620,7 @@ function SensitivityPanel_() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ title: '', description: '', payout: 10.00, sensitivity_type: '', spots_total: 5 });
+  const [questions, setQuestions] = useState<QuestionInput[]>([]);
 
   const SENSITIVITY_TYPES = ['trauma', 'disability', 'race', 'lgbtq+', 'religion', 'mental health', 'other'];
 
@@ -431,6 +634,7 @@ function SensitivityPanel_() {
   async function handleSave() {
     if (!form.title) return;
     setSaving(true);
+
     const { data: newPanel, error } = await supabase
       .from('sensitivity_panels')
       .insert({ ...form, sensitivity_type: form.sensitivity_type || null, spots_filled: 0, is_active: true })
@@ -438,12 +642,25 @@ function SensitivityPanel_() {
       .single();
 
     if (!error && newPanel) {
+      if (questions.length > 0) {
+        const rows = questions.map((q, idx) => ({
+          task_id: newPanel.id,
+          task_type: 'sensitivity_panel',
+          question_text: q.question_text,
+          options: q.options.filter(Boolean),
+          correct_answer: q.correct_answer,
+          order_index: idx,
+        }));
+        await supabase.from('earning_task_questions').insert(rows);
+      }
+
       await supabase.functions.invoke('notify-content-live', {
         body: { content_type: 'sensitivity_panel', content_id: newPanel.id },
       });
     }
 
     setForm({ title: '', description: '', payout: 10.00, sensitivity_type: '', spots_total: 5 });
+    setQuestions([]);
     setShowForm(false);
     setSaving(false);
     load();
@@ -451,13 +668,11 @@ function SensitivityPanel_() {
 
   async function handleToggle(id: string, current: boolean) {
     await supabase.from('sensitivity_panels').update({ is_active: !current }).eq('id', id);
-
     if (!current) {
       await supabase.functions.invoke('notify-content-live', {
         body: { content_type: 'sensitivity_panel', content_id: id },
       });
     }
-
     load();
   }
 
@@ -472,7 +687,7 @@ function SensitivityPanel_() {
       <div className="flex items-center justify-between">
         <p className="text-sm text-[#6B7280] dark:text-gray-400">{panels.filter((p) => p.is_active).length} active panels</p>
         {!showForm && (
-          <button onClick={() => setShowForm(true)} className="flex items-center gap-1 px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-xs font-medium hover:bg-[#c49a3a]">
+          <button onClick={() => setShowForm(true)} className="flex items-center gap-1 px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-xs font-medium hover:bg-[#c49a3e]">
             <Plus size={13} /> Add Panel
           </button>
         )}
@@ -499,11 +714,14 @@ function SensitivityPanel_() {
               </select>
             </div>
           </div>
+
+          <QuestionBuilder questions={questions} onChange={setQuestions} />
+
           <div className="flex gap-2">
-            <button onClick={handleSave} disabled={saving} className="px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-xs font-semibold hover:bg-[#c49a3a] disabled:opacity-50">
+            <button onClick={handleSave} disabled={saving} className="px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-xs font-semibold hover:bg-[#c49a3e] disabled:opacity-50">
               {saving ? 'Saving...' : 'Add'}
             </button>
-            <button onClick={() => setShowForm(false)} className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs text-[#6B7280]">Cancel</button>
+            <button onClick={() => { setShowForm(false); setQuestions([]); }} className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs text-[#6B7280]">Cancel</button>
           </div>
         </div>
       )}
@@ -539,7 +757,7 @@ function SensitivityPanel_() {
   );
 }
 
-// — Main export ——————————————————————————————————
+// -- Main export ------------------------------------------
 
 export function AdminEarning() {
   const [tab, setTab] = useState<ActiveTab>('quick_tasks');
