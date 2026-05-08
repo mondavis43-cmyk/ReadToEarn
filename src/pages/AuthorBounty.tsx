@@ -51,43 +51,42 @@ export const AuthorBounty = () => {
     authorName.trim() && email.trim() && bookTitle.trim() && bookId.trim();
 
   const handleCheckout = async () => {
-  if (!isFormValid()) {
-    setError('Please fill in all required fields and select a book from the dropdown.');
-    return;
-  }
-  setError('');
+    if (!isFormValid()) {
+      setError('Please fill in all required fields and select a book from the dropdown.');
+      return;
+    }
+    setError('');
 
-  // Get the logged-in user's ID
-  const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
-  ;(window as any).__checkoutItem = {
-    type:   'bounty',
-    label:  `Author Bounty — ${selectedPool.label} for "${bookTitle}"`,
-    amount: POOL_CENTS[selectedPool.size],
-    metadata: { pool_size: selectedPool.size, per_pass: perPass },
+    sessionStorage.setItem('checkoutItem', JSON.stringify({
+      type:   'bounty',
+      label:  `Author Bounty — ${selectedPool.label} for "${bookTitle}"`,
+      amount: POOL_CENTS[selectedPool.size],
+      metadata: { pool_size: selectedPool.size, per_pass: perPass },
+    }));
+
+    sessionStorage.setItem('pendingSubmission', JSON.stringify({
+      table: 'author_bounty_submissions',
+      data: {
+        author_id:         user?.id ?? null,
+        author_name:       authorName.trim(),
+        email:             email.trim(),
+        book_title:        bookTitle.trim(),
+        book_id:           bookId,
+        pool_size:         selectedPool.size,
+        platform_fee:      selectedPool.platform,
+        reader_pool:       selectedPool.readerPool,
+        per_pass_amount:   perPass,
+        estimated_readers: estimatedReaders,
+        notes:             notes.trim(),
+        status:            'pending',
+      },
+    }));
+
+    window.history.pushState({}, '', '/checkout');
+    window.dispatchEvent(new PopStateEvent('popstate'));
   };
-
-  ;(window as any).__pendingSubmission = {
-    table: 'author_bounty_submissions',
-    data: {
-      author_id:         user?.id ?? null,
-      author_name:       authorName.trim(),
-      email:             email.trim(),
-      book_title:        bookTitle.trim(),
-      book_id:           bookId,
-      pool_size:         selectedPool.size,
-      platform_fee:      selectedPool.platform,
-      reader_pool:       selectedPool.readerPool,
-      per_pass_amount:   perPass,
-      estimated_readers: estimatedReaders,
-      notes:             notes.trim(),
-      status:            'pending',
-    },
-  };
-
-  window.history.pushState({}, '', '/checkout');
-  window.dispatchEvent(new PopStateEvent('popstate'));
-};
 
   return (
     <div className={`min-h-screen ${bg} transition-colors duration-300`}>
@@ -155,7 +154,6 @@ export const AuthorBounty = () => {
                 }`}
               >
                 <p className={`font-bold text-lg ${textPrimary}`}>{pool.label}</p>
-                <p className={`text-xs mt-1 ${textMuted}`}>{pool.example}</p>
               </button>
             ))}
           </div>
