@@ -62,16 +62,23 @@ export function AdminBounties() {
     const platform_fee = Math.round(newBounty.pool_size * 0.2 * 100) / 100;
     const reader_pool = Math.round(newBounty.pool_size * 0.8 * 100) / 100;
 
-    const { data, error: err } = await supabase
-      .from('bounties')
-      .insert({
-        book_id: newBounty.book_id,
-        pool_size: newBounty.pool_size,
-        per_pass_amount: newBounty.per_pass_amount,
-        platform_fee,
-        reader_pool,
-        status: 'active',
-      })
+    const { data, error: err } = await 
+    // First get the book's author_id
+    const { data: book } = await supabase
+  .from('books')
+  .select('author_id')
+  .eq('id', newBounty.book_id)
+  .single();
+
+supabase.from('bounties').insert({
+  book_id: newBounty.book_id,
+  author_id: book?.author_id ?? null,   // ← add this
+  pool_size: newBounty.pool_size,
+  per_pass_amount: newBounty.per_pass_amount,
+  platform_fee: ...,
+  reader_pool: ...,
+  status: 'active'
+})
       .select()
       .single();
 
