@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
 import { MessageSquare, Plus, Trash2, GripVertical, ToggleLeft, ToggleRight } from 'lucide-react';
+
 const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
 const PACKAGES = [
@@ -24,16 +25,16 @@ export const AuthorSurvey = () => {
   const { navigateTo } = useNavigate();
   const { isDark, toggleTheme } = useTheme();
 
-  const [authorName, setAuthorName]         = useState('');
-  const [email, setEmail]                   = useState('');
-  const [bookTitle, setBookTitle]           = useState('');
+  const [authorName, setAuthorName]           = useState('');
+  const [email, setEmail]                     = useState('');
+  const [bookTitle, setBookTitle]             = useState('');
   const [selectedPackage, setSelectedPackage] = useState(PACKAGES[1]);
-  const [questions, setQuestions]           = useState<Question[]>([
+  const [questions, setQuestions]             = useState<Question[]>([
     { id: uid(), question: '', required: true },
   ]);
-  const [excerpt, setExcerpt]               = useState('');
-  const [notes, setNotes]                   = useState('');
-  const [error, setError]                   = useState('');
+  const [excerpt, setExcerpt] = useState('');
+  const [notes, setNotes]     = useState('');
+  const [error, setError]     = useState('');
 
   // ── theme tokens ──────────────────────────────────────────
   const textPrimary = isDark ? 'text-[#F5F0E8]'        : 'text-[#1B2A4A]';
@@ -81,7 +82,7 @@ export const AuthorSurvey = () => {
 
     const filledQuestions = questions.filter(q => q.question.trim());
 
-    ;(window as any).__checkoutItem = {
+    sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'survey',
       label: `Reader Survey — ${selectedPackage.label} (${selectedPackage.responses} responses) — ${bookTitle}`,
       amount: selectedPackage.cents,
@@ -89,9 +90,9 @@ export const AuthorSurvey = () => {
         package: selectedPackage.label,
         responses: selectedPackage.responses,
       },
-    };
+    }));
 
-    ;(window as any).__pendingSubmission = {
+    sessionStorage.setItem('pendingSubmission', JSON.stringify({
       table: 'author_survey_submissions',
       data: {
         author_name:      authorName.trim(),
@@ -105,7 +106,7 @@ export const AuthorSurvey = () => {
         notes:            notes.trim(),
         status:           'pending',
       },
-    };
+    }));
 
     window.history.pushState({}, '', '/checkout');
     window.dispatchEvent(new PopStateEvent('popstate'));
@@ -175,7 +176,7 @@ export const AuthorSurvey = () => {
                     <p className={`text-xs ${textMuted}`}>{pkg.responses} responses</p>
                   </div>
                 </div>
-                <p className={`font-bold text-[#D4A843]`}>${pkg.price}</p>
+                <p className="font-bold text-[#D4A843]">${pkg.price}</p>
               </label>
             ))}
           </div>
@@ -211,7 +212,7 @@ export const AuthorSurvey = () => {
             </div>
             <div>
               <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>
-                If this survery focuses on one book, name its title. <span className="text-red-400">*</span>
+                If this survey focuses on one book, name its title. <span className="text-red-400">*</span>
               </label>
               <input
                 type="text"
@@ -245,7 +246,6 @@ export const AuthorSurvey = () => {
                 }`}
               >
                 <div className="flex items-start gap-3">
-                  {/* Drag handle (visual only) */}
                   <GripVertical size={16} className={`mt-3 flex-shrink-0 ${textMuted} opacity-40`} />
 
                   <div className="flex-1 min-w-0">
@@ -259,7 +259,6 @@ export const AuthorSurvey = () => {
                       rows={2}
                       className={`w-full px-3 py-2.5 rounded-lg border text-sm resize-none focus:outline-none transition-colors ${inputBg}`}
                     />
-                    {/* Required toggle */}
                     <button
                       type="button"
                       onClick={() => toggleRequired(q.id)}
@@ -275,7 +274,6 @@ export const AuthorSurvey = () => {
                     </button>
                   </div>
 
-                  {/* Remove */}
                   {questions.length > 1 && (
                     <button
                       type="button"
@@ -310,7 +308,9 @@ export const AuthorSurvey = () => {
 
         {/* Excerpt (optional) */}
         <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
-          <h2 className={`font-serif text-xl mb-1 ${textPrimary}`}>Excerpt <span className={`text-sm font-normal ${textMuted}`}>(optional)</span></h2>
+          <h2 className={`font-serif text-xl mb-1 ${textPrimary}`}>
+            Excerpt <span className={`text-sm font-normal ${textMuted}`}>(optional)</span>
+          </h2>
           <p className={`text-xs mb-4 ${textMuted}`}>
             Paste a chapter or sample if you want readers to respond to specific text.
           </p>
@@ -325,7 +325,9 @@ export const AuthorSurvey = () => {
 
         {/* Notes */}
         <div className={`rounded-xl border p-6 mb-8 ${cardBg}`}>
-          <h2 className={`font-serif text-xl mb-1 ${textPrimary}`}>Additional Notes <span className={`text-sm font-normal ${textMuted}`}>(optional)</span></h2>
+          <h2 className={`font-serif text-xl mb-1 ${textPrimary}`}>
+            Additional Notes <span className={`text-sm font-normal ${textMuted}`}>(optional)</span>
+          </h2>
           <p className={`text-xs mb-4 ${textMuted}`}>Anything else we should know about this survey.</p>
           <textarea
             value={notes}
