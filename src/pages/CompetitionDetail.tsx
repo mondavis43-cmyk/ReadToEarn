@@ -198,7 +198,7 @@ export const CompetitionDetail = () => {
 
     const amountCents = Math.round(discountedFee * 100);
 
-    (window as any).__checkoutItem = {
+    sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'competition_entry',
       label: isLate
         ? `Competition Entry (Late Fee) — ${competition.title}`
@@ -215,7 +215,7 @@ export const CompetitionDetail = () => {
       },
     };
 
-    (window as any).__pendingSubmission = {
+    sessionStorage.setItem('pendingSubmission', JSON.stringify({
       competition_id: competition.id,
       is_late_entry:  isLate,
     };
