@@ -10,8 +10,8 @@ type Mode = 'author' | 'sponsor';
 
 export const BulletinSubmit = () => {
   const { isDark } = useTheme();
-  const [mode, setMode]         = useState<Mode>('author');
-  const [userId, setUserId]     = useState<string | null>(null);
+  const [mode, setMode]             = useState<Mode>('author');
+  const [userId, setUserId]         = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted]   = useState(false);
   const [error, setError]           = useState('');
@@ -21,9 +21,9 @@ export const BulletinSubmit = () => {
     title: '', author: '', genre: '', release_date: '',
     blurb: '', contact_email: '', cover_url: '',
   });
-  const [coverFile, setCoverFile]     = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  const [buyLink, setBuyLink]         = useState('');
+  const [coverFile, setCoverFile]         = useState<File | null>(null);
+  const [coverPreview, setCoverPreview]   = useState<string | null>(null);
+  const [buyLink, setBuyLink]             = useState('');
 
   // Sponsor form
   const [sponsorForm, setSponsorForm] = useState({
@@ -44,15 +44,15 @@ export const BulletinSubmit = () => {
   }, []);
 
   // Theme tokens
-  const bg          = isDark ? '#0f172a'  : '#F5F0E8';
-  const cardBg      = isDark ? '#1e293b'  : '#FFFFFF';
-  const cardBorder  = isDark ? '#334155'  : '#e2d9c8';
-  const textPrimary = isDark ? '#f1f5f9'  : '#1B2A4A';
-  const textSecondary = isDark ? '#94a3b8' : '#6b7280';
-  const inputBg     = isDark ? '#0f172a'  : '#FAFAF8';
-  const inputBorder = isDark ? '#334155'  : '#d1c9b8';
-  const accent      = '#D4A843';
-  const labelColor  = isDark ? '#cbd5e1'  : '#374151';
+  const bg            = isDark ? '#0f172a'  : '#F5F0E8';
+  const cardBg        = isDark ? '#1e293b'  : '#FFFFFF';
+  const cardBorder    = isDark ? '#334155'  : '#e2d9c8';
+  const textPrimary   = isDark ? '#f1f5f9'  : '#1B2A4A';
+  const textSecondary = isDark ? '#94a3b8'  : '#6b7280';
+  const inputBg       = isDark ? '#0f172a'  : '#FAFAF8';
+  const inputBorder   = isDark ? '#334155'  : '#d1c9b8';
+  const accent        = '#D4A843';
+  const labelColor    = isDark ? '#cbd5e1'  : '#374151';
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 14px', borderRadius: 8,
@@ -143,14 +143,14 @@ export const BulletinSubmit = () => {
       let image_url: string | null = null;
       if (sponsorImageFile) image_url = await uploadImage(sponsorImageFile, 'book-covers', 'sponsors');
 
-      ;(window as any).__checkoutItem = {
+      sessionStorage.setItem('checkoutItem', JSON.stringify({
         type:   'sponsored_pin',
         label:  `Sponsored Pin — ${sponsorForm.brand_name}`,
         amount: 5000, // $50.00
         metadata: { brand_name: sponsorForm.brand_name },
-      };
+      }));
 
-      ;(window as any).__pendingSubmission = {
+      sessionStorage.setItem('pendingSubmission', JSON.stringify({
         table: 'sponsored_pins',
         data: {
           brand_name:    sponsorForm.brand_name.trim(),
@@ -162,7 +162,7 @@ export const BulletinSubmit = () => {
           status:        'pending',
           is_active:     false,
         },
-      };
+      }));
 
       window.history.pushState({}, '', '/checkout');
       window.dispatchEvent(new PopStateEvent('popstate'));
