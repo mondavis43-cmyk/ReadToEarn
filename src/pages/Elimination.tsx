@@ -14,8 +14,8 @@ type Competition = {
   prize_pool: number;
   status: 'upcoming' | 'active' | 'completed' | 'canceled';
   is_sponsored: boolean;
-  starts_at: string;
-  ends_at: string;
+  start_date: string;
+  end_date: string;
   pre_registration_count?: number;
 };
 
@@ -68,7 +68,7 @@ export const Elimination = () => {
       .eq('format', 'elimination')
       .eq('status', statusMap[tab])
       .eq('is_sponsored', false)
-      .order('starts_at', { ascending: true });
+      .order('start_date', { ascending: true });
 
     const { data: sponsoredData } = await supabase
       .from('competitions')
@@ -76,7 +76,7 @@ export const Elimination = () => {
       .eq('format', 'elimination')
       .eq('status', statusMap[tab])
       .eq('is_sponsored', true)
-      .order('starts_at', { ascending: true });
+      .order('start_date', { ascending: true });
 
     const list = data ?? [];
     const sponsoredList = sponsoredData ?? [];
@@ -162,7 +162,7 @@ export const Elimination = () => {
   };
 
   const isWithin48HrWindow = (competition: Competition) => {
-    const start = new Date(competition.starts_at).getTime();
+    const start = new Date(competition.start_date).getTime();
     const now = Date.now();
     return now <= start + 48 * 60 * 60 * 1000;
   };
@@ -248,7 +248,7 @@ export const Elimination = () => {
             </p>
             <p className={`text-sm font-bold ${textPrimary}`}>
               {new Date(
-                tab === 'upcoming' ? competition.starts_at : competition.ends_at
+                tab === 'upcoming' ? competition.start_date : competition.end_date
               ).toLocaleDateString()}
             </p>
           </div>
