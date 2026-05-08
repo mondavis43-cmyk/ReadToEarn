@@ -31,7 +31,7 @@ export interface Database {
       }
       books: {
         Row: {
-          id: number
+          id: string
           title: string
           author: string
           cover_url: string | null
@@ -54,8 +54,8 @@ export interface Database {
       }
       questions: {
         Row: {
-          id: number
-          book_id: number
+          id: string
+          book_id: string
           question_text: string
           option_a: string
           option_b: string
@@ -65,7 +65,7 @@ export interface Database {
         }
         Insert: {
           id?: number
-          book_id: number
+          book_id: string
           question_text: string
           option_a: string
           option_b: string
@@ -75,7 +75,7 @@ export interface Database {
         }
         Update: {
           id?: number
-          book_id?: number
+          book_id?: string
           question_text?: string
           option_a?: string
           option_b?: string
@@ -88,7 +88,7 @@ export interface Database {
         Row: {
           id: number
           user_id: string
-          book_id: number
+          book_id: string
           score: number
           passed: boolean
           created_at: string
@@ -96,7 +96,7 @@ export interface Database {
         Insert: {
           id?: number
           user_id: string
-          book_id: number
+          book_id: string
           score: number
           passed: boolean
           created_at?: string
@@ -104,7 +104,7 @@ export interface Database {
         Update: {
           id?: number
           user_id?: string
-          book_id?: number
+          book_id?: string
           score?: number
           passed?: boolean
           created_at?: string
@@ -114,19 +114,19 @@ export interface Database {
         Row: {
           id: number
           user_id: string
-          book_id: number
+          book_id: string
           created_at: string
         }
         Insert: {
           id?: number
           user_id: string
-          book_id: number
+          book_id: string
           created_at?: string
         }
         Update: {
           id?: number
           user_id?: string
-          book_id?: number
+          book_id?: string
           created_at?: string
         }
       }
