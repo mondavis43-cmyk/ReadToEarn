@@ -10,8 +10,8 @@ type AMASession = {
   description: string | null;
   status: 'open' | 'answering' | 'closed';
   questions_close_at: string;
-  ama_starts_at: string;
-  ama_ends_at: string | null;
+  ama_start_date: string;
+  ama_end_date: string | null;
   books?: { title: string; author: string } | null;
   profiles?: { display_name: string | null; email: string } | null;
 };
