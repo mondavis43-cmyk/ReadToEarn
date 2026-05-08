@@ -218,9 +218,7 @@ const { data: comp } = await supabase
 
 if (comp) {
   await supabase
-    .from("competitions")
-    .update({ prize_pool: (comp.prize_pool ?? 0) + readerShare })
-    .eq("id", pending.competition_id);
+    .rpc("increment_prize_pool", { p_competition_id: pending.competition_id, p_amount: readerShare })
 }
           } else if (item.type === "time_boost") {
             const boostCount = pending.boosts ?? item.metadata?.boosts ?? 0;
