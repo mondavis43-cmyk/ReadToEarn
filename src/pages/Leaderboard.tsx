@@ -32,8 +32,8 @@ format: Format;
 book_title?: string;
 prize_pool: number;
 status: 'active' | 'completed';
-ends_at: string;
-starts_at: string;
+end_date: string;
+start_date: string;
 isSprint?: boolean;
 isReadathon?: boolean;
 };
@@ -163,9 +163,9 @@ useEffect(() => {
     const [compResult, sprintResult, readathonResult] = await Promise.all([
       supabase
         .from('competitions')
-        .select('id, title, format, book_title, prize_pool, status, starts_at, ends_at')
+        .select('id, title, format, book_title, prize_pool, status, start_date, end_date')
         .eq('status', status)
-        .order('starts_at', { ascending: false })
+        .order('start_date', { ascending: false })
         .limit(20),
       supabase
         .from('sprints')
@@ -190,8 +190,8 @@ useEffect(() => {
       book_title: s.book_title,
       prize_pool: s.prize_pool ?? 0,
       status: s.status === 'active' ? 'active' : 'completed',
-      starts_at: s.start_date,
-      ends_at: s.end_date,
+      start_date: s.start_date,
+      end_date: s.end_date,
       isSprint: true,
     }));
 
@@ -202,8 +202,8 @@ useEffect(() => {
       book_title: r.book_title,
       prize_pool: r.prize_pool ?? 0,
       status: r.status === 'active' ? 'active' : 'completed',
-      starts_at: r.start_date,
-      ends_at: r.end_date,
+      start_date: r.start_date,
+      end_date: r.end_date,
       isReadathon: true,
     }));
 
@@ -470,8 +470,8 @@ return (
                     <Clock size={11} className="text-[#D4A843]" />
                     <span className={`text-xs ${textMuted}`}>
                       {tab === 'live'
-                        ? `Ends ${new Date(c.ends_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-                        : `Ended ${new Date(c.ends_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+                        ? `Ends ${new Date(c.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                        : `Ended ${new Date(c.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
                     </span>
                   </div>
                 </button>
