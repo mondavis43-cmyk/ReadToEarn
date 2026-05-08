@@ -50,6 +50,7 @@ import QuickTasks from '../pages/QuickTasks';
 import SurveyFeed from '../pages/SurveyFeed';
 import BetaReaderPanel from '../pages/BetaReaderPanel';
 import SensitivityReaderPanel from '../pages/SensitivityReaderPanel';
+import { AdminFraudDashboard } from '../pages/admin/AdminFraudDashboard';
 
 const WAITLIST_MODE = true;
 
