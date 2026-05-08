@@ -78,7 +78,7 @@ export const Refer = () => {
   };
 
   const handleUpgrade = () => {
-    ;(window as any).__checkoutItem = {
+    sessionStorage.setItem('checkoutItem', JSON.stringify({
       type:   'subscription',
       label:  `RTE ${selectedPlan.label} Subscription`,
       amount: selectedPlan.cents,
@@ -86,9 +86,9 @@ export const Refer = () => {
         plan:    selectedPlan.key,
         user_id: user?.id,
       },
-    };
+    }));
 
-    ;(window as any).__pendingSubmission = {
+    sessionStorage.setItem('pendingSubmission', JSON.stringify({
       table: 'profiles',
       data: {
         id:          user?.id,
@@ -96,7 +96,7 @@ export const Refer = () => {
         plan:        selectedPlan.key,
       },
       upsert: true,
-    };
+    }));
 
     window.history.pushState({}, '', '/checkout');
     window.dispatchEvent(new PopStateEvent('popstate'));
@@ -260,12 +260,12 @@ export const Refer = () => {
           <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Payout Rules</h2>
           <div className="space-y-3">
             {[
-              ['Earnings',    '$0.50/month per active referred subscriber'],
-              ['Trigger',     'Referral must sign up and become a paid subscriber'],
-              ['Recurring',   'Earnings continue each month they stay subscribed'],
-              ['Cancellation','Earnings stop if the referred user cancels'],
-              ['Fraud Hold',  'Suspicious referrals are held for 30 days before payout'],
-              ['Cap',         'No cap — refer as many as you want'],
+              ['Earnings',     '$0.50/month per active referred subscriber'],
+              ['Trigger',      'Referral must sign up and become a paid subscriber'],
+              ['Recurring',    'Earnings continue each month they stay subscribed'],
+              ['Cancellation', 'Earnings stop if the referred user cancels'],
+              ['Fraud Hold',   'Suspicious referrals are held for 30 days before payout'],
+              ['Cap',          'No cap — refer as many as you want'],
             ].map(([rule, detail], i) => (
               <div
                 key={rule}
