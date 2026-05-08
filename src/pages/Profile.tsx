@@ -33,13 +33,13 @@ export const Profile = () => {
   const { user } = useAuth();
   const { navigateTo } = useNavigate();
   const { isDark } = useTheme();
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile]               = useState<Profile | null>(null);
   const [completedBooks, setCompletedBooks] = useState<CompletedBook[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [birthdayInput, setBirthdayInput] = useState('');
+  const [loading, setLoading]               = useState(true);
+  const [birthdayInput, setBirthdayInput]   = useState('');
   const [savingBirthday, setSavingBirthday] = useState(false);
   const [birthdaySuccess, setBirthdaySuccess] = useState(false);
-  const [birthdayError, setBirthdayError] = useState('');
+  const [birthdayError, setBirthdayError]   = useState('');
 
   const get1099Warning = () => {
     if (!profile) return null;
@@ -96,7 +96,7 @@ export const Profile = () => {
   };
 
   const handleUpgrade = () => {
-    (window as any).__checkoutItem = {
+    sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'subscription',
       label: 'Membership — Monthly',
       amount: 499,
@@ -104,25 +104,27 @@ export const Profile = () => {
         plan: 'monthly',
         user_id: user?.id,
       },
-    };
-    (window as any).__pendingSubmission = {
+    }));
+
+    sessionStorage.setItem('pendingSubmission', JSON.stringify({
       table: 'subscriptions',
       data: {
         user_id: user?.id,
         plan: 'monthly',
         status: 'active',
       },
-    };
+    }));
+
     window.history.pushState({}, '', '/checkout');
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
   // Theme tokens
-  const bg          = isDark ? 'bg-[#1B2A4A]'         : 'bg-[#F5F0E8]';
-  const cardBg      = isDark ? 'bg-[#162238]'          : 'bg-white';
-  const cardBorder  = isDark ? 'border-[#F5F0E8]/10'   : 'border-[#1B2A4A]/10';
+  const bg           = isDark ? 'bg-[#1B2A4A]'        : 'bg-[#F5F0E8]';
+  const cardBg       = isDark ? 'bg-[#162238]'         : 'bg-white';
+  const cardBorder   = isDark ? 'border-[#F5F0E8]/10'  : 'border-[#1B2A4A]/10';
   const headingColor = isDark ? 'text-[#F5F0E8]'       : 'text-[#1B2A4A]';
-  const subColor    = isDark ? 'text-[#F5F0E8]/50'     : 'text-[#1B2A4A]/50';
+  const subColor     = isDark ? 'text-[#F5F0E8]/50'    : 'text-[#1B2A4A]/50';
   const dividerColor = isDark ? 'border-[#F5F0E8]/10'  : 'border-[#1B2A4A]/10';
 
   if (loading) return (
