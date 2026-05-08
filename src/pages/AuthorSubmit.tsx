@@ -152,8 +152,7 @@ export const AuthorSubmit = () => {
     }
 
     // No credits — save form data and go to checkout
-    // Store book data so it can be submitted after payment succeeds
-    (window as any).__pendingSubmission = {
+    sessionStorage.setItem('pendingSubmission', JSON.stringify({
       email,
       title,
       author,
@@ -167,9 +166,9 @@ export const AuthorSubmit = () => {
       bundle_size: selectedBundle.books,
       amount_paid: selectedBundle.total,
       status: 'paid',
-    };
+    }));
 
-    (window as any).__checkoutItem = {
+    sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'listing',
       label: `${selectedBundle.label} Listing (${selectedBundle.books} book${selectedBundle.books > 1 ? 's' : ''})`,
       amount: Math.round(selectedBundle.total * 100),
@@ -178,7 +177,7 @@ export const AuthorSubmit = () => {
         books: selectedBundle.books,
         email,
       },
-    };
+    }));
 
     window.history.pushState({}, '', '/checkout');
     window.dispatchEvent(new PopStateEvent('popstate'));
