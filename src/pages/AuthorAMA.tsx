@@ -180,7 +180,7 @@ export const AuthorAMA = () => {
                         )}
                         <span className="flex items-center gap-1">
                           <Calendar size={11} />
-                          AMA {new Date(session.ama_starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                          AMA {new Date(session.ama_start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                         </span>
                       </div>
                     </div>
