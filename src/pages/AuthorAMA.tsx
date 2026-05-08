@@ -47,7 +47,7 @@ export const AuthorAMA = () => {
       .from('ama_sessions')
       .select('*, books(title, author), profiles(display_name, email)')
       .in('status', statusMap[tab])
-      .order('ama_starts_at', { ascending: tab !== 'past' });
+      .order('ama_start_date', { ascending: tab !== 'past' });
     setSessions(data || []);
     setLoading(false);
   }
