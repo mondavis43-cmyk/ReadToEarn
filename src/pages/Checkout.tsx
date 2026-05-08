@@ -190,7 +190,7 @@ const CheckoutForm = ({ item }: { item: CheckoutItem }) => {
           status: "succeeded",
         });
 
-        const pending = (window as any).__pendingSubmission;
+        const pending = JSON.parse(sessionStorage.getItem('pendingSubmission') ?? 'null');
 
         if (pending) {
           if (item.type === "listing") {
@@ -244,7 +244,8 @@ if (comp) {
             await supabase.from(pending.table).insert(pending.data);
           }
 
-          delete (window as any).__pendingSubmission;
+          sessionStorage.removeItem('pendingSubmission');
+          sessionStorage.removeItem('checkoutItem');
         }
 
         setSuccess(true);
@@ -318,7 +319,7 @@ if (comp) {
 };
 
 const Checkout = () => {
-  const item = (window as any).__checkoutItem as CheckoutItem | undefined;
+  const item = JSON.parse(sessionStorage.getItem('checkoutItem') ?? 'null') as CheckoutItem | undefined;
 
   if (!item) {
     return (
