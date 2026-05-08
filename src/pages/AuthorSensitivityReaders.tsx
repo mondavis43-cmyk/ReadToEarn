@@ -72,18 +72,18 @@ export const AuthorSensitivityReaders = () => {
   const { navigateTo } = useNavigate();
   const { isDark } = useTheme();
 
-  const [selectedPackage, setSelectedPackage]     = useState(PACKAGES[1]);
-  const [authorName, setAuthorName]               = useState('');
-  const [email, setEmail]                         = useState('');
-  const [bookTitle, setBookTitle]                 = useState('');
-  const [chapterText, setChapterText]             = useState('');
+  const [selectedPackage, setSelectedPackage]       = useState(PACKAGES[1]);
+  const [authorName, setAuthorName]                 = useState('');
+  const [email, setEmail]                           = useState('');
+  const [bookTitle, setBookTitle]                   = useState('');
+  const [chapterText, setChapterText]               = useState('');
   const [selectedIdentities, setSelectedIdentities] = useState<string[]>([]);
-  const [otherIdentity, setOtherIdentity]         = useState('');
-  const [context, setContext]                     = useState('');
-  const [questions, setQuestions]                 = useState<Question[]>([
+  const [otherIdentity, setOtherIdentity]           = useState('');
+  const [context, setContext]                       = useState('');
+  const [questions, setQuestions]                   = useState<Question[]>([
     { id: uid(), question: '', required: true },
   ]);
-  const [error, setError]                         = useState('');
+  const [error, setError] = useState('');
 
   // ── theme tokens ──────────────────────────────────────────
   const bg          = isDark ? 'bg-[#0f1623]'          : 'bg-[#F5F0E8]';
@@ -151,7 +151,7 @@ export const AuthorSensitivityReaders = () => {
         : i
     );
 
-    ;(window as any).__checkoutItem = {
+    sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'sensitivity_readers',
       label: `Sensitivity Readers — ${selectedPackage.label} (${selectedPackage.readers} readers) — ${bookTitle}`,
       amount: selectedPackage.cents,
@@ -160,9 +160,9 @@ export const AuthorSensitivityReaders = () => {
         readers:    selectedPackage.readers,
         identities: processedIdentities,
       },
-    };
+    }));
 
-    ;(window as any).__pendingSubmission = {
+    sessionStorage.setItem('pendingSubmission', JSON.stringify({
       table: 'author_sensitivity_submissions',
       data: {
         author_name:      authorName.trim(),
@@ -177,7 +177,7 @@ export const AuthorSensitivityReaders = () => {
         context:          context.trim(),
         status:           'pending',
       },
-    };
+    }));
 
     window.history.pushState({}, '', '/checkout');
     window.dispatchEvent(new PopStateEvent('popstate'));
@@ -316,7 +316,6 @@ export const AuthorSensitivityReaders = () => {
             })}
           </div>
 
-          {/* Other — specify field */}
           {selectedIdentities.includes('Other (author will specify)') && (
             <div className="mt-4">
               <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>
