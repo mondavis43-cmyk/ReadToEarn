@@ -12,7 +12,7 @@
       - `id` (serial, primary key)
       - `title` (text, not null)
       - `author` (text, not null)
-      - `cover_image_url` (text)
+      - `cover_url` (text)
       - `bounty_amount` (decimal, not null)
     
     - `questions`
@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS books (
   id serial PRIMARY KEY,
   title text NOT NULL,
   author text NOT NULL,
-  cover_image_url text,
+  cover_url text,
   bounty_amount decimal(10,2) NOT NULL
 );
 
