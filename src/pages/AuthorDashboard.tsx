@@ -35,7 +35,7 @@ interface AMASessionRow {
   id: string;
   title: string;
   status: 'open' | 'answering' | 'closed';
-  ama_starts_at: string;
+  ama_start_date: string;
   questions_close_at: string;
   books?: { title: string } | null;
 }
@@ -53,8 +53,8 @@ interface CompetitionRow {
   id: string;
   title: string;
   format: string;
-  starts_at: string;
-  ends_at: string;
+  start_date: string;
+  end_date: string;
   book_title: string;
 }
 
@@ -201,9 +201,9 @@ export const AuthorDashboard = () => {
   async function loadAMA(uid: string) {
     const { data } = await supabase
       .from('ama_sessions')
-      .select('id,title,status,ama_starts_at,questions_close_at,books(title)')
+      .select('id,title,status,ama_start_date,questions_close_at,books(title)')
       .eq('author_id', uid)
-      .order('ama_starts_at', { ascending: false });
+      .order('ama_start_date', { ascending: false });
     setAmaSessions(data || []);
   }
 
@@ -219,9 +219,9 @@ export const AuthorDashboard = () => {
   async function loadCompetitions(uid: string) {
     const { data } = await supabase
       .from('competitions')
-      .select('id,title,format,starts_at,ends_at,book_title')
+      .select('id,title,format,start_date,end_date,book_title')
       .eq('author_id', uid)
-      .order('starts_at', { ascending: false });
+      .order('start_date', { ascending: false });
     setCompetitions(data || []);
   }
 
@@ -560,7 +560,7 @@ export const AuthorDashboard = () => {
                       {statusBadge(s.status)}
                     </div>
                     {s.books && <p className="text-xs text-[#D4A843] mb-1">{s.books.title}</p>}
-                    <p className={`text-xs ${textMuted}`}>AMA: {fmt(s.ama_starts_at)}</p>
+                    <p className={`text-xs ${textMuted}`}>AMA: {fmt(s.ama_start_date)}</p>
                   </button>
                 ))}
               </div>
@@ -632,8 +632,8 @@ export const AuthorDashboard = () => {
                     </div>
                     <p className="text-xs text-[#D4A843] mb-2">{c.book_title}</p>
                     <p className={`text-xs ${textMuted}`}>
-                      {new Date(c.starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –{' '}
-                      {fmt(c.ends_at)}
+                      {new Date(c.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –{' '}
+                      {fmt(c.end_date)}
                     </p>
                   </div>
                 ))}
