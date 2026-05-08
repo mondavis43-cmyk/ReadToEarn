@@ -15,6 +15,7 @@ interface Competition {
   title: string;
   book_title: string | null;
   book_author: string | null;
+  author_id: string | null;
   entry_fee: number;
   prize_pool: number;
   is_sponsored: boolean;
@@ -54,7 +55,7 @@ const emptyComp: NewCompetition = {
   is_sponsored: false,
 };
 
-// ─── Searchable book picker ───────────────────────────────────────────────
+// ---- Searchable book picker ------------------------------------------------
 
 const BookSearchInput = ({
   books,
@@ -158,7 +159,7 @@ const BookSearchInput = ({
                 <button
                   key={b.id}
                   onMouseDown={() => handleSelect(b)}
-                  className="w-full text-left px-3 py-2.5 text-sm border-b border-[#e8e0d5] dark:border-gray-700 last:border-b-0 text-[#1B2A4A] dark:text-[#F5F0E8] hover:bg-[#D4A843]/10 transition-colors"
+                  className="w-full text-left px-3 py-2.5 text-sm border-b border-[#e8e0d5] dark:border-gray-700 last:border-b-0 text-[#1B2A4A] dark:text-[#F5F0E8] hover:bg-[#D4A843]/10 tr"
                 >
                   <span className="font-medium">{b.title}</span>
                   <span className="ml-2 text-xs text-[#6B7280] dark:text-gray-400">— {b.author}</span>
@@ -172,7 +173,7 @@ const BookSearchInput = ({
   );
 };
 
-// ─── Main component ───────────────────────────────────────────────────────
+// ---- Main component --------------------------------------------------------
 
 export function AdminCompetitions() {
   const [books, setBooks] = useState<Book[]>([]);
@@ -224,13 +225,28 @@ export function AdminCompetitions() {
 
     let bookTitle: string | null = null;
     let bookAuthor: string | null = null;
+    let authorId: string | null = null;
 
     if (newComp.format === 'sprint' && sprintBook[0]) {
       bookTitle = sprintBook[0].title;
       bookAuthor = sprintBook[0].author;
+      // Look up the book owner's user_id to store as author_id
+      const { data: bookRow } = await supabase
+        .from('books')
+        .select('user_id')
+        .eq('id', sprintBook[0].id)
+        .single();
+      authorId = bookRow?.user_id ?? null;
     } else if (newComp.format === 'elimination') {
       bookTitle = elimBooks.map(b => b.title).join(', ');
       bookAuthor = elimBooks.map(b => b.author).join(', ');
+      // For elimination, use the first book's owner
+      const { data: bookRow } = await supabase
+        .from('books')
+        .select('user_id')
+        .eq('id', elimBooks[0].id)
+        .single();
+      authorId = bookRow?.user_id ?? null;
     }
 
     const { data: newCompRow, error: err } = await supabase.from('competitions').insert({
@@ -238,6 +254,7 @@ export function AdminCompetitions() {
       title: newComp.title,
       book_title: bookTitle,
       book_author: bookAuthor,
+      author_id: authorId,
       entry_fee: parseFloat(newComp.entry_fee),
       prize_pool: parseFloat(newComp.prize_pool) || 0,
       is_sponsored: newComp.is_sponsored,
@@ -252,9 +269,9 @@ export function AdminCompetitions() {
     // #11: notify subscribers
     if (newCompRow) {
       await supabase.rpc('notify_subscribers_new_earning', {
-        p_type:  'competition',
+        p_type: 'competition',
         p_title: newCompRow.title,
-        p_id:    newCompRow.id,
+        p_id: newCompRow.id,
       });
     }
 
@@ -276,21 +293,21 @@ export function AdminCompetitions() {
   }
 
   async function handleCloseAndPay(id: string) {
-  if (!confirm('Close this competition and distribute prizes? This cannot be undone.')) return;
+    if (!confirm('Close this competition and distribute prizes? This cannot be undone.')) return;
 
-  const { data, error } = await supabase.rpc('close_competition_and_pay', {
-    p_competition_id: id,
-  });
+    const { data, error } = await supabase.rpc('close_competition_and_pay', {
+      p_competition_id: id,
+    });
 
-  if (error) {
-    setError('Payout failed: ' + error.message);
-  } else if (data === 'already_completed') {
-    setError('This competition has already been paid out.');
-  } else {
-    setSuccess('Competition closed and prizes distributed.');
-    loadData();
+    if (error) {
+      setError('Payout failed: ' + error.message);
+    } else if (data === 'already_completed') {
+      setError('This competition has already been paid out.');
+    } else {
+      setSuccess('Competition closed and prizes distributed.');
+      loadData();
+    }
   }
-}
 
   async function handleDelete(id: string) {
     if (!confirm('Delete this competition?')) return;
@@ -305,7 +322,7 @@ export function AdminCompetitions() {
     return 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400';
   };
 
-  const standardBooks = books.filter((b) => b.book_type !== 'bulletin_board');
+  const standardBooks = books.filter(b => b.book_type !== 'bulletin_board');
 
   return (
     <div className="space-y-4">
@@ -315,7 +332,7 @@ export function AdminCompetitions() {
         </div>
       )}
       {success && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-4 py-3 text-green-700 dark:text-green-400 text-sm flex items-center justify-between">
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-4 py-3 text-green-700 dark:text-green-400 text-sm flex items-center jus">
           {success}<button onClick={() => setSuccess('')}><X size={14} /></button>
         </div>
       )}
@@ -323,7 +340,7 @@ export function AdminCompetitions() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">
-          Competitions ({competitions.filter((c) => c.status === 'active').length} active)
+          Competitions ({competitions.filter(c => c.status === 'active').length} active)
         </h2>
         {!showForm && (
           <button
@@ -340,7 +357,10 @@ export function AdminCompetitions() {
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Create Competition</h3>
-            <button onClick={() => { setShowForm(false); setNewComp(emptyComp); setSprintBook([]); setElimBooks([]); }} className="text-[#6B7280]">
+            <button
+              onClick={() => { setShowForm(false); setNewComp(emptyComp); setSprintBook([]); setElimBooks([]); }}
+              className="text-[#6B7280]"
+            >
               <X size={18} />
             </button>
           </div>
@@ -351,9 +371,9 @@ export function AdminCompetitions() {
             <select
               className={inputClass}
               value={newComp.format}
-              onChange={(e) => setNewComp({ ...newComp, format: e.target.value })}
+              onChange={e => setNewComp({ ...newComp, format: e.target.value })}
             >
-              {COMPETITION_FORMATS.map((f) => (
+              {COMPETITION_FORMATS.map(f => (
                 <option key={f.value} value={f.value}>{f.label}</option>
               ))}
             </select>
@@ -364,13 +384,13 @@ export function AdminCompetitions() {
             <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Title</label>
             <input
               className={inputClass}
-              placeholder="e.g. Summer Sprint — The Midnight Library"
+              placeholder="e.g. Summer Sprint – The Midnight Library"
               value={newComp.title}
-              onChange={(e) => setNewComp({ ...newComp, title: e.target.value })}
+              onChange={e => setNewComp({ ...newComp, title: e.target.value })}
             />
           </div>
 
-          {/* Book — Sprint: single searchable */}
+          {/* Book – Sprint: single searchable */}
           {newComp.format === 'sprint' && (
             <div>
               <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
@@ -387,7 +407,7 @@ export function AdminCompetitions() {
             </div>
           )}
 
-          {/* Book — Read-A-Thon: untouched */}
+          {/* Book – Read-A-Thon: untouched */}
           {newComp.format === 'readathon' && (
             <div>
               <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
@@ -396,17 +416,17 @@ export function AdminCompetitions() {
               <select
                 className={inputClass}
                 value={newComp.book_id}
-                onChange={(e) => setNewComp({ ...newComp, book_id: e.target.value })}
+                onChange={e => setNewComp({ ...newComp, book_id: e.target.value })}
               >
                 <option value="">Select a book...</option>
-                {standardBooks.map((b) => (
+                {standardBooks.map(b => (
                   <option key={b.id} value={b.id}>{b.title} — {b.author}</option>
                 ))}
               </select>
             </div>
           )}
 
-          {/* Book — Elimination: multi searchable, exactly 3 */}
+          {/* Book – Elimination: multi searchable, exactly 3 */}
           {newComp.format === 'elimination' && (
             <div>
               <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
@@ -435,7 +455,7 @@ export function AdminCompetitions() {
                 className={inputClass}
                 placeholder="e.g. 5.00"
                 value={newComp.entry_fee}
-                onChange={(e) => setNewComp({ ...newComp, entry_fee: e.target.value })}
+                onChange={e => setNewComp({ ...newComp, entry_fee: e.target.value })}
               />
             </div>
             <div>
@@ -447,7 +467,7 @@ export function AdminCompetitions() {
                 className={inputClass}
                 placeholder="e.g. 200.00"
                 value={newComp.prize_pool}
-                onChange={(e) => setNewComp({ ...newComp, prize_pool: e.target.value })}
+                onChange={e => setNewComp({ ...newComp, prize_pool: e.target.value })}
               />
             </div>
           </div>
@@ -458,7 +478,7 @@ export function AdminCompetitions() {
               type="checkbox"
               id="is_sponsored"
               checked={newComp.is_sponsored}
-              onChange={(e) => setNewComp({ ...newComp, is_sponsored: e.target.checked })}
+              onChange={e => setNewComp({ ...newComp, is_sponsored: e.target.checked })}
               className="accent-[#D4A843] w-4 h-4"
             />
             <label htmlFor="is_sponsored" className="text-sm text-[#1B2A4A] dark:text-[#F5F0E8]">
@@ -474,7 +494,7 @@ export function AdminCompetitions() {
                 type="date"
                 className={inputClass}
                 value={newComp.start_date}
-                onChange={(e) => setNewComp({ ...newComp, start_date: e.target.value })}
+                onChange={e => setNewComp({ ...newComp, start_date: e.target.value })}
               />
             </div>
             <div>
@@ -483,7 +503,7 @@ export function AdminCompetitions() {
                 type="date"
                 className={inputClass}
                 value={newComp.end_date}
-                onChange={(e) => setNewComp({ ...newComp, end_date: e.target.value })}
+                onChange={e => setNewComp({ ...newComp, end_date: e.target.value })}
               />
             </div>
           </div>
@@ -506,12 +526,12 @@ export function AdminCompetitions() {
         </div>
       )}
 
-      {/* Competition list — untouched */}
+      {/* Competition list */}
       {competitions.length === 0 ? (
         <p className="text-sm text-[#6B7280] dark:text-gray-400">No competitions yet.</p>
       ) : (
         <div className="space-y-3">
-          {competitions.map((comp) => (
+          {competitions.map(comp => (
             <div key={comp.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
@@ -520,21 +540,23 @@ export function AdminCompetitions() {
                     {comp.format}{comp.book_title ? ` · ${comp.book_title}` : ''}
                     {comp.is_sponsored ? ' · Sponsored' : ''}
                   </p>
-                  <div className="flex flex-wrap gap-4 mt-2 text-sm">
-                    <span className="text-[#1B2A4A] dark:text-[#F5F0E8]">
-                      Entry: <strong>${comp.entry_fee}</strong>
-                    </span>
-                    <span className="text-[#D4A843] font-medium">
-                      Prize pool: ${comp.prize_pool}
-                    </span>
-                    {comp.start_date && (
-                      <span className="text-[#6B7280] dark:text-gray-400">
-                        {new Date(comp.start_date).toLocaleDateString()} –{' '}
-                        {comp.end_date ? new Date(comp.end_date).toLocaleDateString() : 'TBD'}
-                      </span>
-                    )}
-                  </div>
                 </div>
+                <div className="flex flex-wrap gap-4 mt-2 text-sm">
+                  <span className="text-[#1B2A4A] dark:text-[#F5F0E8]">
+                    Entry: <strong>${comp.entry_fee}</strong>
+                  </span>
+                  <span className="font-medium text-[#D4A843]">
+                    Prize pool: ${comp.prize_pool}
+                  </span>
+                </div>
+                {comp.start_date && (
+                  <span className="text-[#6B7280] dark:text-gray-400">
+                    <span>
+                      {new Date(comp.start_date).toLocaleDateString()} -{' '}
+                      {comp.end_date ? new Date(comp.end_date).toLocaleDateString() : 'TBD'}
+                    </span>
+                  </span>
+                )}
                 <span className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 ${statusColor(comp.status)}`}>
                   {comp.status}
                 </span>
@@ -557,15 +579,14 @@ export function AdminCompetitions() {
                     Mark Completed
                   </button>
                 )}
-
                 {comp.status === 'active' && (
-  <button
-    onClick={() => handleCloseAndPay(comp.id)}
-    className="px-3 py-1 text-sm border border-yellow-500 text-yellow-500 rounded hover:bg-yellow-500/10"
-  >
-    Close & Pay Out
-  </button>
-)}
+                  <button
+                    onClick={() => handleCloseAndPay(comp.id)}
+                    className="px-3 py-1 text-sm border border-yellow-500 text-yellow-500 rounded hover:bg-yellow-500/10"
+                  >
+                    Close & Pay Out
+                  </button>
+                )}
                 {(comp.status === 'upcoming' || comp.status === 'active') && (
                   <button
                     onClick={() => handleUpdateStatus(comp.id, 'canceled')}
