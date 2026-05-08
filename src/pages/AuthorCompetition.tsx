@@ -53,8 +53,8 @@ export const AuthorCompetition = () => {
   const [authorName, setAuthorName] = useState('');
   const [email, setEmail]           = useState('');
   const [notes, setNotes]           = useState('');
-  const [selectedTier, setSelectedTier]   = useState(COMPETITION_TIERS[0]);
-  const [selectedType, setSelectedType]   = useState(COMPETITION_TYPES[0]);
+  const [selectedTier, setSelectedTier] = useState(COMPETITION_TIERS[0]);
+  const [selectedType, setSelectedType] = useState(COMPETITION_TYPES[0]);
 
   // Single-select (Sprint + Read-A-Thon)
   const [bookTitle, setBookTitle] = useState('');
@@ -102,7 +102,7 @@ export const AuthorCompetition = () => {
       ? bookTitles.join(', ')
       : bookTitle;
 
-    ;(window as any).__checkoutItem = {
+    sessionStorage.setItem('checkoutItem', JSON.stringify({
       type:   'competition',
       label:  `${selectedTier.label} ${selectedType} — "${isElimination ? bookTitles[0] : bookTitle}${bookTitles.length > 1 ? ` +${bookTitles.length - 1} more` : ''}"`,
       amount: selectedTier.cents,
@@ -111,9 +111,9 @@ export const AuthorCompetition = () => {
         competition_type: selectedType,
         prize_pool:       selectedTier.prizePool,
       },
-    };
+    }));
 
-    ;(window as any).__pendingSubmission = {
+    sessionStorage.setItem('pendingSubmission', JSON.stringify({
       table: 'author_competition_submissions',
       data: {
         author_name:      authorName.trim(),
@@ -128,7 +128,7 @@ export const AuthorCompetition = () => {
         notes:            notes.trim(),
         status:           'pending',
       },
-    };
+    }));
 
     window.history.pushState({}, '', '/checkout');
     window.dispatchEvent(new PopStateEvent('popstate'));
@@ -192,7 +192,6 @@ export const AuthorCompetition = () => {
                 type="button"
                 onClick={() => {
                   setSelectedType(type);
-                  // reset book selection on type switch
                   setBookTitle(''); setBookId('');
                   setBookTitles([]); setBookIds([]);
                 }}
@@ -265,7 +264,7 @@ export const AuthorCompetition = () => {
             {[
               ['Tier',          selectedTier.label],
               ['Format',        isReadAThon
-                ? 'Open platform event — your book is required, all others are reader\'s choice'
+                ? "Open platform event — your book is required, all others are reader's choice"
                 : selectedType],
               ['Price',         `$${selectedTier.price}`],
               ['Platform Fee',  `$${selectedTier.platformFee}`],
@@ -310,7 +309,6 @@ export const AuthorCompetition = () => {
               />
             </div>
 
-            {/* Book selection — single or multi depending on type */}
             {isElimination ? (
               <BookSearchInput
                 label="Books (select all that apply)"
@@ -330,7 +328,6 @@ export const AuthorCompetition = () => {
               />
             )}
 
-            {/* Read-A-Thon reminder under book field */}
             {isReadAThon && bookTitle && (
               <p className={`text-xs ${textMuted}`}>
                 <Info size={11} className="inline mr-1 mb-0.5" />
