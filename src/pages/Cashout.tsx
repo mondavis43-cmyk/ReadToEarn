@@ -28,18 +28,17 @@ const GIFT_CARDS: GiftCardOption[] = [
 export const Cashout = () => {
   const { user } = useAuth();
   const { navigateTo } = useNavigate();
-  const [balance, setBalance]           = useState(0);
-  const [isUpgraded, setIsUpgraded]     = useState(false);
-  const [payoutType, setPayoutType]     = useState<'paypal' | 'venmo' | 'gift_card'>('gift_card');
+  const [balance, setBalance]             = useState(0);
+  const [isUpgraded, setIsUpgraded]       = useState(false);
+  const [payoutType, setPayoutType]       = useState<'paypal' | 'venmo' | 'gift_card'>('gift_card');
   const [payoutDetails, setPayoutDetails] = useState('');
-  const [loading, setLoading]           = useState(true);
-  const [submitting, setSubmitting]     = useState(false);
-  const [error, setError]               = useState('');
-  const [success, setSuccess]           = useState(false);
-  const [pastRequests, setPastRequests] = useState<any[]>([]);
-  const [selectedCard, setSelectedCard] = useState<GiftCardOption>(GIFT_CARDS[0]);
+  const [loading, setLoading]             = useState(true);
+  const [submitting, setSubmitting]       = useState(false);
+  const [error, setError]                 = useState('');
+  const [success, setSuccess]             = useState(false);
+  const [pastRequests, setPastRequests]   = useState<any[]>([]);
+  const [selectedCard, setSelectedCard]   = useState<GiftCardOption>(GIFT_CARDS[0]);
 
-  // Minimum cashout: $5 for subscribers, $10 for standard users
   const MIN_CASHOUT = isUpgraded ? 5 : 10;
 
   useEffect(() => {
@@ -47,37 +46,36 @@ export const Cashout = () => {
   }, [user]);
 
   const loadData = async () => {
-  if (!user) return;
-  const [profileResult, requestsResult] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('available_balance, is_upgraded')
-      .eq('id', user.id)
-      .single(),
-    supabase
-      .from('cashout_requests')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false }),
-  ]);
+    if (!user) return;
+    const [profileResult, requestsResult] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('available_balance, is_upgraded')
+        .eq('id', user.id)
+        .single(),
+      supabase
+        .from('cashout_requests')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false }),
+    ]);
 
-  // ✅ FIX: check for errors before reading data
-  if (profileResult.error) {
-    console.error('Failed to load balance:', profileResult.error);
+    if (profileResult.error) {
+      console.error('Failed to load balance:', profileResult.error);
+      setLoading(false);
+      return;
+    }
+    if (requestsResult.error) {
+      console.error('Failed to load cashout history:', requestsResult.error);
+    }
+
+    if (profileResult.data) {
+      setBalance(profileResult.data.available_balance);
+      setIsUpgraded(profileResult.data.is_upgraded ?? false);
+    }
+    if (requestsResult.data) setPastRequests(requestsResult.data);
     setLoading(false);
-    return;
-  }
-  if (requestsResult.error) {
-    console.error('Failed to load cashout history:', requestsResult.error);
-  }
-
-  if (profileResult.data) {
-    setBalance(profileResult.data.available_balance);
-    setIsUpgraded(profileResult.data.is_upgraded ?? false);
-  }
-  if (requestsResult.data) setPastRequests(requestsResult.data);
-  setLoading(false);
-};
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,27 +95,25 @@ export const Cashout = () => {
 
     setSubmitting(true);
 
-    const { error: insertError } = await supabase.from('cashout_requests').insert({
-      user_id:            user!.id,
-      email:              user!.email,
-      amount:             balance,
-      payout_type:        payoutType,
-      payout_details:     payoutType === 'gift_card' ? selectedCard.name : payoutDetails,
-      gift_card_brand:    payoutType === 'gift_card' ? selectedCard.name : null,
-      reloadly_product_id: payoutType === 'gift_card' ? selectedCard.id : null,
-      status:             'pending',
+    const { error: rpcError } = await supabase.rpc('submit_cashout_request', {
+      p_user_id:           user!.id,
+      p_email:             user!.email ?? '',
+      p_amount:            balance,
+      p_payout_type:       payoutType,
+      p_payout_details:    payoutType === 'gift_card' ? selectedCard.name : payoutDetails,
+      p_gift_card_brand:   payoutType === 'gift_card' ? selectedCard.name : null,
+      p_reloadly_product_id: payoutType === 'gift_card' ? selectedCard.id : null,
     });
 
-    if (insertError) {
-      setError('Something went wrong. Please try again.');
+    if (rpcError) {
+      setError(
+        rpcError.message.includes('Insufficient balance')
+          ? 'Your balance has changed. Please refresh and try again.'
+          : 'Something went wrong. Please try again.'
+      );
       setSubmitting(false);
       return;
     }
-
-    await supabase
-      .from('profiles')
-      .update({ held_balance: balance, available_balance: 0 })
-      .eq('id', user!.id);
 
     setSuccess(true);
     setSubmitting(false);
