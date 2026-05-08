@@ -213,7 +213,7 @@ export const CompetitionDetail = () => {
         is_late_entry:         isLate ? 'true' : 'false',
         used_monthly_discount: usedMonthlyDiscount ? 'true' : 'false',
       },
-    };
+    }));
 
     sessionStorage.setItem('pendingSubmission', JSON.stringify({
       competition_id: competition.id,
