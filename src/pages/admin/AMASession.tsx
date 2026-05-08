@@ -9,8 +9,8 @@ type AMASession = {
   description: string | null;
   status: 'open' | 'answering' | 'closed';
   questions_close_at: string;
-  ama_starts_at: string;
-  ama_ends_at: string | null;
+  ama_start_date: string;
+  ama_end_date: string | null;
   author_id: string;
   books?: { title: string; author: string } | null;
   profiles?: { display_name: string | null; email: string } | null;
@@ -273,7 +273,7 @@ export const AMASession = ({ sessionId }: { sessionId: string }) => {
         {session.status === 'open' && !questionsOpen && (
           <div className={`rounded-2xl border ${cardBg} p-4 mb-6 flex items-center gap-2 ${textMuted} text-sm`}>
             <Lock size={14} className="text-[#D4A843]" />
-            Questions are now closed. The AMA starts {new Date(session.ama_starts_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}.
+            Questions are now closed. The AMA starts {new Date(session.ama_start_date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}.
           </div>
         )}
 
