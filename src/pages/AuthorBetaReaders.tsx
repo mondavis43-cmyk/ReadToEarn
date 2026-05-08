@@ -90,7 +90,7 @@ export const AuthorBetaReaders = () => {
 
     const filledQuestions = questions.filter(q => q.question.trim());
 
-    ;(window as any).__checkoutItem = {
+    JSON.parse(sessionStorage.getItem('checkoutItem') ?? 'null');
       type: 'beta_readers',
       label: `Beta Readers — ${selectedPackage.label} (${selectedPackage.readers} readers) — ${bookTitle}`,
       amount: selectedPackage.cents,
@@ -100,7 +100,7 @@ export const AuthorBetaReaders = () => {
       },
     };
 
-    ;(window as any).__pendingSubmission = {
+    JSON.parse(sessionStorage.getItem('pendingSubmission') ?? 'null');
       table: 'author_beta_reader_submissions',
       data: {
         author_name:      authorName.trim(),
