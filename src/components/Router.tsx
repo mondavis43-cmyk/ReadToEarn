@@ -120,6 +120,8 @@ if (route.startsWith('/tournament/')) {
 
 if (route === '/tournaments/create') return <Tournaments />;
 
+if (route === '/admin/fraud-dashboard') return <AdminRoute><AdminFraudDashboard /></AdminRoute>;  
+
 const KNOWN_ROUTES = [
   '/',
   '/home',
