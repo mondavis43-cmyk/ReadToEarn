@@ -69,20 +69,20 @@ export const TournamentDetail = ({ tournamentId }: { tournamentId: string }) => 
   const { navigateTo } = useNavigate();
 
   const textPrimary = isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]';
-  const textMuted = isDark ? 'text-[#F5F0E8]/70' : 'text-[#1B2A4A]/70';
-  const cardBg = isDark ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20' : 'bg-white border-[#D4A843]/30';
+  const textMuted   = isDark ? 'text-[#F5F0E8]/70' : 'text-[#1B2A4A]/70';
+  const cardBg      = isDark ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20' : 'bg-white border-[#D4A843]/30';
 
-  const [tournament, setTournament] = useState<Tournament | null>(null);
-  const [participants, setParticipants] = useState<Participant[]>([]);
-  const [user, setUser] = useState<any>(null);
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [hasJoined, setHasJoined] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [inviteInput, setInviteInput] = useState('');
-  const [inviteError, setInviteError] = useState('');
-  const [isCreator, setIsCreator] = useState(false);
-  const [distributing, setDistributing] = useState(false);
+  const [tournament, setTournament]       = useState<Tournament | null>(null);
+  const [participants, setParticipants]   = useState<Participant[]>([]);
+  const [user, setUser]                   = useState<any>(null);
+  const [userProfile, setUserProfile]     = useState<any>(null);
+  const [loading, setLoading]             = useState(true);
+  const [hasJoined, setHasJoined]         = useState(false);
+  const [copied, setCopied]               = useState(false);
+  const [inviteInput, setInviteInput]     = useState('');
+  const [inviteError, setInviteError]     = useState('');
+  const [isCreator, setIsCreator]         = useState(false);
+  const [distributing, setDistributing]   = useState(false);
   const [prizeDistributed, setPrizeDistributed] = useState(false);
 
   useEffect(() => {
@@ -127,27 +127,28 @@ export const TournamentDetail = ({ tournamentId }: { tournamentId: string }) => 
     if (!tournament) return;
     if (!user) { navigateTo('/login'); return; }
 
-    // Private tournament — validate invite code first
     if (!tournament.is_public && inviteInput.trim().toUpperCase() !== tournament.invite_code) {
       setInviteError('Invalid invite code.');
       return;
     }
 
-    window.__checkoutItem = {
-      type: 'tournament_entry',
-      label: `Tournament Entry — ${tournament.title}`,
+    sessionStorage.setItem('checkoutItem', JSON.stringify({
+      type:   'tournament_entry',
+      label:  `Tournament Entry — ${tournament.title}`,
       amount: tournament.entry_fee * 100,
       metadata: { tournament_id: tournament.id },
-    };
-    window.__pendingSubmission = {
+    }));
+
+    sessionStorage.setItem('pendingSubmission', JSON.stringify({
       table: 'tournament_participants',
       data: {
         tournament_id: tournament.id,
-        user_id: user.id,
-        display_name: userProfile?.display_name || user.email,
-        username: userProfile?.username || null,
+        user_id:       user.id,
+        display_name:  userProfile?.display_name || user.email,
+        username:      userProfile?.username || null,
       },
-    };
+    }));
+
     window.history.pushState({}, '', '/checkout');
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
@@ -159,27 +160,26 @@ export const TournamentDetail = ({ tournamentId }: { tournamentId: string }) => 
   };
 
   const handleDistributePrizes = async () => {
-  if (!tournament || distributing) return;
-  const confirmed = window.confirm(
-    'This will close the tournament and pay out winners. This cannot be undone. Continue?'
-  );
-  if (!confirmed) return;
+    if (!tournament || distributing) return;
+    const confirmed = window.confirm(
+      'This will close the tournament and pay out winners. This cannot be undone. Continue?'
+    );
+    if (!confirmed) return;
 
-  setDistributing(true);
-  try {
-    const { data, error } = await supabase.functions.invoke('distribute-tournament-prizes', {
-      body: { tournament_id: tournament.id },
-    });
-    if (error) throw new Error(error.message);
-    setPrizeDistributed(true);
-    // Refresh tournament data to show completed status
-    await loadTournament();
-  } catch (err: any) {
-    alert('Failed to distribute prizes: ' + err.message);
-  } finally {
-    setDistributing(false);
-  }
-};
+    setDistributing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('distribute-tournament-prizes', {
+        body: { tournament_id: tournament.id },
+      });
+      if (error) throw new Error(error.message);
+      setPrizeDistributed(true);
+      await loadAll(); // was loadTournament() -- fixed
+    } catch (err: any) {
+      alert('Failed to distribute prizes: ' + err.message);
+    } finally {
+      setDistributing(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -197,12 +197,12 @@ export const TournamentDetail = ({ tournamentId }: { tournamentId: string }) => 
     );
   }
 
-  const breakdown = prizeBreakdown(tournament.format, tournament.prize_pool);
-  const creatorName = resolveName(tournament.profiles?.username, tournament.profiles?.display_name, 'a reader');
+  const breakdown       = prizeBreakdown(tournament.format, tournament.prize_pool);
+  const creatorName     = resolveName(tournament.profiles?.username, tournament.profiles?.display_name, 'a reader');
   const participantCount = participants.length;
-  const spotsLeft = tournament.max_participants ? tournament.max_participants - participantCount : null;
-  const isFull = spotsLeft !== null && spotsLeft <= 0;
-  const canJoin = !hasJoined && !isFull && tournament.status === 'upcoming' && !isCreator;
+  const spotsLeft       = tournament.max_participants ? tournament.max_participants - participantCount : null;
+  const isFull          = spotsLeft !== null && spotsLeft <= 0;
+  const canJoin         = !hasJoined && !isFull && tournament.status === 'upcoming' && !isCreator;
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-[#0F1923]' : 'bg-[#FAF8F5]'}`}>
@@ -341,21 +341,21 @@ export const TournamentDetail = ({ tournamentId }: { tournamentId: string }) => 
         </div>
 
         {isCreator && tournament.status === 'active' && (
-  <button
-    onClick={handleDistributePrizes}
-    disabled={distributing}
-    className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-3 bg-[#D4A843] text-[#1B2A4A] rounded-xl text-sm font-semibold hover:bg-[#c49a3a] transition disabled:opacity-50"
-  >
-    <Trophy size={15} />
-    {distributing ? 'Distributing...' : 'Close & Distribute Prizes'}
-  </button>
-)}
+          <button
+            onClick={handleDistributePrizes}
+            disabled={distributing}
+            className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-3 bg-[#D4A843] text-[#1B2A4A] rounded-xl text-sm font-semibold hover:bg-[#c49a3a] transition disabled:opacity-50"
+          >
+            <Trophy size={15} />
+            {distributing ? 'Distributing...' : 'Close & Distribute Prizes'}
+          </button>
+        )}
 
-{prizeDistributed && (
-  <div className="mt-3 p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-sm text-center">
-    ✓ Prizes distributed successfully
-  </div>
-)}
+        {prizeDistributed && (
+          <div className="mt-3 p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-sm text-center">
+            ✓ Prizes distributed successfully
+          </div>
+        )}
 
         {/* Participants / Leaderboard */}
         <div className={`rounded-2xl border ${cardBg} p-6`}>
@@ -369,10 +369,10 @@ export const TournamentDetail = ({ tournamentId }: { tournamentId: string }) => 
           ) : (
             <div className="space-y-3">
               {participants.map((p, i) => {
-                const name = resolveName(p.username, p.display_name);
+                const name    = resolveName(p.username, p.display_name);
                 const initial = resolveInitial(p.username, p.display_name);
-                const rank = p.rank ?? i + 1;
-                const isMe = user && p.user_id === user.id;
+                const rank    = p.rank ?? i + 1;
+                const isMe    = user && p.user_id === user.id;
 
                 return (
                   <div key={p.id} className={`flex items-center gap-3 py-2 ${i < participants.length - 1 ? `border-b ${isDark ? 'border-[#D4A843]/10' : 'border-[#1B2A4A]/10'}` : ''}`}>
