@@ -18,8 +18,8 @@ interface Competition {
   entry_fee: number;
   prize_pool: number;
   is_sponsored: boolean;
-  starts_at: string | null;
-  ends_at: string | null;
+  start_date: string | null;
+  end_date: string | null;
   status: 'upcoming' | 'active' | 'completed' | 'canceled';
   created_at: string;
 }
@@ -27,8 +27,8 @@ interface Competition {
 interface NewCompetition {
   title: string;
   book_ids: string[];
-  starts_at: string;
-  ends_at: string;
+  start_date: string;
+  end_date: string;
   entry_fee: string;
   prize_pool: string;
   is_sponsored: boolean;
@@ -37,8 +37,8 @@ interface NewCompetition {
 const emptyComp: NewCompetition = {
   title: '',
   book_ids: [],
-  starts_at: '',
-  ends_at: '',
+  start_date: '',
+  end_date: '',
   entry_fee: '',
   prize_pool: '',
   is_sponsored: false,
@@ -177,7 +177,7 @@ export function AdminElimination() {
   }
 
   async function handleSave() {
-    if (!newComp.title || !newComp.starts_at || !newComp.ends_at || !newComp.entry_fee) {
+    if (!newComp.title || !newComp.start_date || !newComp.end_date || !newComp.entry_fee) {
       setError('Title, dates, and entry fee are required.');
       return;
     }
@@ -202,8 +202,8 @@ export function AdminElimination() {
         entry_fee: parseFloat(newComp.entry_fee),
         prize_pool: parseFloat(newComp.prize_pool) || 0,
         is_sponsored: newComp.is_sponsored,
-        starts_at: newComp.starts_at,
-        ends_at: newComp.ends_at,
+        start_date: newComp.start_date,
+        end_date: newComp.end_date,
         status: 'upcoming',
         pre_registration_count: 0,
       })
@@ -383,8 +383,8 @@ export function AdminElimination() {
               <input
                 type="date"
                 className={inputClass}
-                value={newComp.starts_at}
-                onChange={(e) => setNewComp({ ...newComp, starts_at: e.target.value })}
+                value={newComp.start_date}
+                onChange={(e) => setNewComp({ ...newComp, start_date: e.target.value })}
               />
             </div>
             <div>
@@ -392,8 +392,8 @@ export function AdminElimination() {
               <input
                 type="date"
                 className={inputClass}
-                value={newComp.ends_at}
-                onChange={(e) => setNewComp({ ...newComp, ends_at: e.target.value })}
+                value={newComp.end_date}
+                onChange={(e) => setNewComp({ ...newComp, end_date: e.target.value })}
               />
             </div>
           </div>
@@ -436,10 +436,10 @@ export function AdminElimination() {
                     <span className="text-[#D4A843] font-medium">
                       Prize pool: ${comp.prize_pool}
                     </span>
-                    {comp.starts_at && (
+                    {comp.start_date && (
                       <span className="text-[#6B7280] dark:text-gray-400">
-                        {new Date(comp.starts_at).toLocaleDateString()} -{' '}
-                        {comp.ends_at ? new Date(comp.ends_at).toLocaleDateString() : 'TBD'}
+                        {new Date(comp.start_date).toLocaleDateString()} -{' '}
+                        {comp.end_date ? new Date(comp.end_date).toLocaleDateString() : 'TBD'}
                       </span>
                     )}
                   </div>
