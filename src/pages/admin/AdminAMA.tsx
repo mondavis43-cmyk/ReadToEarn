@@ -21,8 +21,8 @@ interface AMASession {
   title: string;
   description: string | null;
   questions_close_at: string;
-  ama_starts_at: string;
-  ama_ends_at: string | null;
+  ama_start_date: string;
+  ama_end_date: string | null;
   status: 'open' | 'answering' | 'closed';
   created_at: string;
   books?: { title: string; author: string } | null;
@@ -56,8 +56,8 @@ interface NewSession {
   title: string;
   description: string;
   questions_close_at: string;
-  ama_starts_at: string;
-  ama_ends_at: string;
+  ama_start_date: string;
+  ama_end_date: string;
 }
 
 const emptySession: NewSession = {
@@ -66,8 +66,8 @@ const emptySession: NewSession = {
   title: '',
   description: '',
   questions_close_at: '',
-  ama_starts_at: '',
-  ama_ends_at: '',
+  ama_start_date: '',
+  ama_end_date: '',
 };
 
 type AdminTab = 'sessions' | 'requests';
@@ -103,7 +103,7 @@ export function AdminAMA() {
       supabase
         .from('ama_sessions')
         .select('*, books(title, author)')
-        .order('ama_starts_at', { ascending: false }),
+        .order('ama_start_date', { ascending: false }),
     ]);
 
     const { data: authorsData } = await supabase
@@ -163,7 +163,7 @@ export function AdminAMA() {
   }
 
   async function handleSave() {
-    if (!newSession.author_id || !newSession.title || !newSession.questions_close_at || !newSession.ama_starts_at) {
+    if (!newSession.author_id || !newSession.title || !newSession.questions_close_at || !newSession.ama_start_date) {
       setError('Author, title, and dates are required.');
       return;
     }
@@ -175,8 +175,8 @@ export function AdminAMA() {
       title: newSession.title,
       description: newSession.description || null,
       questions_close_at: newSession.questions_close_at,
-      ama_starts_at: newSession.ama_starts_at,
-      ama_ends_at: newSession.ama_ends_at || null,
+      ama_start_date: newSession.ama_start_date,
+      ama_end_date: newSession.ama_end_date || null,
       status: 'open',
     });
     if (err) { setError('Failed to save: ' + err.message); setSaving(false); return; }
@@ -459,8 +459,8 @@ export function AdminAMA() {
                   <input
                     type="datetime-local"
                     className={inputClass}
-                    value={newSession.ama_starts_at}
-                    onChange={(e) => setNewSession({ ...newSession, ama_starts_at: e.target.value })}
+                    value={newSession.ama_start_date}
+                    onChange={(e) => setNewSession({ ...newSession, ama_start_date: e.target.value })}
                   />
                 </div>
                 <div>
@@ -468,8 +468,8 @@ export function AdminAMA() {
                   <input
                     type="datetime-local"
                     className={inputClass}
-                    value={newSession.ama_ends_at}
-                    onChange={(e) => setNewSession({ ...newSession, ama_ends_at: e.target.value })}
+                    value={newSession.ama_end_date}
+                    onChange={(e) => setNewSession({ ...newSession, ama_end_date: e.target.value })}
                   />
                 </div>
               </div>
@@ -506,7 +506,7 @@ export function AdminAMA() {
                         <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-0.5">
                           {session.books ? `${session.books.title} · ` : 'General AMA · '}
                           Questions close {new Date(session.questions_close_at).toLocaleDateString()} ·
-                          AMA {new Date(session.ama_starts_at).toLocaleDateString()}
+                          AMA {new Date(session.ama_start_date).toLocaleDateString()}
                         </p>
                       </div>
                       <span className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 ${statusColor(session.status)}`}>
