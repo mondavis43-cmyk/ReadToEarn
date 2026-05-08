@@ -82,46 +82,46 @@ export const AuthorBetaReaders = () => {
 
   // ── checkout ───────────────────────────────────────────────
   const handleCheckout = () => {
-    if (!isFormValid()) {
-      setError('Please fill in all required fields and add at least one question.');
-      return;
-    }
-    setError('');
+  if (!isFormValid()) {
+    setError('Please fill in all required fields and add at least one question.');
+    return;
+  }
+  setError('');
 
-    const filledQuestions = questions.filter(q => q.question.trim());
+  const filledQuestions = questions.filter(q => q.question.trim());
 
-    JSON.parse(sessionStorage.getItem('checkoutItem') ?? 'null');
-      type: 'beta_readers',
-      label: `Beta Readers — ${selectedPackage.label} (${selectedPackage.readers} readers) — ${bookTitle}`,
-      amount: selectedPackage.cents,
-      metadata: {
-        package: selectedPackage.label,
-        readers: selectedPackage.readers,
-      },
-    };
+  sessionStorage.setItem('checkoutItem', JSON.stringify({
+    type: 'beta_readers',
+    label: `Beta Readers — ${selectedPackage.label} (${selectedPackage.readers} readers) — ${bookTitle}`,
+    amount: selectedPackage.cents,
+    metadata: {
+      package: selectedPackage.label,
+      readers: selectedPackage.readers,
+    },
+  }));
 
-    JSON.parse(sessionStorage.getItem('pendingSubmission') ?? 'null');
-      table: 'author_beta_reader_submissions',
-      data: {
-        author_name:      authorName.trim(),
-        email:            email.trim(),
-        book_title:       bookTitle.trim(),
-        genre,
-        package_label:    selectedPackage.label,
-        readers:          selectedPackage.readers,
-        price:            selectedPackage.price,
-        custom_questions: JSON.stringify(filledQuestions),
-        excerpt:          excerpt.trim(),
-        blurb:            blurb.trim(),
-        notes:            notes.trim(),
-        status:           'pending',
-      },
-    };
+  sessionStorage.setItem('pendingSubmission', JSON.stringify({
+    table: 'author_beta_reader_submissions',
+    data: {
+      author_name:      authorName.trim(),
+      email:            email.trim(),
+      book_title:       bookTitle.trim(),
+      genre,
+      package_label:    selectedPackage.label,
+      readers:          selectedPackage.readers,
+      price:            selectedPackage.price,
+      custom_questions: JSON.stringify(filledQuestions),
+      excerpt:          excerpt.trim(),
+      blurb:            blurb.trim(),
+      notes:            notes.trim(),
+      status:           'pending',
+    },
+  }));
 
-    window.history.pushState({}, '', '/checkout');
-    window.dispatchEvent(new PopStateEvent('popstate'));
-  };
-
+  window.history.pushState({}, '', '/checkout');
+  window.dispatchEvent(new PopStateEvent('popstate'));
+};
+  
   return (
     <div className={`min-h-screen ${pageBg} transition-colors duration-300`}>
 
