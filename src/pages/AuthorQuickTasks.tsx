@@ -32,7 +32,6 @@ export const AuthorQuickTasks = () => {
   const { isDark, toggleTheme } = useTheme();
 
   const [error, setError] = useState('');
-
   const [authorName, setAuthorName] = useState('');
   const [email, setEmail] = useState('');
   const [bookTitle, setBookTitle] = useState('');
@@ -59,7 +58,7 @@ export const AuthorQuickTasks = () => {
     }
     setError('');
 
-    (window as any).__checkoutItem = {
+    sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'quick_task',
       label: `${selectedType.label} — ${selectedPackage.label} (${selectedPackage.completions} readers) for "${bookTitle}"`,
       amount: selectedPackage.cents,
@@ -68,9 +67,9 @@ export const AuthorQuickTasks = () => {
         package: selectedPackage.label,
         completions: selectedPackage.completions,
       },
-    };
+    }));
 
-    (window as any).__pendingSubmission = {
+    sessionStorage.setItem('pendingSubmission', JSON.stringify({
       table: 'author_quick_task_submissions',
       data: {
         author_name: authorName,
@@ -84,7 +83,7 @@ export const AuthorQuickTasks = () => {
         notes: notes || null,
         status: 'active',
       },
-    };
+    }));
 
     window.history.pushState({}, '', '/checkout');
     window.dispatchEvent(new PopStateEvent('popstate'));
