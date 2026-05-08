@@ -8,8 +8,8 @@ type BoostBundle = {
   id: string;
   label: string;
   boosts: number;
-  amount: number; // cents
-  price: string;  // display
+  amount: number;
+  price: string;
   description: string;
   popular?: boolean;
 };
@@ -47,11 +47,11 @@ export const TimeBoosts = () => {
   const { navigateTo } = useNavigate();
 
   const textPrimary = isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]';
-  const textMuted = isDark ? 'text-[#F5F0E8]/70' : 'text-[#1B2A4A]/70';
-  const cardBg = isDark ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20' : 'bg-white border-[#D4A843]/30';
+  const textMuted   = isDark ? 'text-[#F5F0E8]/70' : 'text-[#1B2A4A]/70';
+  const cardBg      = isDark ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20' : 'bg-white border-[#D4A843]/30';
 
-  const [userId, setUserId] = useState<string | null>(null);
-  const [boostBalance, setBoostBalance] = useState<number | null>(null);
+  const [userId, setUserId]               = useState<string | null>(null);
+  const [boostBalance, setBoostBalance]   = useState<number | null>(null);
   const [loadingBalance, setLoadingBalance] = useState(true);
 
   useEffect(() => {
@@ -75,25 +75,25 @@ export const TimeBoosts = () => {
   const handleBuy = (bundle: BoostBundle) => {
     if (!userId) { navigateTo('/signup'); return; }
 
-    (window as any).__checkoutItem = {
-      type: 'time_boost',
-      label: `Time Boosts — ${bundle.label} (${bundle.boosts} boosts)`,
+    sessionStorage.setItem('checkoutItem', JSON.stringify({
+      type:   'time_boost',
+      label:  `Time Boosts — ${bundle.label} (${bundle.boosts} boosts)`,
       amount: bundle.amount,
       metadata: {
         bundle_id: bundle.id,
-        boosts: bundle.boosts,
+        boosts:    bundle.boosts,
       },
-    };
+    }));
 
-    (window as any).__pendingSubmission = {
+    sessionStorage.setItem('pendingSubmission', JSON.stringify({
       table: 'user_boost_purchases',
       data: {
-        user_id: userId,
-        bundle_id: bundle.id,
+        user_id:          userId,
+        bundle_id:        bundle.id,
         boosts_purchased: bundle.boosts,
-        amount_cents: bundle.amount,
+        amount_cents:     bundle.amount,
       },
-    };
+    }));
 
     window.history.pushState({}, '', '/checkout');
     window.dispatchEvent(new PopStateEvent('popstate'));
@@ -231,7 +231,7 @@ export const TimeBoosts = () => {
                 a: 'Yes. You can use as many boosts as you have in your inventory during a single quiz session.',
               },
               {
-                q: 'What happens if I run out of boosts mid-quiz?',
+                q: "What happens if I run out of boosts mid-quiz?",
                 a: "You can't purchase more during an active quiz. Buy a pack before you start if you're worried about time.",
               },
               {
