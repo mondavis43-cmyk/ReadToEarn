@@ -16,8 +16,8 @@ type Tournament = {
   is_public: boolean;
   invite_code: string;
   status: 'upcoming' | 'active' | 'completed';
-  starts_at: string;
-  ends_at: string;
+  start_date: string;
+  end_date: string;
   max_participants: number | null;
   profiles?: { display_name: string | null; username: string | null } | null;
 };
@@ -261,8 +261,8 @@ export const TournamentDetail = ({ tournamentId }: { tournamentId: string }) => 
               <Clock size={13} className="text-[#D4A843]" />
               <span className={`text-xs ${textMuted}`}>
                 {tournament.status === 'completed'
-                  ? `Ended ${new Date(tournament.ends_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-                  : `${tournament.status === 'active' ? 'Ends' : 'Starts'} ${new Date(tournament.status === 'active' ? tournament.ends_at : tournament.starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`}
+                  ? `Ended ${new Date(tournament.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                  : `${tournament.status === 'active' ? 'Ends' : 'Starts'} ${new Date(tournament.status === 'active' ? tournament.end_date : tournament.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`}
               </span>
             </div>
           </div>
