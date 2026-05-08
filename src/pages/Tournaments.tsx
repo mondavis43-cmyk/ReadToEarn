@@ -240,8 +240,8 @@ export const Tournaments = () => {
         is_public: isPublic,
         invite_code: code,
         max_participants: maxParticipants ? parseInt(maxParticipants) : null,
-        starts_at: new Date(startsAt).toISOString(),
-        ends_at: new Date(endsAt).toISOString(),
+        start_date: new Date(startsAt).toISOString(),
+        end_date: new Date(endsAt).toISOString(),
         status: 'upcoming',
         prize_pool: 0,
       })
