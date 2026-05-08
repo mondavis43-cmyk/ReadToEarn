@@ -218,7 +218,7 @@ export const CompetitionDetail = () => {
     sessionStorage.setItem('pendingSubmission', JSON.stringify({
       competition_id: competition.id,
       is_late_entry:  isLate,
-    };
+    }));
 
     if (preReg) {
       // Fix #4: update converted flag in type-specific table
