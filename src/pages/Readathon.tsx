@@ -168,7 +168,7 @@ export const Readathon = () => {
     sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'readathon_entry',
       label: `Read-A-Thon Entry: ${readathon.title}`,
-      amount: readathon.entry_fee,
+      amount: readathon.entry_fee * 100,
       metadata: { readathon_id: readathon.id },
     }));
     navigateTo('/checkout');
@@ -185,7 +185,7 @@ export const Readathon = () => {
     sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'readathon_entry',
       label: `Read-A-Thon Entry (Late): ${readathon.title}`,
-      amount: lateFee,
+      amount: lateFee * 100,
       metadata: { readathon_id: readathon.id },
     }));
     navigateTo('/checkout');
