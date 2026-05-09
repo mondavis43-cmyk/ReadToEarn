@@ -4,7 +4,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { User, Bell, Shield, CreditCard, FileText, Trash2, Eye, EyeOff, Check, X } from 'lucide-react';
 
-type Tab = 'payout' | 'tax' | 'account' | 'notifications' | 'danger';
+type Tab = 'tax' | 'account' | 'notifications' | 'danger';
 
 export const AccountSettings = () => {
   const { isDark, toggleTheme } = useTheme();
@@ -23,12 +23,6 @@ export const AccountSettings = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-
-  // Payout
-  const [payoutMethod, setPayoutMethod] = useState<'bank' | 'debit'>('bank');
-  const [routingNumber, setRoutingNumber] = useState('');
-  const [accountNumber, setAccountNumber] = useState('');
-  const [debitCard, setDebitCard] = useState('');
 
   // Tax
   const [taxIdType, setTaxIdType] = useState<'ssn' | 'ein'>('ssn');
@@ -113,16 +107,6 @@ export const AccountSettings = () => {
 
     const updates: Record<string, any> = {};
 
-    if (tab === 'payout') {
-      updates.payout_method = payoutMethod;
-      if (payoutMethod === 'bank') {
-        updates.routing_number = routingNumber;
-        updates.account_number = accountNumber;
-      } else {
-        updates.debit_card = debitCard;
-      }
-    }
-
     if (tab === 'tax') {
       updates.tax_id_type = taxIdType;
       updates.tax_id = taxId;
@@ -166,7 +150,6 @@ export const AccountSettings = () => {
   };
 
   const tabItems: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: 'payout', label: 'Payout', icon: <CreditCard size={15} /> },
     { key: 'tax', label: 'Tax', icon: <FileText size={15} /> },
     { key: 'account', label: 'Account', icon: <User size={15} /> },
     { key: 'notifications', label: 'Notifications', icon: <Bell size={15} /> },
@@ -219,48 +202,6 @@ export const AccountSettings = () => {
             </button>
           ))}
         </div>
-
-        {/* Payout Tab */}
-        {tab === 'payout' && (
-          <div className={`rounded-xl border p-6 space-y-5 ${cardBg}`}>
-            <h2 className={`font-serif text-xl ${textPrimary}`}>Payout Method</h2>
-            <p className={`text-sm ${textMuted}`}>Where should we send your earnings?</p>
-            <div className="flex gap-3">
-              {(['bank', 'debit'] as const).map(m => (
-                <button
-                  key={m}
-                  onClick={() => setPayoutMethod(m)}
-                  className={`px-4 py-2 text-sm rounded-lg border transition-colors ${
-                    payoutMethod === m
-                      ? 'bg-[#D4A843] text-[#1B2A4A] border-[#D4A843]'
-                      : isDark
-                      ? 'border-[#D4A843]/20 text-[#F5F0E8]/60'
-                      : 'border-[#1B2A4A]/20 text-[#1B2A4A]/60'
-                  }`}
-                >
-                  {m === 'bank' ? 'Bank Account' : 'Debit Card'}
-                </button>
-              ))}
-            </div>
-            {payoutMethod === 'bank' ? (
-              <>
-                <div>
-                  <label className={`block text-xs mb-1.5 ${textMuted}`}>Routing Number</label>
-                  <input className={inputClass} value={routingNumber} onChange={e => setRoutingNumber(e.target.value)} placeholder="9 digits" maxLength={9} />
-                </div>
-                <div>
-                  <label className={`block text-xs mb-1.5 ${textMuted}`}>Account Number</label>
-                  <input className={inputClass} value={accountNumber} onChange={e => setAccountNumber(e.target.value)} placeholder="Account number" />
-                </div>
-              </>
-            ) : (
-              <div>
-                <label className={`block text-xs mb-1.5 ${textMuted}`}>Debit Card Number</label>
-                <input className={inputClass} value={debitCard} onChange={e => setDebitCard(e.target.value)} placeholder="16-digit card number" maxLength={16} />
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Tax Tab */}
         {tab === 'tax' && (
