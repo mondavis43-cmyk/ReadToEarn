@@ -65,7 +65,7 @@ export const Elimination = () => {
     const { data } = await supabase
       .from('competitions')
       .select('*')
-      .eq('type', 'elimination')
+      .eq('type', 'Elimination Bracket')
       .eq('status', statusMap[tab])
       .eq('is_sponsored', false)
       .order('start_date', { ascending: true });
@@ -73,7 +73,7 @@ export const Elimination = () => {
     const { data: sponsoredData } = await supabase
       .from('competitions')
       .select('*')
-      .eq('type', 'elimination')
+      .eq('type', 'Elimination Bracket')
       .eq('status', statusMap[tab])
       .eq('is_sponsored', true)
       .order('start_date', { ascending: true });
