@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Zap, Trophy, Users, Plus, Play, Square, ChevronDown, ChevronUp, DollarSign } from 'lucide-react';
+import { Zap, Trophy, Users, Plus, Play, Square, ChevronDown, ChevronUp, DollarSign, Trash2 } from 'lucide-react';
 
 interface Sprint {
   id: string;
@@ -153,6 +153,12 @@ export function AdminSprints() {
       });
     }
 
+    load();
+  };
+
+  const handleDelete = async (id: string, title: string) => {
+    if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    await supabase.from('sprints').delete().eq('id', id);
     load();
   };
 
@@ -486,6 +492,13 @@ export function AdminSprints() {
                       {s.winner_paid_at && (
                         <span className="text-xs text-green-400 font-medium">✓ Paid</span>
                       )}
+                      <button
+                        onClick={() => handleDelete(s.id, s.title)}
+                        className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-500/10 transition-colors"
+                        title="Delete sprint"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                       <button
                         onClick={() => toggleExpand(s.id)}
                         className="p-1.5 rounded-lg text-[#6B7280] hover:text-[#1B2A4A] dark:hover:text-[#F5F0E8] transition-colors"
