@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Trophy, Users, BookOpen, Plus, Play, Square, ChevronDown, ChevronUp, DollarSign } from 'lucide-react';
+import { Trophy, Users, BookOpen, Plus, Play, Square, ChevronDown, ChevronUp, DollarSign, Trash2 } from 'lucide-react';
 
 interface Readathon {
   id: string;
@@ -151,6 +151,12 @@ export function AdminReadathon() {
       });
     }
 
+    load();
+  };
+
+  const handleDelete = async (id: string, title: string) => {
+    if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    await supabase.from('readathons').delete().eq('id', id);
     load();
   };
 
@@ -474,6 +480,13 @@ export function AdminReadathon() {
                           {payingOut === r.id ? 'Paying...' : 'Close & Pay Out'}
                         </button>
                       )}
+                      <button
+                        onClick={() => handleDelete(r.id, r.title)}
+                        className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-500/10 transition-colors"
+                        title="Delete readathon"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                       <button
                         onClick={() => toggleExpand(r.id)}
                         className="p-1.5 rounded-lg text-[#6B7280] hover:text-[#1B2A4A] dark:hover:text-[#F5F0E8] transition-colors"
