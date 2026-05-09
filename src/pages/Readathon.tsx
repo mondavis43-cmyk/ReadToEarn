@@ -160,34 +160,34 @@ export const Readathon = () => {
   };
 
   const handleEnter = (readathon: Readathon) => {
-    window.pendingSubmission = {
+    sessionStorage.setItem('pendingSubmission', JSON.stringify({
       type: 'readathon_entry',
       readathon_id: readathon.id,
       entry_fee: readathon.entry_fee,
-    };
-    window.checkoutItem = {
-      name: `Read-A-Thon Entry: ${readathon.title}`,
-      price: readathon.entry_fee,
+    }));
+    sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'readathon_entry',
-      referenceId: readathon.id,
-    };
+      label: `Read-A-Thon Entry: ${readathon.title}`,
+      amount: readathon.entry_fee,
+      metadata: { readathon_id: readathon.id },
+    }));
     navigateTo('/checkout');
   };
 
   const handleLateEnter = (readathon: Readathon) => {
     const lateFee = readathon.entry_fee * 2;
-    window.pendingSubmission = {
+    sessionStorage.setItem('pendingSubmission', JSON.stringify({
       type: 'readathon_entry',
       readathon_id: readathon.id,
       entry_fee: lateFee,
       is_late: true,
-    };
-    window.checkoutItem = {
-      name: `Read-A-Thon Entry (Late): ${readathon.title}`,
-      price: lateFee,
+    }));
+    sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'readathon_entry',
-      referenceId: readathon.id,
-    };
+      label: `Read-A-Thon Entry (Late): ${readathon.title}`,
+      amount: lateFee,
+      metadata: { readathon_id: readathon.id },
+    }));
     navigateTo('/checkout');
   };
 
