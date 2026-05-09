@@ -16,6 +16,7 @@ interface Readathon {
   first_place_pct: number;
   second_place_pct: number;
   third_place_pct: number;
+  is_sponsored: boolean;
   status: 'upcoming' | 'active' | 'completed' | 'canceled';
 }
 
@@ -160,6 +161,15 @@ export const Readathon = () => {
   };
 
   const handleEnter = (readathon: Readathon) => {
+    if (readathon.is_sponsored) {
+      supabase.from('readathon_entries').insert({
+        readathon_id: readathon.id,
+        entry_fee_paid: 0,
+        paid_at: new Date().toISOString(),
+        status: 'active',
+      }).then(() => navigateTo('/readathon'));
+      return;
+    }
     sessionStorage.setItem('pendingSubmission', JSON.stringify({
       type: 'readathon_entry',
       readathon_id: readathon.id,
@@ -175,6 +185,15 @@ export const Readathon = () => {
   };
 
   const handleLateEnter = (readathon: Readathon) => {
+    if (readathon.is_sponsored) {
+      supabase.from('readathon_entries').insert({
+        readathon_id: readathon.id,
+        entry_fee_paid: 0,
+        paid_at: new Date().toISOString(),
+        status: 'active',
+      }).then(() => navigateTo('/readathon'));
+      return;
+    }
     const lateFee = readathon.entry_fee * 2;
     sessionStorage.setItem('pendingSubmission', JSON.stringify({
       type: 'readathon_entry',
