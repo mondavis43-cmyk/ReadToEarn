@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase';
 type Competition = {
   id: string;
   title: string;
-  format: 'elimination';
+  type: 'elimination';
   book_title?: string;
   book_author?: string;
   entry_fee: number;
@@ -65,7 +65,7 @@ export const Elimination = () => {
     const { data } = await supabase
       .from('competitions')
       .select('*')
-      .eq('format', 'elimination')
+      .eq('type', 'elimination')
       .eq('status', statusMap[tab])
       .eq('is_sponsored', false)
       .order('start_date', { ascending: true });
@@ -73,7 +73,7 @@ export const Elimination = () => {
     const { data: sponsoredData } = await supabase
       .from('competitions')
       .select('*')
-      .eq('format', 'elimination')
+      .eq('type', 'elimination')
       .eq('status', statusMap[tab])
       .eq('is_sponsored', true)
       .order('start_date', { ascending: true });
@@ -130,6 +130,16 @@ export const Elimination = () => {
   };
 
   const handleEnter = (competition: Competition) => {
+    if (competition.is_sponsored) {
+      supabase.from('competition_entries').insert({
+        competition_id: competition.id,
+        entry_fee_paid: 0,
+        is_late_entry: false,
+        paid_at: new Date().toISOString(),
+        status: 'active',
+      }).then(() => navigateTo(`/elimination`));
+      return;
+    }
     sessionStorage.setItem('pendingSubmission', JSON.stringify({
       type: 'competition_entry',
       competition_id: competition.id,
@@ -145,6 +155,16 @@ export const Elimination = () => {
   };
 
   const handleLateEnter = (competition: Competition) => {
+    if (competition.is_sponsored) {
+      supabase.from('competition_entries').insert({
+        competition_id: competition.id,
+        entry_fee_paid: 0,
+        is_late_entry: true,
+        paid_at: new Date().toISOString(),
+        status: 'active',
+      }).then(() => navigateTo(`/elimination`));
+      return;
+    }
     const lateFee = competition.entry_fee * 2;
     sessionStorage.setItem('pendingSubmission', JSON.stringify({
       type: 'competition_entry',
