@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
-import { ArrowLeft, DollarSign, Gift, Trophy, Target, BookCheck, Star } from 'lucide-react';
+import { ArrowLeft, DollarSign, Gift, Trophy, Target, BookCheck, Star, Wallet } from 'lucide-react';
 
 interface Profile {
   email: string;
@@ -16,6 +16,8 @@ interface Profile {
   accuracy_rate: number;
   wins_count: number;
   completed_this_month: number;
+  payout_email: string | null;
+  payout_method: 'paypal' | 'wise' | null;
 }
 
 interface CompletedBook {
@@ -33,13 +35,21 @@ export const Profile = () => {
   const { user } = useAuth();
   const { navigateTo } = useNavigate();
   const { isDark } = useTheme();
-  const [profile, setProfile]               = useState<Profile | null>(null);
-  const [completedBooks, setCompletedBooks] = useState<CompletedBook[]>([]);
-  const [loading, setLoading]               = useState(true);
-  const [birthdayInput, setBirthdayInput]   = useState('');
-  const [savingBirthday, setSavingBirthday] = useState(false);
-  const [birthdaySuccess, setBirthdaySuccess] = useState(false);
-  const [birthdayError, setBirthdayError]   = useState('');
+
+  const [profile, setProfile]                   = useState<Profile | null>(null);
+  const [completedBooks, setCompletedBooks]     = useState<CompletedBook[]>([]);
+  const [loading, setLoading]                   = useState(true);
+  const [birthdayInput, setBirthdayInput]       = useState('');
+  const [savingBirthday, setSavingBirthday]     = useState(false);
+  const [birthdaySuccess, setBirthdaySuccess]   = useState(false);
+  const [birthdayError, setBirthdayError]       = useState('');
+
+  // Payout state
+  const [payoutEmail, setPayoutEmail]           = useState('');
+  const [payoutMethod, setPayoutMethod]         = useState<'paypal' | 'wise'>('paypal');
+  const [savingPayout, setSavingPayout]         = useState(false);
+  const [payoutSaved, setPayoutSaved]           = useState(false);
+  const [payoutError, setPayoutError]           = useState('');
 
   const get1099Warning = () => {
     if (!profile) return null;
@@ -67,9 +77,9 @@ export const Profile = () => {
 
     if (profileResult.data) {
       setProfile(profileResult.data);
-      if (profileResult.data.birthday) {
-        setBirthdayInput(profileResult.data.birthday);
-      }
+      if (profileResult.data.birthday) setBirthdayInput(profileResult.data.birthday);
+      if (profileResult.data.payout_email)  setPayoutEmail(profileResult.data.payout_email);
+      if (profileResult.data.payout_method) setPayoutMethod(profileResult.data.payout_method);
     }
 
     if (completedResult.data) {
@@ -95,37 +105,50 @@ export const Profile = () => {
     setSavingBirthday(false);
   };
 
+  const handleSavePayout = async () => {
+    if (!user) return;
+    if (!payoutEmail.trim()) { setPayoutError('Please enter an email address.'); return; }
+    setSavingPayout(true);
+    setPayoutError('');
+    const { error } = await supabase
+      .from('profiles')
+      .update({ payout_email: payoutEmail.trim(), payout_method: payoutMethod })
+      .eq('id', user.id);
+    if (!error) {
+      setPayoutSaved(true);
+      setTimeout(() => setPayoutSaved(false), 2500);
+      await loadProfile();
+    } else {
+      setPayoutError('Could not save payout info.');
+    }
+    setSavingPayout(false);
+  };
+
   const handleUpgrade = () => {
     sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'subscription',
       label: 'Membership — Monthly',
       amount: 499,
-      metadata: {
-        plan: 'monthly',
-        user_id: user?.id,
-      },
+      metadata: { plan: 'monthly', user_id: user?.id },
     }));
-
     sessionStorage.setItem('pendingSubmission', JSON.stringify({
       table: 'subscriptions',
-      data: {
-        user_id: user?.id,
-        plan: 'monthly',
-        status: 'active',
-      },
+      data: { user_id: user?.id, plan: 'monthly', status: 'active' },
     }));
-
     window.history.pushState({}, '', '/checkout');
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
   // Theme tokens
-  const bg           = isDark ? 'bg-[#1B2A4A]'        : 'bg-[#F5F0E8]';
-  const cardBg       = isDark ? 'bg-[#162238]'         : 'bg-white';
-  const cardBorder   = isDark ? 'border-[#F5F0E8]/10'  : 'border-[#1B2A4A]/10';
-  const headingColor = isDark ? 'text-[#F5F0E8]'       : 'text-[#1B2A4A]';
-  const subColor     = isDark ? 'text-[#F5F0E8]/50'    : 'text-[#1B2A4A]/50';
-  const dividerColor = isDark ? 'border-[#F5F0E8]/10'  : 'border-[#1B2A4A]/10';
+  const bg           = isDark ? 'bg-[#1B2A4A]'       : 'bg-[#F5F0E8]';
+  const cardBg       = isDark ? 'bg-[#162238]'        : 'bg-white';
+  const cardBorder   = isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10';
+  const headingColor = isDark ? 'text-[#F5F0E8]'      : 'text-[#1B2A4A]';
+  const subColor     = isDark ? 'text-[#F5F0E8]/50'   : 'text-[#1B2A4A]/50';
+  const dividerColor = isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10';
+  const inputClass   = isDark
+    ? 'bg-[#1B2A4A] border-white/10 text-white placeholder-white/30'
+    : 'bg-gray-50 border-black/10 text-[#1B2A4A] placeholder-black/30';
 
   if (loading) return (
     <div className={`min-h-screen ${bg} flex items-center justify-center`}>
@@ -160,7 +183,7 @@ export const Profile = () => {
           </div>
         )}
 
-        {/* Giveaway Banner — upgraded members only */}
+        {/* Giveaway Banner */}
         {profile?.is_upgraded && (
           <div className="rounded-xl border border-[#D4A843]/40 bg-[#D4A843]/10 p-4 flex items-center gap-3">
             <Gift className="w-5 h-5 text-[#D4A843] flex-shrink-0" />
@@ -243,6 +266,74 @@ export const Profile = () => {
           </div>
         </div>
 
+        {/* Payout Settings */}
+        <div className={`${cardBg} rounded-xl p-6 border ${cardBorder}`}>
+          <h3 className={`text-sm font-bold ${headingColor} mb-1 flex items-center gap-2`}>
+            <Wallet className="w-4 h-4 text-[#D4A843]" /> Payout Settings
+          </h3>
+          <p className={`text-xs ${subColor} mb-4`}>
+            Where should we send your earnings? Used for cashouts, bounty rewards, and competition prizes.
+          </p>
+
+          {/* Method picker */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setPayoutMethod('paypal')}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition ${
+                payoutMethod === 'paypal'
+                  ? 'bg-[#FFC439] text-[#003087] border-[#FFC439]'
+                  : isDark
+                    ? 'bg-transparent text-white/50 border-white/10 hover:border-white/30'
+                    : 'bg-transparent text-black/40 border-black/10 hover:border-black/30'
+              }`}
+            >
+              🅿 PayPal
+            </button>
+            <button
+              onClick={() => setPayoutMethod('wise')}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition ${
+                payoutMethod === 'wise'
+                  ? 'bg-[#9FE870] text-[#163300] border-[#9FE870]'
+                  : isDark
+                    ? 'bg-transparent text-white/50 border-white/10 hover:border-white/30'
+                    : 'bg-transparent text-black/40 border-black/10 hover:border-black/30'
+              }`}
+            >
+              🌍 Wise
+            </button>
+          </div>
+
+          {/* Email input */}
+          <div className="mb-4">
+            <label className={`block text-xs font-medium ${subColor} mb-1.5`}>
+              {payoutMethod === 'paypal' ? 'PayPal Email' : 'Wise Email'}
+            </label>
+            <input
+              type="email"
+              value={payoutEmail}
+              onChange={(e) => { setPayoutEmail(e.target.value); setPayoutError(''); }}
+              placeholder={`Email linked to your ${payoutMethod === 'paypal' ? 'PayPal' : 'Wise'} account`}
+              className={`w-full p-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A843]/40 ${inputClass}`}
+            />
+          </div>
+
+          {payoutError && <p className="text-red-400 text-xs mb-3">{payoutError}</p>}
+
+          <button
+            onClick={handleSavePayout}
+            disabled={savingPayout}
+            className="w-full py-2.5 bg-[#D4A843] text-[#1B2A4A] font-bold rounded-lg text-sm hover:bg-[#c49a38] transition disabled:opacity-50"
+          >
+            {savingPayout ? 'Saving...' : payoutSaved ? '✓ Saved' : 'Save Payout Info'}
+          </button>
+
+          {payoutMethod === 'wise' && (
+            <p className={`text-xs ${subColor} mt-2`}>
+              Wise is used for international payouts. Make sure the email matches your Wise account exactly.
+            </p>
+          )}
+        </div>
+
         {/* Birthday & Streak */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className={`${cardBg} rounded-xl p-6 border ${cardBorder}`}>
@@ -255,7 +346,7 @@ export const Profile = () => {
               onChange={(e) => setBirthdayInput(e.target.value)}
               className={`w-full mb-3 p-2 rounded border ${isDark ? 'bg-[#1B2A4A] border-white/10 text-white' : 'bg-gray-50 border-black/10'}`}
             />
-            {birthdayError && <p className="text-red-400 text-xs mb-2">{birthdayError}</p>}
+            {birthdayError   && <p className="text-red-400 text-xs mb-2">{birthdayError}</p>}
             {birthdaySuccess && <p className="text-green-400 text-xs mb-2">Birthday saved!</p>}
             <button
               onClick={handleSaveBirthday}
