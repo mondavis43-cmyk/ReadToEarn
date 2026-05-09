@@ -100,17 +100,8 @@ export default function QuickTasks() {
       return;
     }
 
-    // Credit balance
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('available_balance')
-      .eq('id', user.id)
-      .single();
-
-    await supabase
-      .from('profiles')
-      .update({ available_balance: (profile?.available_balance ?? 0) + earned })
-      .eq('id', user.id);
+    // Credit balance atomically
+    await supabase.rpc('increment_site_credit', { user_id: user.id, amount: earned });
 
     await supabase.from('payout_logs').insert({
       user_id: user.id,
