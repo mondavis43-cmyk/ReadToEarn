@@ -49,12 +49,14 @@ const REPORT_REASONS = [
 ];
 
 const seededShuffle = <T,>(arr: T[], seed: string): T[] => {
-const hash = seed.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-return [...arr].sort((a, b) => {
-  const hashA = (JSON.stringify(a) + seed).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const hashB = (JSON.stringify(b) + seed).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  return (hashA % 4) - (hashB % 4);
-});
+  const result = [...arr];
+  let s = seed.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const rand = () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0x100000000; };
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
 };
 
 const formatTime = (seconds: number) => {
