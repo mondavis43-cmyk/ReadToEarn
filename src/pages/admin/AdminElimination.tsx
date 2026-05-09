@@ -169,7 +169,7 @@ export function AdminElimination() {
       supabase
         .from('competitions')
         .select('*')
-        .eq('type', 'elimination')
+        .eq('type', 'Elimination Bracket')
         .order('created_at', { ascending: false }),
     ]);
     setBooks(booksData || []);
