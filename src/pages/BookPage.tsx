@@ -311,6 +311,21 @@ export const BookPage = () => {
                 <div className={`w-full aspect-[2/3] ${isDark ? 'bg-[#F5F0E8]/5' : 'bg-[#1B2A4A]/5'}`} />
               )}
             </div>
+            {book.geniuslink_url && (
+              <a
+                href={book.geniuslink_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`mt-3 w-48 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border text-sm transition ${
+                  isDark
+                    ? 'bg-[#F5F0E8]/5 border-[#F5F0E8]/15 hover:border-[#F5F0E8]/30 text-[#F5F0E8]'
+                    : 'bg-[#1B2A4A]/5 border-[#1B2A4A]/15 hover:border-[#1B2A4A]/30 text-[#1B2A4A]'
+                }`}
+              >
+                <ExternalLink className="w-4 h-4" />
+                Buy This Book
+              </a>
+            )}
           </div>
 
           {/* Details */}
@@ -396,13 +411,13 @@ export const BookPage = () => {
                 </div>
               )}
 
-              {/* Quiz unlocked — Play button */}
+              {/* Quiz unlocked — Take Quiz button */}
               {quizUnlocked && !isCompleted && (
                 <button
                   onClick={() => navigateTo(`/quiz/${book.id}`)}
                   className="w-full py-3 rounded-xl bg-[#D4A843] hover:bg-[#D4A843]/90 text-[#1B2A4A] font-semibold text-sm transition"
                 >
-                  Play Quiz
+                  Take Quiz
                 </button>
               )}
 
@@ -573,44 +588,19 @@ export const BookPage = () => {
               )}
             </div>
 
-            {/* Actions */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              {book.geniuslink_url && (
-                <a
-                  href={book.geniuslink_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg border transition ${
-                    isDark
-                      ? 'bg-[#F5F0E8]/5 border-[#F5F0E8]/15 hover:border-[#F5F0E8]/30 text-[#F5F0E8]'
-                      : 'bg-[#1B2A4A]/5 border-[#1B2A4A]/15 hover:border-[#1B2A4A]/30 text-[#1B2A4A]'
-                  }`}
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  Buy This Book
-                </a>
-              )}
-
-              {isCompleted ? (
-                <div
-                  className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg border ${
-                    isDark
-                      ? 'bg-[#D4A843]/10 border-[#D4A843]/30 text-[#D4A843]'
-                      : 'bg-[#D4A843]/15 border-[#D4A843]/40 text-[#D4A843]'
-                  }`}
-                >
-                  <Check className="w-4 h-4" />
-                  Completed
-                </div>
-              ) : quizUnlocked ? (
-                <button
-                  onClick={() => navigateTo(`/quiz/${book.id}`)}
-                  className="px-6 py-3 bg-[#D4A843] text-[#1B2A4A] font-semibold rounded-lg hover:bg-[#D4A843]/90 transition"
-                >
-                  Take the Quiz
-                </button>
-              ) : null}
-            </div>
+            {/* Completed badge */}
+            {isCompleted && (
+              <div
+                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg border ${
+                  isDark
+                    ? 'bg-[#D4A843]/10 border-[#D4A843]/30 text-[#D4A843]'
+                    : 'bg-[#D4A843]/15 border-[#D4A843]/40 text-[#D4A843]'
+                }`}
+              >
+                <Check className="w-4 h-4" />
+                Completed
+              </div>
+            )}
           </div>
         </div>
       </main>
