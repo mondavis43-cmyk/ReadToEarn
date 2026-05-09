@@ -195,7 +195,7 @@ export function AdminCompetitions() {
   useEffect(() => {
     setSprintBook([]);
     setElimBooks([]);
-  }, [newComp.format]);
+  }, [newComp.type]);
 
   async function loadData() {
     const [{ data: booksData }, { data: compsData }] = await Promise.all([
@@ -207,15 +207,18 @@ export function AdminCompetitions() {
   }
 
   async function handleSave() {
-    if (!newComp.title || !newComp.start_date || !newComp.end_date || !newComp.entry_fee) {
+    // Logic: Entry fee is only required if NOT sponsored
+    const feeRequired = !newComp.is_sponsored;
+    
+    if (!newComp.title || !newComp.start_date || !newComp.end_date || (feeRequired && !newComp.entry_fee)) {
       setError('Title, dates, and entry fee are required.');
       return;
     }
-    if (newComp.format === 'sprint' && sprintBook.length === 0) {
+    if (newComp.type === 'sprint' && sprintBook.length === 0) {
       setError('Please select a book for Sprint.');
       return;
     }
-    if (newComp.format === 'elimination' && elimBooks.length < 3) {
+    if (newComp.type === 'elimination' && elimBooks.length < 3) {
       setError('Please select exactly 3 books for Elimination.');
       return;
     }
@@ -227,20 +230,18 @@ export function AdminCompetitions() {
     let bookAuthor: string | null = null;
     let authorId: string | null = null;
 
-    if (newComp.format === 'sprint' && sprintBook[0]) {
+    if (newComp.type === 'sprint' && sprintBook[0]) {
       bookTitle = sprintBook[0].title;
       bookAuthor = sprintBook[0].author;
-      // Look up the book owner's user_id to store as author_id
       const { data: bookRow } = await supabase
         .from('books')
         .select('user_id')
         .eq('id', sprintBook[0].id)
         .single();
       authorId = bookRow?.user_id ?? null;
-    } else if (newComp.format === 'elimination') {
+    } else if (newComp.type === 'elimination') {
       bookTitle = elimBooks.map(b => b.title).join(', ');
       bookAuthor = elimBooks.map(b => b.author).join(', ');
-      // For elimination, use the first book's owner
       const { data: bookRow } = await supabase
         .from('books')
         .select('user_id')
@@ -250,12 +251,12 @@ export function AdminCompetitions() {
     }
 
     const { data: newCompRow, error: err } = await supabase.from('competitions').insert({
-      format: newComp.format,
+      type: newComp.type, // Changed from format to type to match DB column
       title: newComp.title,
       book_title: bookTitle,
       book_author: bookAuthor,
       author_id: authorId,
-      entry_fee: parseFloat(newComp.entry_fee),
+      entry_fee: newComp.is_sponsored ? 0 : parseFloat(newComp.entry_fee),
       prize_pool: parseFloat(newComp.prize_pool) || 0,
       is_sponsored: newComp.is_sponsored,
       start_date: newComp.start_date,
@@ -266,7 +267,6 @@ export function AdminCompetitions() {
 
     if (err) { setError('Failed to save: ' + err.message); setSaving(false); return; }
 
-    // #11: notify subscribers
     if (newCompRow) {
       await supabase.rpc('notify_subscribers_new_earning', {
         p_type: 'competition',
@@ -318,7 +318,7 @@ export function AdminCompetitions() {
   const statusColor = (status: Competition['status']) => {
     if (status === 'active') return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
     if (status === 'upcoming') return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
-    if (status === 'canceled') return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+    if (status === 'canceled') return 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400';
     return 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400';
   };
 
@@ -332,7 +332,7 @@ export function AdminCompetitions() {
         </div>
       )}
       {success && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-4 py-3 text-green-700 dark:text-green-400 text-sm flex items-center jus">
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-4 py-3 text-green-700 dark:text-green-400 text-sm flex items-center justify-between">
           {success}<button onClick={() => setSuccess('')}><X size={14} /></button>
         </div>
       )}
@@ -370,8 +370,8 @@ export function AdminCompetitions() {
             <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Format</label>
             <select
               className={inputClass}
-              value={newComp.format}
-              onChange={e => setNewComp({ ...newComp, format: e.target.value })}
+              value={newComp.type}
+              onChange={e => setNewComp({ ...newComp, type: e.target.value })}
             >
               {COMPETITION_FORMATS.map(f => (
                 <option key={f.value} value={f.value}>{f.label}</option>
@@ -391,7 +391,7 @@ export function AdminCompetitions() {
           </div>
 
           {/* Book – Sprint: single searchable */}
-          {newComp.format === 'sprint' && (
+          {newComp.type === 'sprint' && (
             <div>
               <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
                 Book <span className="text-red-400">*</span>
@@ -408,7 +408,7 @@ export function AdminCompetitions() {
           )}
 
           {/* Book – Read-A-Thon: untouched */}
-          {newComp.format === 'readathon' && (
+          {newComp.type === 'readathon' && (
             <div>
               <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
                 Book (optional for Read-A-Thon)
@@ -427,7 +427,7 @@ export function AdminCompetitions() {
           )}
 
           {/* Book – Elimination: multi searchable, exactly 3 */}
-          {newComp.format === 'elimination' && (
+          {newComp.type === 'elimination' && (
             <div>
               <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
                 Books <span className="text-red-400">*</span>
@@ -452,9 +452,10 @@ export function AdminCompetitions() {
                 type="number"
                 min="0"
                 step="0.01"
-                className={inputClass}
-                placeholder="e.g. 5.00"
-                value={newComp.entry_fee}
+                className={`${inputClass} ${newComp.is_sponsored ? 'opacity-50 cursor-not-allowed' : ''}`}
+                placeholder={newComp.is_sponsored ? 'Free' : 'e.g. 5.00'}
+                value={newComp.is_sponsored ? '' : newComp.entry_fee}
+                disabled={newComp.is_sponsored}
                 onChange={e => setNewComp({ ...newComp, entry_fee: e.target.value })}
               />
             </div>
@@ -478,7 +479,14 @@ export function AdminCompetitions() {
               type="checkbox"
               id="is_sponsored"
               checked={newComp.is_sponsored}
-              onChange={e => setNewComp({ ...newComp, is_sponsored: e.target.checked })}
+              onChange={e => {
+                const checked = e.target.checked;
+                setNewComp({ 
+                  ...newComp, 
+                  is_sponsored: checked,
+                  entry_fee: checked ? '0' : newComp.entry_fee 
+                });
+              }}
               className="accent-[#D4A843] w-4 h-4"
             />
             <label htmlFor="is_sponsored" className="text-sm text-[#1B2A4A] dark:text-[#F5F0E8]">
@@ -537,7 +545,7 @@ export function AdminCompetitions() {
                 <div className="flex-1">
                   <p className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8]">{comp.title}</p>
                   <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-0.5">
-                    {comp.format}{comp.book_title ? ` · ${comp.book_title}` : ''}
+                    {comp.type}{comp.book_title ? ` · ${comp.book_title}` : ''}
                     {comp.is_sponsored ? ' · Sponsored' : ''}
                   </p>
                 </div>
@@ -550,11 +558,9 @@ export function AdminCompetitions() {
                   </span>
                 </div>
                 {comp.start_date && (
-                  <span className="text-[#6B7280] dark:text-gray-400">
-                    <span>
-                      {new Date(comp.start_date).toLocaleDateString()} -{' '}
-                      {comp.end_date ? new Date(comp.end_date).toLocaleDateString() : 'TBD'}
-                    </span>
+                  <span className="text-[#6B7280] dark:text-gray-400 text-xs">
+                    {new Date(comp.start_date).toLocaleDateString()} -{' '}
+                    {comp.end_date ? new Date(comp.end_date).toLocaleDateString() : 'TBD'}
                   </span>
                 )}
                 <span className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 ${statusColor(comp.status)}`}>
