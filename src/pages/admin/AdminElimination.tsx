@@ -195,7 +195,7 @@ export function AdminElimination() {
     const { data: newCompRow, error: err } = await supabase
       .from('competitions')
       .insert({
-        type: 'elimination',
+        type: 'Elimination Bracket',
         title: newComp.title,
         book_title: bookTitle,
         book_author: bookAuthor,
