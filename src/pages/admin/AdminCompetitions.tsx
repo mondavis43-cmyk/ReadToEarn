@@ -37,7 +37,7 @@ interface NewCompetition {
   is_sponsored: boolean;
 }
 
-const COMPETITION_FORMATS = [
+const COMPETITION_TYPES = [
   { value: 'sprint', label: 'Sprint' },
   { value: 'readathon', label: 'Read-A-Thon' },
   { value: 'elimination', label: 'Elimination Bracket' },
@@ -191,7 +191,7 @@ export function AdminCompetitions() {
 
   useEffect(() => { loadData(); }, []);
 
-  // Reset book selections when format changes
+  // Reset book selections when type changes
   useEffect(() => {
     setSprintBook([]);
     setElimBooks([]);
@@ -251,7 +251,7 @@ export function AdminCompetitions() {
     }
 
     const { data: newCompRow, error: err } = await supabase.from('competitions').insert({
-      type: newComp.type, // Changed from format to type to match DB column
+      type: newComp.type,
       title: newComp.title,
       book_title: bookTitle,
       book_author: bookAuthor,
@@ -365,15 +365,15 @@ export function AdminCompetitions() {
             </button>
           </div>
 
-          {/* Format */}
+          {/* Type */}
           <div>
-            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Format</label>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Type</label>
             <select
               className={inputClass}
               value={newComp.type}
               onChange={e => setNewComp({ ...newComp, type: e.target.value })}
             >
-              {COMPETITION_FORMATS.map(f => (
+              {COMPETITION_TYPES.map(f => (
                 <option key={f.value} value={f.value}>{f.label}</option>
               ))}
             </select>
