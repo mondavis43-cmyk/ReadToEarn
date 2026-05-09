@@ -51,6 +51,7 @@ import SurveyFeed from '../pages/SurveyFeed';
 import BetaReaderPanel from '../pages/BetaReaderPanel';
 import SensitivityReaderPanel from '../pages/SensitivityReaderPanel';
 import { AdminFraudDashboard } from '../pages/admin/AdminFraudDashboard';
+import { CheckoutSuccess } from '../pages/CheckoutSuccess';
 
 const WAITLIST_MODE = true;
 
@@ -95,6 +96,7 @@ if (route === '/admin/submissions') return <AdminRoute><AdminSubmissions /></Adm
 if (route === '/reset-password') return <ResetPassword />;
 if (route === '/terms') return <TermsOfService />;
 if (route === '/privacy') return <PrivacyPolicy />;
+if (route === '/checkout/success') return <CheckoutSuccess />;  
 
 if (route === '/ama') return <AuthorAMA />;
 if (route === '/ama-request') return <AMARequest />;
@@ -159,6 +161,7 @@ const KNOWN_ROUTES = [
   '/surveys',
   '/beta-reader-panels',
   '/sensitivity-reader-panels',
+  '/checkout/success',
 ];
 
 const isKnownRoute =
