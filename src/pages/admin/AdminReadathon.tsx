@@ -40,6 +40,7 @@ const EMPTY_FORM = {
   first_place_pct: '60',
   second_place_pct: '25',
   third_place_pct: '15',
+  is_sponsored: false,
 };
 
 export function AdminReadathon() {
@@ -183,7 +184,7 @@ export function AdminReadathon() {
       setError('Prize percentages must add up to 100%');
       return;
     }
-    if (!form.title || !form.start_date || !form.end_date || !form.entry_fee) {
+    if (!form.title || !form.start_date || !form.end_date || (!form.is_sponsored && !form.entry_fee)) {
       setError('Title, dates, and entry fee are required');
       return;
     }
@@ -195,8 +196,9 @@ export function AdminReadathon() {
         description: form.description || null,
         start_date: new Date(form.start_date).toISOString(),
         end_date: new Date(form.end_date).toISOString(),
-        entry_fee: Number(form.entry_fee),
+        entry_fee: form.is_sponsored ? 0 : Number(form.entry_fee),
         prize_pool: Number(form.prize_pool) || 0,
+        is_sponsored: form.is_sponsored,
         first_place_pct: Number(form.first_place_pct),
         second_place_pct: Number(form.second_place_pct),
         third_place_pct: Number(form.third_place_pct),
@@ -329,15 +331,16 @@ export function AdminReadathon() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#6B7280] dark:text-gray-400 mb-1">Entry Fee ($) *</label>
+              <label className="block text-xs font-medium text-[#6B7280] dark:text-gray-400 mb-1">Entry Fee ($) {!form.is_sponsored && '*'}</label>
               <input
                 type="number"
                 min="0"
                 step="0.01"
-                value={form.entry_fee}
+                value={form.is_sponsored ? '' : form.entry_fee}
+                disabled={form.is_sponsored}
                 onChange={(e) => setForm((p) => ({ ...p, entry_fee: e.target.value }))}
-                placeholder="5.00"
-                className="w-full px-3 py-2 rounded-xl border border-[#e8e8d5] dark:border-gray-600 bg-[#F5F0E8] dark:bg-gray-700 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none"
+                placeholder={form.is_sponsored ? 'Free (sponsored)' : '5.00'}
+                className="w-full px-3 py-2 rounded-xl border border-[#e8e8d5] dark:border-gray-600 bg-[#F5F0E8] dark:bg-gray-700 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none disabled:opacity-50"
               />
             </div>
             <div>
@@ -373,6 +376,19 @@ export function AdminReadathon() {
                 </div>
               ))}
             </div>
+          </div>
+
+          <div className="flex items-center gap-3 pb-1">
+            <input
+              type="checkbox"
+              id="readathon_is_sponsored"
+              checked={form.is_sponsored}
+              onChange={(e) => setForm((p) => ({ ...p, is_sponsored: e.target.checked, entry_fee: e.target.checked ? '' : p.entry_fee }))}
+              className="accent-[#D4A843] w-4 h-4"
+            />
+            <label htmlFor="readathon_is_sponsored" className="text-sm text-[#1B2A4A] dark:text-[#F5F0E8]">
+              Author-sponsored (free to readers)
+            </label>
           </div>
 
           <div className="flex gap-3 pt-2">
