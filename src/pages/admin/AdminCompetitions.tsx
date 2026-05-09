@@ -11,7 +11,7 @@ interface Book {
 
 interface Competition {
   id: string;
-  format: string;
+  type: string;
   title: string;
   book_title: string | null;
   book_author: string | null;
@@ -26,7 +26,7 @@ interface Competition {
 }
 
 interface NewCompetition {
-  format: string;
+  type: string;
   title: string;
   book_id: string;
   book_ids: string[];
@@ -44,7 +44,7 @@ const COMPETITION_FORMATS = [
 ];
 
 const emptyComp: NewCompetition = {
-  format: 'sprint',
+  type: 'sprint',
   title: '',
   book_id: '',
   book_ids: [],
