@@ -14,14 +14,13 @@ export function Pricing() {
   const textMuted = isDark ? 'text-[#a0aec0]' : 'text-[#6b7280]';
 
   const goToCheckout = (plan: 'monthly' | 'annual') => {
-    (window as any).__checkoutItem = {
+    sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'subscription',
       label: plan === 'monthly' ? 'Upgrade — Monthly ($4.99/mo)' : 'Upgrade — Annual ($49.90/yr)',
       amount: plan === 'monthly' ? 499 : 4990,
       metadata: { plan },
-    };
-    window.history.pushState({}, '', '/checkout');
-    window.dispatchEvent(new PopStateEvent('popstate'));
+    }));
+    navigateTo('/checkout');
   };
 
   return (
