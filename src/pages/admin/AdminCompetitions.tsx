@@ -1,8 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, X, Search, Trophy, Calendar, DollarSign, BookOpen, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Plus, X, Search } from 'lucide-react';
 
-// --- Interfaces ---
 interface Book {
   id: string;
   title: string;
@@ -12,7 +11,7 @@ interface Book {
 
 interface Competition {
   id: string;
-  type: string; // Using 'type' exclusively now
+  type: string;
   title: string;
   book_title: string | null;
   book_author: string | null;
@@ -38,15 +37,14 @@ interface NewCompetition {
   is_sponsored: boolean;
 }
 
-// --- Constants ---
-const COMP_TYPES = [
-  { value: 'sprint', label: 'Writing Sprint' },
+const COMPETITION_FORMATS = [
+  { value: 'sprint', label: 'Sprint' },
   { value: 'readathon', label: 'Read-A-Thon' },
   { value: 'elimination', label: 'Elimination Bracket' },
 ];
 
-const INITIAL_STATE: NewCompetition = {
-  type: 'elimination', // Defaulting to elimination per your request
+const emptyComp: NewCompetition = {
+  type: 'sprint',
   title: '',
   book_id: '',
   book_ids: [],
@@ -57,397 +55,558 @@ const INITIAL_STATE: NewCompetition = {
   is_sponsored: false,
 };
 
-// --- Components ---
+// ---- Searchable book picker ------------------------------------------------
 
-const BookPicker = ({
+const BookSearchInput = ({
   books,
   selected,
   onSelect,
   onRemove,
+  multi = false,
   max = 1,
 }: {
   books: Book[];
   selected: Book[];
   onSelect: (book: Book) => void;
   onRemove: (id: string) => void;
+  multi?: boolean;
   max?: number;
 }) => {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
 
-  const filtered = books.filter(b => 
-    !selected.find(s => s.id === b.id) &&
-    (b.title.toLowerCase().includes(query.toLowerCase()) || b.author.toLowerCase().includes(query.toLowerCase()))
-  ).slice(0, 8);
+  const selectedIds = selected.map(b => b.id);
+
+  const filtered = books.filter(b => {
+    if (selectedIds.includes(b.id)) return false;
+    if (!query.trim()) return true;
+    const q = query.toLowerCase();
+    return b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q);
+  });
 
   useEffect(() => {
-    const clickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setOpen(false);
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
     };
-    document.addEventListener('mousedown', clickOutside);
-    return () => document.removeEventListener('mousedown', clickOutside);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  return (
-    <div ref={dropdownRef} className="relative">
-      <div className="flex flex-wrap gap-2 mb-2">
-        {selected.map(b => (
-          <div key={b.id} className="flex items-center gap-2 px-3 py-1 bg-[#D4A843]/10 border border-[#D4A843]/30 text-[#D4A843] rounded-full text-xs font-semibold">
-            {b.title}
-            <button onClick={() => onRemove(b.id)} className="hover:text-red-500"><X size={12} /></button>
-          </div>
-        ))}
-      </div>
+  const handleSelect = (book: Book) => {
+    onSelect(book);
+    setQuery('');
+    if (!multi) setOpen(false);
+  };
 
-      {selected.length < max && (
+  const atMax = selected.length >= max;
+
+  const inputClass =
+    'w-full px-3 py-2 pl-8 rounded-lg border border-[#e8e0d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none focus:ring-2';
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Selected tags */}
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {selected.map(b => (
+            <span
+              key={b.id}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#D4A843]/20 text-[#D4A843] border border-[#D4A843]/30"
+            >
+              {b.title}
+              <button onClick={() => onRemove(b.id)} className="hover:text-white transition-colors">
+                <X size={10} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Search input */}
+      {(!atMax || multi) && (
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#6B7280]" />
           <input
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#e8e0d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-[#D4A843] outline-none transition-all"
-            placeholder={max > 1 ? `Select up to ${max} books...` : "Search by title or author..."}
+            className={inputClass}
+            placeholder={
+              atMax
+                ? `Max ${max} book${max > 1 ? 's' : ''} selected`
+                : multi
+                ? `Search books... (${selected.length}/${max} selected)`
+                : 'Search by title or author...'
+            }
             value={query}
-            onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+            onChange={e => { setQuery(e.target.value); setOpen(true); }}
             onFocus={() => setOpen(true)}
+            disabled={atMax && !multi}
           />
-          {open && query && (
-            <div className="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-[#e8e0d5] dark:border-gray-700 rounded-xl shadow-2xl overflow-hidden">
-              {filtered.length > 0 ? filtered.map(b => (
+        </div>
+      )}
+
+      {/* Dropdown */}
+      {open && !atMax && (
+        <div className="absolute z-50 w-full mt-1 rounded-lg border border-[#e8e0d5] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg overflow-hidden">
+          <div className="max-h-48 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-2.5 text-sm text-[#6B7280] dark:text-gray-400">
+                {query ? `No books found for "${query}" — not in our system yet.` : 'No more books to select.'}
+              </div>
+            ) : (
+              filtered.slice(0, 50).map(b => (
                 <button
                   key={b.id}
-                  onClick={() => { onSelect(b); setQuery(''); setOpen(false); }}
-                  className="w-full text-left px-4 py-3 text-sm hover:bg-[#D4A843]/5 border-b border-gray-50 dark:border-gray-700 last:border-0"
+                  onMouseDown={() => handleSelect(b)}
+                  className="w-full text-left px-3 py-2.5 text-sm border-b border-[#e8e0d5] dark:border-gray-700 last:border-b-0 text-[#1B2A4A] dark:text-[#F5F0E8] hover:bg-[#D4A843]/10 tr"
                 >
-                  <p className="font-bold text-[#1B2A4A] dark:text-[#F5F0E8]">{b.title}</p>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-tighter">{b.author}</p>
+                  <span className="font-medium">{b.title}</span>
+                  <span className="ml-2 text-xs text-[#6B7280] dark:text-gray-400">— {b.author}</span>
                 </button>
-              )) : (
-                <div className="px-4 py-3 text-xs text-gray-400">No matching books found.</div>
-              )}
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </div>
       )}
     </div>
   );
 };
 
+// ---- Main component --------------------------------------------------------
+
 export function AdminCompetitions() {
   const [books, setBooks] = useState<Book[]>([]);
   const [competitions, setCompetitions] = useState<Competition[]>([]);
-  const [newComp, setNewComp] = useState<NewCompetition>(INITIAL_STATE);
-  const [selectedBooks, setSelectedBooks] = useState<Book[]>([]);
+  const [newComp, setNewComp] = useState<NewCompetition>(emptyComp);
+  const [sprintBook, setSprintBook] = useState<Book[]>([]);
+  const [elimBooks, setElimBooks] = useState<Book[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  useEffect(() => { fetchData(); }, []);
+  const inputClass =
+    'w-full px-3 py-2 rounded-lg border border-[#e8e0d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none focus:ring-2';
 
-  async function fetchData() {
-    const [{ data: bData }, { data: cData }] = await Promise.all([
+  useEffect(() => { loadData(); }, []);
+
+  // Reset book selections when type changes
+  useEffect(() => {
+    setSprintBook([]);
+    setElimBooks([]);
+  }, [newComp.type]);
+
+  async function loadData() {
+    const [{ data: booksData }, { data: compsData }] = await Promise.all([
       supabase.from('books').select('id, title, author, book_type').order('title'),
       supabase.from('competitions').select('*').order('created_at', { ascending: false }),
     ]);
-    setBooks(bData || []);
-    setCompetitions(cData || []);
+    setBooks(booksData || []);
+    setCompetitions(compsData || []);
   }
-
-  const handleAddBook = (book: Book) => {
-    const limit = newComp.type === 'elimination' ? 3 : 1;
-    if (selectedBooks.length < limit) {
-      setSelectedBooks([...selectedBooks, book]);
-    }
-  };
-
-  const handleRemoveBook = (id: string) => {
-    setSelectedBooks(selectedBooks.filter(b => b.id !== id));
-  };
 
   async function handleSave() {
-    if (!newComp.title || !newComp.start_date || (!newComp.is_sponsored && !newComp.entry_fee)) {
-      return setError('Please fill in all required fields.');
+    // If sponsored, entry fee is not required
+    const feeRequired = !newComp.is_sponsored;
+
+    if (!newComp.title || !newComp.start_date || !newComp.end_date || (feeRequired && !newComp.entry_fee)) {
+      setError('Title, dates, and entry fee are required.');
+      return;
     }
-    
-    if (newComp.type === 'elimination' && selectedBooks.length !== 3) {
-      return setError('Elimination brackets require exactly 3 books.');
+    if (newComp.type === 'sprint' && sprintBook.length === 0) {
+      setError('Please select a book for Sprint.');
+      return;
+    }
+    if (newComp.type === 'elimination' && elimBooks.length < 3) {
+      setError('Please select exactly 3 books for Elimination.');
+      return;
     }
 
-    setLoading(true);
+    setSaving(true);
     setError('');
 
-    try {
-      // Get the primary author ID for the first book selected
-      const { data: bookOwner } = await supabase
+    let bookTitle: string | null = null;
+    let bookAuthor: string | null = null;
+    let authorId: string | null = null;
+
+    if (newComp.type === 'sprint' && sprintBook[0]) {
+      bookTitle = sprintBook[0].title;
+      bookAuthor = sprintBook[0].author;
+      const { data: bookRow } = await supabase
         .from('books')
         .select('user_id')
-        .eq('id', selectedBooks[0]?.id)
+        .eq('id', sprintBook[0].id)
         .single();
-
-      // STRICTLY only sending the 'type' key. No 'format' present.
-      const payload = {
-        type: newComp.type,
-        title: newComp.title,
-        book_title: selectedBooks.map(b => b.title).join(', '),
-        book_author: selectedBooks.map(b => b.author).join(', '),
-        author_id: bookOwner?.user_id ?? null,
-        entry_fee: newComp.is_sponsored ? 0 : parseFloat(newComp.entry_fee),
-        prize_pool: parseFloat(newComp.prize_pool) || 0,
-        is_sponsored: newComp.is_sponsored,
-        start_date: newComp.start_date,
-        end_date: newComp.end_date,
-        status: 'upcoming' as const,
-      };
-
-      const { data: created, error: insertErr } = await supabase
-        .from('competitions')
-        .insert(payload)
-        .select()
+      authorId = bookRow?.user_id ?? null;
+    } else if (newComp.type === 'elimination') {
+      bookTitle = elimBooks.map(b => b.title).join(', ');
+      bookAuthor = elimBooks.map(b => b.author).join(', ');
+      const { data: bookRow } = await supabase
+        .from('books')
+        .select('user_id')
+        .eq('id', elimBooks[0].id)
         .single();
+      authorId = bookRow?.user_id ?? null;
+    }
 
-      if (insertErr) throw insertErr;
+    const { data: newCompRow, error: err } = await supabase.from('competitions').insert({
+      type: newComp.type, // Explicitly using the 'type' column
+      title: newComp.title,
+      book_title: bookTitle,
+      book_author: bookAuthor,
+      author_id: authorId,
+      entry_fee: newComp.is_sponsored ? 0 : parseFloat(newComp.entry_fee),
+      prize_pool: parseFloat(newComp.prize_pool) || 0,
+      is_sponsored: newComp.is_sponsored,
+      start_date: newComp.start_date,
+      end_date: newComp.end_date,
+      status: 'upcoming',
+      pre_registration_count: 0,
+    }).select('id, title').single();
 
-      // Trigger notification RPC
+    if (err) { setError('Failed to save: ' + err.message); setSaving(false); return; }
+
+    if (newCompRow) {
       await supabase.rpc('notify_subscribers_new_earning', {
         p_type: 'competition',
-        p_title: created.title,
-        p_id: created.id,
+        p_title: newCompRow.title,
+        p_id: newCompRow.id,
       });
+    }
 
-      setSuccess('Competition successfully launched!');
-      setNewComp(INITIAL_STATE);
-      setSelectedBooks([]);
-      setShowForm(false);
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+    setSuccess('Competition created!');
+    setNewComp(emptyComp);
+    setSprintBook([]);
+    setElimBooks([]);
+    setShowForm(false);
+    setSaving(false);
+    loadData();
+  }
+
+  async function handleUpdateStatus(
+    id: string,
+    status: 'upcoming' | 'active' | 'completed' | 'canceled'
+  ) {
+    await supabase.from('competitions').update({ status }).eq('id', id);
+    loadData();
+  }
+
+  async function handleCloseAndPay(id: string) {
+    if (!confirm('Close this competition and distribute prizes? This cannot be undone.')) return;
+
+    const { data, error } = await supabase.rpc('close_competition_and_pay', {
+      p_competition_id: id,
+    });
+
+    if (error) {
+      setError('Payout failed: ' + error.message);
+    } else if (data === 'already_completed') {
+      setError('This competition has already been paid out.');
+    } else {
+      setSuccess('Competition closed and prizes distributed.');
+      loadData();
     }
   }
 
-  // --- Actions ---
-  async function updateStatus(id: string, status: Competition['status']) {
-    await supabase.from('competitions').update({ status }).eq('id', id);
-    fetchData();
-  }
-
-  async function processPayout(id: string) {
-    if (!confirm('This will distribute prizes and close the competition. Proceed?')) return;
-    const { error } = await supabase.rpc('close_competition_and_pay', { p_competition_id: id });
-    if (error) setError(error.message);
-    else { setSuccess('Payout processed successfully!'); fetchData(); }
-  }
-
-  async function deleteComp(id: string) {
-    if (!confirm('Permanently delete this competition?')) return;
+  async function handleDelete(id: string) {
+    if (!confirm('Delete this competition?')) return;
     await supabase.from('competitions').delete().eq('id', id);
-    fetchData();
+    loadData();
   }
+
+  const statusColor = (status: Competition['status']) => {
+    if (status === 'active') return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+    if (status === 'upcoming') return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+    if (status === 'canceled') return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+    return 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400';
+  };
+
+  const standardBooks = books.filter(b => b.book_type !== 'bulletin_board');
 
   return (
-    <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-6 bg-[#F5F0E8] dark:bg-gray-950 min-h-screen">
-      {/* Notifications */}
+    <div className="space-y-4">
       {error && (
-        <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-400 text-sm animate-in fade-in slide-in-from-top-2">
-          <AlertCircle size={18} /> {error}
-          <button onClick={() => setError('')} className="ml-auto"><X size={16} /></button>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3 text-red-700 dark:text-red-400 text-sm flex items-center justify-between">
+          {error}<button onClick={() => setError('')}><X size={14} /></button>
         </div>
       )}
       {success && (
-        <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-green-700 dark:text-green-400 text-sm animate-in fade-in slide-in-from-top-2">
-          <CheckCircle size={18} /> {success}
-          <button onClick={() => setSuccess('')} className="ml-auto"><X size={16} /></button>
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-4 py-3 text-green-700 dark:text-green-400 text-sm flex items-center justify-between">
+          {success}<button onClick={() => setSuccess('')}><X size={14} /></button>
         </div>
       )}
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#e8e0d5] dark:border-gray-800 pb-6">
-        <div>
-          <h1 className="text-3xl font-black text-[#1B2A4A] dark:text-[#F5F0E8] tracking-tight">COMPETITIONS</h1>
-          <p className="text-[#6B7280] text-sm font-medium">Manage sprints, read-a-thons, and elimination brackets.</p>
-        </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-lg ${
-            showForm ? 'bg-gray-200 text-gray-700' : 'bg-[#D4A843] text-[#1B2A4A] hover:scale-105 active:scale-95'
-          }`}
-        >
-          {showForm ? <X size={20} /> : <Plus size={20} />}
-          {showForm ? 'Close Editor' : 'Create New'}
-        </button>
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">
+          Competitions ({competitions.filter(c => c.status === 'active').length} active)
+        </h2>
+        {!showForm && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 px-3 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-medium hover:bg-[#c49a3a]"
+          >
+            <Plus size={16} /> New Competition
+          </button>
+        )}
       </div>
 
-      {/* Main Creation Form */}
+      {/* Create form */}
       {showForm && (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-[#e8e0d5] dark:border-gray-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-          <div className="p-6 md:p-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="space-y-5">
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-[#D4A843] mb-2 block">Competition Type</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {COMP_TYPES.map(t => (
-                    <button
-                      key={t.value}
-                      onClick={() => { setNewComp({...newComp, type: t.value}); setSelectedBooks([]); }}
-                      className={`py-3 px-2 rounded-xl text-xs font-bold border transition-all ${
-                        newComp.type === t.value 
-                        ? 'bg-[#1B2A4A] border-[#1B2A4A] text-white shadow-md' 
-                        : 'border-[#e8e0d5] dark:border-gray-700 text-gray-500 hover:bg-gray-50'
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Create Competition</h3>
+            <button
+              onClick={() => { setShowForm(false); setNewComp(emptyComp); setSprintBook([]); setElimBooks([]); }}
+              className="text-[#6B7280]"
+            >
+              <X size={18} />
+            </button>
+          </div>
 
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Display Title</label>
-                <input
-                  className="w-full px-4 py-3 rounded-xl border border-[#e8e0d5] dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 outline-none focus:ring-2 focus:ring-[#D4A843]"
-                  placeholder="e.g. Summer Slasher Showdown"
-                  value={newComp.title}
-                  onChange={e => setNewComp({...newComp, title: e.target.value})}
-                />
-              </div>
+          {/* Type Selection */}
+          <div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Format</label>
+            <select
+              className={inputClass}
+              value={newComp.type}
+              onChange={e => setNewComp({ ...newComp, type: e.target.value })}
+            >
+              {COMPETITION_FORMATS.map(f => (
+                <option key={f.value} value={f.value}>{f.label}</option>
+              ))}
+            </select>
+          </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Start Date</label>
-                  <input type="date" className="w-full px-4 py-3 rounded-xl border border-[#e8e0d5] dark:border-gray-800" 
-                    value={newComp.start_date} onChange={e => setNewComp({...newComp, start_date: e.target.value})} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">End Date</label>
-                  <input type="date" className="w-full px-4 py-3 rounded-xl border border-[#e8e0d5] dark:border-gray-800" 
-                    value={newComp.end_date} onChange={e => setNewComp({...newComp, end_date: e.target.value})} />
-                </div>
-              </div>
+          {/* Title */}
+          <div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Title</label>
+            <input
+              className={inputClass}
+              placeholder="e.g. Summer Sprint – The Midnight Library"
+              value={newComp.title}
+              onChange={e => setNewComp({ ...newComp, title: e.target.value })}
+            />
+          </div>
+
+          {/* Book – Sprint */}
+          {newComp.type === 'sprint' && (
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
+                Book <span className="text-red-400">*</span>
+              </label>
+              <BookSearchInput
+                books={standardBooks}
+                selected={sprintBook}
+                onSelect={b => setSprintBook([b])}
+                onRemove={() => setSprintBook([])}
+                multi={false}
+                max={1}
+              />
             </div>
+          )}
 
-            <div className="space-y-5">
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-[#D4A843] mb-2 block">
-                  Book Selection ({selectedBooks.length}/{newComp.type === 'elimination' ? 3 : 1})
-                </label>
-                <BookPicker
-                  books={books}
-                  selected={selectedBooks}
-                  onSelect={handleAddBook}
-                  onRemove={handleRemoveBook}
-                  max={newComp.type === 'elimination' ? 3 : 1}
-                />
-              </div>
-
-              <div className="p-4 bg-[#D4A843]/5 border border-[#D4A843]/20 rounded-2xl">
-                <div className="flex items-center gap-3 mb-4">
-                  <input
-                    type="checkbox"
-                    id="sponsored"
-                    className="w-5 h-5 accent-[#D4A843] rounded"
-                    checked={newComp.is_sponsored}
-                    onChange={e => setNewComp({...newComp, is_sponsored: e.target.checked})}
-                  />
-                  <label htmlFor="sponsored" className="text-sm font-bold text-[#1B2A4A] dark:text-[#F5F0E8]">Author-Sponsored (Free Entry)</label>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] font-black uppercase text-gray-400 mb-1 block">Entry Fee ($)</label>
-                    <div className="relative">
-                      <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="number"
-                        disabled={newComp.is_sponsored}
-                        className="w-full pl-8 pr-4 py-2 rounded-lg border border-[#e8e0d5] dark:border-gray-700 bg-white dark:bg-gray-800 disabled:opacity-50 text-sm font-bold"
-                        value={newComp.is_sponsored ? '0.00' : newComp.entry_fee}
-                        onChange={e => setNewComp({...newComp, entry_fee: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black uppercase text-gray-400 mb-1 block">Prize Pool ($)</label>
-                    <div className="relative">
-                      <Trophy size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#D4A843]" />
-                      <input
-                        type="number"
-                        className="w-full pl-8 pr-4 py-2 rounded-lg border border-[#e8e0d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-bold"
-                        value={newComp.prize_pool}
-                        onChange={e => setNewComp({...newComp, prize_pool: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={handleSave}
-                disabled={loading}
-                className="w-full py-4 bg-[#1B2A4A] text-white dark:bg-[#D4A843] dark:text-[#1B2A4A] rounded-xl font-black text-lg shadow-xl hover:opacity-90 disabled:opacity-50 transition-all active:scale-[0.98]"
+          {/* Book – Read-A-Thon */}
+          {newComp.type === 'readathon' && (
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
+                Book (optional for Read-A-Thon)
+              </label>
+              <select
+                className={inputClass}
+                value={newComp.book_id}
+                onChange={e => setNewComp({ ...newComp, book_id: e.target.value })}
               >
-                {loading ? 'PUBLISHING...' : 'LAUNCH COMPETITION'}
-              </button>
+                <option value="">Select a book...</option>
+                {standardBooks.map(b => (
+                  <option key={b.id} value={b.id}>{b.title} — {b.author}</option>
+                ))}
+              </select>
             </div>
+          )}
+
+          {/* Book – Elimination */}
+          {newComp.type === 'elimination' && (
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
+                Books <span className="text-red-400">*</span>
+                <span className="ml-1 text-[#6B7280] dark:text-gray-400">({elimBooks.length}/3 selected)</span>
+              </label>
+              <BookSearchInput
+                books={standardBooks}
+                selected={elimBooks}
+                onSelect={b => setElimBooks(prev => [...prev, b])}
+                onRemove={id => setElimBooks(prev => prev.filter(b => b.id !== id))}
+                multi={true}
+                max={3}
+              />
+            </div>
+          )}
+
+          {/* Entry fee + Prize pool */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Entry Fee ($)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className={`${inputClass} ${newComp.is_sponsored ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed opacity-50' : ''}`}
+                placeholder={newComp.is_sponsored ? 'Free' : 'e.g. 5.00'}
+                value={newComp.is_sponsored ? '' : newComp.entry_fee}
+                disabled={newComp.is_sponsored}
+                onChange={e => setNewComp({ ...newComp, entry_fee: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Prize Pool ($)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className={inputClass}
+                placeholder="e.g. 200.00"
+                value={newComp.prize_pool}
+                onChange={e => setNewComp({ ...newComp, prize_pool: e.target.value })}
+              />
+            </div>
+          </div>
+
+          {/* Sponsored toggle */}
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="is_sponsored"
+              checked={newComp.is_sponsored}
+              onChange={e => setNewComp({ ...newComp, is_sponsored: e.target.checked })}
+              className="accent-[#D4A843] w-4 h-4"
+            />
+            <label htmlFor="is_sponsored" className="text-sm text-[#1B2A4A] dark:text-[#F5F0E8]">
+              Author-sponsored (free to readers)
+            </label>
+          </div>
+
+          {/* Dates */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Start Date</label>
+              <input
+                type="date"
+                className={inputClass}
+                value={newComp.start_date}
+                onChange={e => setNewComp({ ...newComp, start_date: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">End Date</label>
+              <input
+                type="date"
+                className={inputClass}
+                value={newComp.end_date}
+                onChange={e => setNewComp({ ...newComp, end_date: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-semibold hover:bg-[#c49a3a] disabled:opacity-50"
+            >
+              {saving ? 'Saving...' : 'Create Competition'}
+            </button>
+            <button
+              onClick={() => { setShowForm(false); setNewComp(emptyComp); setSprintBook([]); setElimBooks([]); }}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-[#6B7280] hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}
 
-      {/* List / Feed */}
-      <div className="grid grid-cols-1 gap-4">
-        {competitions.map(comp => (
-          <div key={comp.id} className="group bg-white dark:bg-gray-900 border border-[#e8e0d5] dark:border-gray-800 rounded-2xl p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-[#D4A843] transition-colors shadow-sm">
-            <div className="flex-1 space-y-2">
-              <div className="flex items-center gap-3">
-                <span className={`text-[9px] font-black uppercase tracking-tighter px-2 py-0.5 rounded border ${
-                  comp.type === 'elimination' ? 'bg-purple-50 text-purple-600 border-purple-200' : 'bg-blue-50 text-blue-600 border-blue-200'
-                }`}>
-                  {comp.type}
-                </span>
-                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
-                  comp.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                }`}>
+      {/* Competition list */}
+      {competitions.length === 0 ? (
+        <p className="text-sm text-[#6B7280] dark:text-gray-400">No competitions yet.</p>
+      ) : (
+        <div className="space-y-3">
+          {competitions.map(comp => (
+            <div key={comp.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <p className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8]">{comp.title}</p>
+                  <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-0.5">
+                    {comp.type}{comp.book_title ? ` · ${comp.book_title}` : ''}
+                    {comp.is_sponsored ? ' · Sponsored' : ''}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-4 mt-2 text-sm">
+                  <span className="text-[#1B2A4A] dark:text-[#F5F0E8]">
+                    Entry: <strong>${comp.entry_fee}</strong>
+                  </span>
+                  <span className="font-medium text-[#D4A843]">
+                    Prize pool: ${comp.prize_pool}
+                  </span>
+                </div>
+                {comp.start_date && (
+                  <span className="text-[#6B7280] dark:text-gray-400">
+                    <span>
+                      {new Date(comp.start_date).toLocaleDateString()} -{' '}
+                      {comp.end_date ? new Date(comp.end_date).toLocaleDateString() : 'TBD'}
+                    </span>
+                  </span>
+                )}
+                <span className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 ${statusColor(comp.status)}`}>
                   {comp.status}
                 </span>
               </div>
-              <h3 className="text-xl font-black text-[#1B2A4A] dark:text-[#F5F0E8]">{comp.title}</h3>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 font-medium">
-                <span className="flex items-center gap-1.5"><BookOpen size={14} /> {comp.book_title || 'General Competition'}</span>
-                <span className="flex items-center gap-1.5"><Calendar size={14} /> {new Date(comp.start_date!).toLocaleDateString()}</span>
+
+              <div className="flex gap-2 mt-3 flex-wrap">
+                {comp.status === 'upcoming' && (
+                  <button
+                    onClick={() => handleUpdateStatus(comp.id, 'active')}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-green-400 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition"
+                  >
+                    Activate
+                  </button>
+                )}
+                {comp.status === 'active' && (
+                  <button
+                    onClick={() => handleUpdateStatus(comp.id, 'completed')}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-[#6B7280] hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                  >
+                    Mark Completed
+                  </button>
+                )}
+                {comp.status === 'active' && (
+                  <button
+                    onClick={() => handleCloseAndPay(comp.id)}
+                    className="px-3 py-1 text-sm border border-yellow-500 text-yellow-500 rounded hover:bg-yellow-500/10"
+                  >
+                    Close & Pay Out
+                  </button>
+                )}
+                {(comp.status === 'upcoming' || comp.status === 'active') && (
+                  <button
+                    onClick={() => handleUpdateStatus(comp.id, 'canceled')}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button
+                  onClick={() => handleDelete(comp.id)}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition ml-auto"
+                >
+                  Delete
+                </button>
               </div>
             </div>
-
-            <div className="flex items-center gap-4 md:gap-8 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
-              <div className="text-center">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Prize</p>
-                <p className="text-lg font-black text-[#D4A843]">${comp.prize_pool}</p>
-              </div>
-              <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />
-              <div className="text-center">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Entry</p>
-                <p className="text-lg font-black text-[#1B2A4A] dark:text-[#F5F0E8]">{comp.is_sponsored ? 'FREE' : `$${comp.entry_fee}`}</p>
-              </div>
-            </div>
-
-            <div className="flex md:flex-col gap-2">
-              {comp.status === 'upcoming' && (
-                <button onClick={() => updateStatus(comp.id, 'active')} className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Activate"><CheckCircle size={20}/></button>
-              )}
-              {comp.status === 'active' && (
-                <button onClick={() => processPayout(comp.id)} className="p-2 text-[#D4A843] hover:bg-[#D4A843]/10 rounded-lg transition-colors" title="Payout"><Trophy size={20}/></button>
-              )}
-              <button onClick={() => deleteComp(comp.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-colors ml-auto md:ml-0" title="Delete"><Trash2 size={20}/></button>
-            </div>
-          </div>
-        ))}
-
-        {competitions.length === 0 && (
-          <div className="text-center py-20 bg-white dark:bg-gray-900 border-2 border-dashed border-[#e8e0d5] dark:border-gray-800 rounded-3xl">
-            <Trophy size={48} className="mx-auto text-gray-200 mb-4" />
-            <p className="text-gray-400 font-bold">No competitions found. Start by creating your first one!</p>
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
