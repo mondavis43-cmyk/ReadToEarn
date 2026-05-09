@@ -130,34 +130,34 @@ export const Elimination = () => {
   };
 
   const handleEnter = (competition: Competition) => {
-    window.pendingSubmission = {
+    sessionStorage.setItem('pendingSubmission', JSON.stringify({
       type: 'competition_entry',
       competition_id: competition.id,
       entry_fee: competition.entry_fee,
-    };
-    window.checkoutItem = {
-      name: `Elimination Entry: ${competition.title}`,
-      price: competition.entry_fee,
+    }));
+    sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'competition_entry',
-      referenceId: competition.id,
-    };
+      label: `Elimination Entry: ${competition.title}`,
+      amount: competition.entry_fee,
+      metadata: { competition_id: competition.id },
+    }));
     navigateTo('/checkout');
   };
 
   const handleLateEnter = (competition: Competition) => {
     const lateFee = competition.entry_fee * 2;
-    window.pendingSubmission = {
+    sessionStorage.setItem('pendingSubmission', JSON.stringify({
       type: 'competition_entry',
       competition_id: competition.id,
       entry_fee: lateFee,
       is_late: true,
-    };
-    window.checkoutItem = {
-      name: `Elimination Entry (Late): ${competition.title}`,
-      price: lateFee,
+    }));
+    sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'competition_entry',
-      referenceId: competition.id,
-    };
+      label: `Elimination Entry (Late): ${competition.title}`,
+      amount: lateFee,
+      metadata: { competition_id: competition.id },
+    }));
     navigateTo('/checkout');
   };
 
