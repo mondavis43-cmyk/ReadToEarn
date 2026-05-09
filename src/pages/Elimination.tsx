@@ -138,7 +138,7 @@ export const Elimination = () => {
     sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'competition_entry',
       label: `Elimination Entry: ${competition.title}`,
-      amount: competition.entry_fee,
+      amount: competition.entry_fee * 100,
       metadata: { competition_id: competition.id },
     }));
     navigateTo('/checkout');
@@ -155,7 +155,7 @@ export const Elimination = () => {
     sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'competition_entry',
       label: `Elimination Entry (Late): ${competition.title}`,
-      amount: lateFee,
+      amount: lateFee * 100,
       metadata: { competition_id: competition.id },
     }));
     navigateTo('/checkout');
