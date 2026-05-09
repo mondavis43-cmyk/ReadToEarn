@@ -26,7 +26,8 @@ export type CheckoutItem = {
     | "sensitivity_reader"
     | "subscription"
     | "time_boost"
-    | "competition_entry";
+    | "competition_entry"
+    | "tournament_entry";
   label: string;
   amount: number;
   metadata?: Record<string, string | number>;
@@ -110,6 +111,7 @@ const REDIRECT_MAP: Record<string, string> = {
   subscription: "/profile",
   time_boost: "/profile",
   competition_entry: "/competitions",
+  tournament_entry: "/competitions",
 };
 
 const goTo = (path: string) => {
@@ -129,7 +131,66 @@ const CARD_STYLE = {
   },
 };
 
-const CheckoutForm = ({ item }: { item: CheckoutItem }) => {
+// ─── Shared post-payment DB logic ────────────────────────────────────────────
+async function handlePostPayment(
+  item: CheckoutItem,
+  userId: string,
+  paymentRef: string // stripe paymentIntent.id or paypal order_id
+) {
+  const pending = JSON.parse(sessionStorage.getItem("pendingSubmission") ?? "null");
+
+  if (pending) {
+    if (item.type === "listing") {
+      await supabase.from("author_submissions").insert(pending);
+    } else if (item.type === "competition_entry") {
+      await supabase.from("competition_entries").insert({
+        competition_id: pending.competition_id,
+        user_id: userId,
+        entry_fee_paid: item.amount / 100,
+        is_late_entry: pending.is_late_entry ?? false,
+        paid_at: new Date().toISOString(),
+        status: "active",
+      });
+
+      const entryFee = item.amount / 100;
+      const readerShare = entryFee - entryFee * 0.25;
+      const { data: comp } = await supabase
+        .from("competitions")
+        .select("prize_pool")
+        .eq("id", pending.competition_id)
+        .single();
+      if (comp) {
+        await supabase.rpc("increment_prize_pool", {
+          p_competition_id: pending.competition_id,
+          p_amount: readerShare,
+        });
+      }
+    } else if (item.type === "time_boost") {
+      const boostCount = pending.boosts ?? item.metadata?.boosts ?? 0;
+      const { data: existing } = await supabase
+        .from("user_boosts")
+        .select("balance")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (existing) {
+        await supabase
+          .from("user_boosts")
+          .update({ balance: existing.balance + boostCount, updated_at: new Date().toISOString() })
+          .eq("user_id", userId);
+      } else {
+        await supabase.from("user_boosts").insert({ user_id: userId, balance: boostCount });
+      }
+    } else if (pending.table) {
+      await supabase.from(pending.table).insert(pending.data);
+    }
+
+    sessionStorage.removeItem("pendingSubmission");
+    sessionStorage.removeItem("checkoutItem");
+  }
+}
+
+// ─── Stripe form ─────────────────────────────────────────────────────────────
+const StripeForm = ({ item }: { item: CheckoutItem }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
@@ -144,27 +205,16 @@ const CheckoutForm = ({ item }: { item: CheckoutItem }) => {
     setError(null);
 
     try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) throw new Error("You must be logged in to checkout.");
 
-      const { data, error: fnError } = await supabase.functions.invoke(
-        "create-payment-intent",
-        {
-          body: {
-            amount: item.amount,
-            currency: "usd",
-            metadata: {
-              user_id: user.id,
-              type: item.type,
-              label: item.label,
-              ...item.metadata,
-            },
-          },
-        }
-      );
+      const { data, error: fnError } = await supabase.functions.invoke("create-payment-intent", {
+        body: {
+          amount: item.amount,
+          currency: "usd",
+          metadata: { user_id: user.id, type: item.type, label: item.label, ...item.metadata },
+        },
+      });
 
       if (fnError || !data?.clientSecret)
         throw new Error(fnError?.message || "Failed to initialize payment.");
@@ -172,10 +222,10 @@ const CheckoutForm = ({ item }: { item: CheckoutItem }) => {
       const cardElement = elements.getElement(CardElement);
       if (!cardElement) throw new Error("Card element not found.");
 
-      const { error: stripeError, paymentIntent } =
-        await stripe.confirmCardPayment(data.clientSecret, {
-          payment_method: { card: cardElement },
-        });
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
+        data.clientSecret,
+        { payment_method: { card: cardElement } }
+      );
 
       if (stripeError) throw new Error(stripeError.message);
 
@@ -190,64 +240,7 @@ const CheckoutForm = ({ item }: { item: CheckoutItem }) => {
           status: "succeeded",
         });
 
-        const pending = JSON.parse(sessionStorage.getItem('pendingSubmission') ?? 'null');
-
-        if (pending) {
-          if (item.type === "listing") {
-            await supabase.from("author_submissions").insert(pending);
-          } else if (item.type === "competition_entry") {
-            await supabase.from("competition_entries").insert({
-  competition_id: pending.competition_id,
-  user_id: user.id,
-  entry_fee_paid: item.amount / 100,
-  is_late_entry: pending.is_late_entry ?? false,
-  paid_at: new Date().toISOString(),
-  status: "active",
-});
-
-// Increment prize pool by entry fee (after platform fee deduction)
-const entryFee = item.amount / 100;
-const platformFee = entryFee * 0.25;
-const readerShare = entryFee - platformFee;
-
-const { data: comp } = await supabase
-  .from("competitions")
-  .select("prize_pool")
-  .eq("id", pending.competition_id)
-  .single();
-
-if (comp) {
-  await supabase
-    .rpc("increment_prize_pool", { p_competition_id: pending.competition_id, p_amount: readerShare })
-}
-          } else if (item.type === "time_boost") {
-            const boostCount = pending.boosts ?? item.metadata?.boosts ?? 0;
-            const { data: existing } = await supabase
-              .from("user_boosts")
-              .select("balance")
-              .eq("user_id", user.id)
-              .maybeSingle();
-            if (existing) {
-              await supabase
-                .from("user_boosts")
-                .update({
-                  balance: existing.balance + boostCount,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq("user_id", user.id);
-            } else {
-              await supabase
-                .from("user_boosts")
-                .insert({ user_id: user.id, balance: boostCount });
-            }
-          } else if (pending.table) {
-            await supabase.from(pending.table).insert(pending.data);
-          }
-
-          sessionStorage.removeItem('pendingSubmission');
-          sessionStorage.removeItem('checkoutItem');
-        }
-
+        await handlePostPayment(item, user.id, paymentIntent.id);
         setSuccess(true);
         setTimeout(() => goTo(REDIRECT_MAP[item.type] ?? "/profile"), 2500);
       }
@@ -262,36 +255,16 @@ if (comp) {
     return (
       <div className="text-center py-20">
         <div className="text-6xl mb-4">🎉</div>
-        <h2 className="text-2xl font-bold text-green-400 mb-2">
-          Payment Successful!
-        </h2>
+        <h2 className="text-2xl font-bold text-green-400 mb-2">Payment Successful!</h2>
         <p className="text-gray-500">Redirecting you now...</p>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="bg-[#1a1a1a] rounded-lg p-5 border border-gray-800">
-        <h3 className="text-white font-medium mb-3">Order Summary</h3>
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-400">{item.label}</span>
-          <span className="text-white font-medium">
-            ${(item.amount / 100).toFixed(2)}
-          </span>
-        </div>
-        <div className="border-t border-gray-700 mt-3 pt-3 flex justify-between">
-          <span className="text-white font-medium">Total</span>
-          <span className="text-white font-bold">
-            ${(item.amount / 100).toFixed(2)}
-          </span>
-        </div>
-      </div>
-
+    <form onSubmit={handleSubmit} className="space-y-5">
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
-          Card Details
-        </label>
+        <label className="block text-sm font-medium text-gray-300 mb-2">Card Details</label>
         <div className="px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-lg">
           <CardElement options={CARD_STYLE} />
         </div>
@@ -318,8 +291,135 @@ if (comp) {
   );
 };
 
+// ─── PayPal button ────────────────────────────────────────────────────────────
+const PayPalButton = ({ item }: { item: CheckoutItem }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handlePayPal = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error("You must be logged in to checkout.");
+
+      const { data: order, error: fnError } = await supabase.functions.invoke(
+        "create-paypal-order",
+        {
+          body: {
+            amount: item.amount,
+            description: item.label,
+            metadata: { user_id: user.id, type: item.type, ...item.metadata },
+          },
+        }
+      );
+
+      if (fnError || !order) throw new Error(fnError?.message || "Failed to create PayPal order.");
+
+      const approvalUrl = order.links?.find((l: any) => l.rel === "approve")?.href;
+      if (!approvalUrl) throw new Error("No PayPal approval URL returned.");
+
+      // Store the item type so /checkout/success knows where to redirect
+      sessionStorage.setItem("paypalItemType", item.type);
+
+      window.location.href = approvalUrl;
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {error && (
+        <div className="p-3 bg-red-900/20 border border-red-900/50 rounded text-red-400 text-sm">
+          {error}
+        </div>
+      )}
+      <button
+        onClick={handlePayPal}
+        disabled={loading}
+        className="w-full bg-[#FFC439] text-[#003087] font-bold py-4 rounded-lg hover:bg-[#f0b429] transition disabled:opacity-50 disabled:cursor-not-allowed text-lg flex items-center justify-center gap-2"
+      >
+        {loading ? (
+          "Redirecting to PayPal..."
+        ) : (
+          <>
+            <span className="text-[#003087] font-black">Pay</span>
+            <span className="text-[#009cde] font-black">Pal</span>
+            <span className="ml-1">${(item.amount / 100).toFixed(2)}</span>
+          </>
+        )}
+      </button>
+      <p className="text-gray-600 text-xs text-center">
+        You'll be redirected to PayPal to complete your payment.
+      </p>
+    </div>
+  );
+};
+
+// ─── Main checkout form with method selector ──────────────────────────────────
+const CheckoutForm = ({ item }: { item: CheckoutItem }) => {
+  const [method, setMethod] = useState<"card" | "paypal">("card");
+
+  return (
+    <div className="space-y-6">
+      {/* Order summary */}
+      <div className="bg-[#1a1a1a] rounded-lg p-5 border border-gray-800">
+        <h3 className="text-white font-medium mb-3">Order Summary</h3>
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-400">{item.label}</span>
+          <span className="text-white font-medium">${(item.amount / 100).toFixed(2)}</span>
+        </div>
+        <div className="border-t border-gray-700 mt-3 pt-3 flex justify-between">
+          <span className="text-white font-medium">Total</span>
+          <span className="text-white font-bold">${(item.amount / 100).toFixed(2)}</span>
+        </div>
+      </div>
+
+      {/* Payment method tabs */}
+      <div>
+        <p className="text-sm font-medium text-gray-300 mb-3">Payment Method</p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setMethod("card")}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition ${
+              method === "card"
+                ? "bg-white text-black border-white"
+                : "bg-transparent text-gray-400 border-gray-700 hover:border-gray-500"
+            }`}
+          >
+            💳 Card
+          </button>
+          <button
+            onClick={() => setMethod("paypal")}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition ${
+              method === "paypal"
+                ? "bg-[#FFC439] text-[#003087] border-[#FFC439]"
+                : "bg-transparent text-gray-400 border-gray-700 hover:border-gray-500"
+            }`}
+          >
+            🅿 PayPal
+          </button>
+        </div>
+      </div>
+
+      {/* Active payment method */}
+      {method === "card" ? (
+        <Elements stripe={stripePromise}>
+          <StripeForm item={item} />
+        </Elements>
+      ) : (
+        <PayPalButton item={item} />
+      )}
+    </div>
+  );
+};
+
+// ─── Page wrapper ─────────────────────────────────────────────────────────────
 const Checkout = () => {
-  const item = JSON.parse(sessionStorage.getItem('checkoutItem') ?? 'null') as CheckoutItem | undefined;
+  const item = JSON.parse(sessionStorage.getItem("checkoutItem") ?? "null") as CheckoutItem | undefined;
 
   if (!item) {
     return (
@@ -350,9 +450,7 @@ const Checkout = () => {
           <h1 className="font-serif text-3xl text-white">Checkout</h1>
         </div>
 
-        <Elements stripe={stripePromise}>
-          <CheckoutForm item={item} />
-        </Elements>
+        <CheckoutForm item={item} />
       </div>
     </div>
   );
