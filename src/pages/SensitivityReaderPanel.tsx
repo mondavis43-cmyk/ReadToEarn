@@ -169,16 +169,7 @@ export default function SensitivityReaderPanel() {
       return;
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('available_balance')
-      .eq('id', user.id)
-      .single();
-
-    await supabase
-      .from('profiles')
-      .update({ available_balance: (profile?.available_balance ?? 0) + 10.00 })
-      .eq('id', user.id);
+    await supabase.rpc('increment_site_credit', { user_id: user.id, amount: 10.00 });
 
     await supabase.from('payout_logs').insert({
       user_id: user.id,
