@@ -46,9 +46,8 @@ interface Competition {
 
 interface Bounty {
   id: string;
-  pool_amount: number;
+  pool_size: number;
   per_pass_amount: number;
-  passes_remaining: number;
   status: string;
 }
 
@@ -151,7 +150,7 @@ export const BookPage = () => {
     const [bountyResult, activeCompResult, pastCompResult] = await Promise.all([
       supabase
         .from('bounties')
-        .select('id, pool_amount, per_pass_amount, passes_remaining, status')
+        .select('id, pool_size, per_pass_amount, status')
         .eq('book_id', book.id)
         .eq('status', 'active')
         .maybeSingle(),
