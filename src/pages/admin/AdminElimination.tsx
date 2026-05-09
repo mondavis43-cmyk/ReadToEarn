@@ -11,7 +11,7 @@ interface Book {
 
 interface Competition {
   id: string;
-  format: string;
+  type: string;
   title: string;
   book_title: string | null;
   book_author: string | null;
@@ -169,7 +169,7 @@ export function AdminElimination() {
       supabase
         .from('competitions')
         .select('*')
-        .eq('format', 'elimination')
+        .eq('type', 'elimination')
         .order('created_at', { ascending: false }),
     ]);
     setBooks(booksData || []);
@@ -177,7 +177,7 @@ export function AdminElimination() {
   }
 
   async function handleSave() {
-    if (!newComp.title || !newComp.start_date || !newComp.end_date || !newComp.entry_fee) {
+    if (!newComp.title || !newComp.start_date || !newComp.end_date || (!newComp.is_sponsored && !newComp.entry_fee)) {
       setError('Title, dates, and entry fee are required.');
       return;
     }
@@ -195,11 +195,11 @@ export function AdminElimination() {
     const { data: newCompRow, error: err } = await supabase
       .from('competitions')
       .insert({
-        format: 'elimination',
+        type: 'elimination',
         title: newComp.title,
         book_title: bookTitle,
         book_author: bookAuthor,
-        entry_fee: parseFloat(newComp.entry_fee),
+        entry_fee: newComp.is_sponsored ? 0 : parseFloat(newComp.entry_fee),
         prize_pool: parseFloat(newComp.prize_pool) || 0,
         is_sponsored: newComp.is_sponsored,
         start_date: newComp.start_date,
@@ -427,7 +427,7 @@ export function AdminElimination() {
                 <div className="flex-1">
                   <p className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8]">{comp.title}</p>
                   <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-0.5">
-                    Elimination{comp.book_title ? ` · ${comp.book_title}` : ''}{comp.is_sponsored ? ' · Sponsored' : ''}
+                    Elimination{comp.book_title ? ` · ${comp.book_title}` : ''}{comp.is_sponsored ? ' · Sponsored (Free to Readers)' : ''}
                   </p>
                   <div className="flex flex-wrap gap-4 mt-2 text-sm">
                     <span className="text-[#1B2A4A] dark:text-[#F5F0E8]">
