@@ -346,7 +346,7 @@ export const BookPage = () => {
                         <span className={`text-sm font-normal ${textMuted}`}>per quiz pass</span>
                       </p>
                       <p className={`text-sm mt-1 ${textMuted}`}>
-                        ${activeBounty.pool_amount.toFixed(0)} pool · {activeBounty.passes_remaining} passes remaining
+                        ${activeBounty.pool_size.toFixed(0)} pool
                       </p>
                     </div>
                     <span className="text-xs bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-1 rounded-full font-medium shrink-0">
@@ -394,6 +394,16 @@ export const BookPage = () => {
                     ))}
                   </div>
                 </div>
+              )}
+
+              {/* Quiz unlocked — Play button */}
+              {quizUnlocked && !isCompleted && (
+                <button
+                  onClick={() => navigateTo(`/quiz/${book.id}`)}
+                  className="w-full py-3 rounded-xl bg-[#D4A843] hover:bg-[#D4A843]/90 text-[#1B2A4A] font-semibold text-sm transition"
+                >
+                  Play Quiz
+                </button>
               )}
 
               {/* Quiz locked state */}
