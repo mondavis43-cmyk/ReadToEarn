@@ -168,7 +168,7 @@ export const Sprints = () => {
     sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'sprint_entry',
       label: `Sprint Entry: ${sprint.title}`,
-      amount: sprint.entry_fee,
+      amount: sprint.entry_fee * 100,
       metadata: { sprint_id: sprint.id },
     }));
     navigateTo('/checkout');
@@ -185,7 +185,7 @@ export const Sprints = () => {
     sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'sprint_entry',
       label: `Sprint Entry (Late): ${sprint.title}`,
-      amount: lateFee,
+      amount: lateFee * 100,
       metadata: { sprint_id: sprint.id },
     }));
     navigateTo('/checkout');
