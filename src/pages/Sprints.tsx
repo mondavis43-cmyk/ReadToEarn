@@ -160,34 +160,34 @@ export const Sprints = () => {
     // Check if within 48hr window (active status = window is open)
     // Late fee applies if notified_at + 48hrs has passed -- handled server-side
     // For now, pass entry_fee; Edge Function determines if late fee applies
-    window.pendingSubmission = {
+    sessionStorage.setItem('pendingSubmission', JSON.stringify({
       type: 'sprint_entry',
       sprint_id: sprint.id,
       entry_fee: sprint.entry_fee,
-    };
-    window.checkoutItem = {
-      name: `Sprint Entry: ${sprint.title}`,
-      price: sprint.entry_fee,
+    }));
+    sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'sprint_entry',
-      referenceId: sprint.id,
-    };
+      label: `Sprint Entry: ${sprint.title}`,
+      amount: sprint.entry_fee,
+      metadata: { sprint_id: sprint.id },
+    }));
     navigateTo('/checkout');
   };
 
   const handleLateEnter = (sprint: Sprint) => {
     const lateFee = sprint.entry_fee * 2;
-    window.pendingSubmission = {
+    sessionStorage.setItem('pendingSubmission', JSON.stringify({
       type: 'sprint_entry',
       sprint_id: sprint.id,
       entry_fee: lateFee,
       is_late: true,
-    };
-    window.checkoutItem = {
-      name: `Sprint Entry (Late): ${sprint.title}`,
-      price: lateFee,
+    }));
+    sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'sprint_entry',
-      referenceId: sprint.id,
-    };
+      label: `Sprint Entry (Late): ${sprint.title}`,
+      amount: lateFee,
+      metadata: { sprint_id: sprint.id },
+    }));
     navigateTo('/checkout');
   };
 
