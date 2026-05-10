@@ -184,7 +184,7 @@ export const HowItWorks = () => {
           <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
             <BarChart2 className="text-[#D4A843] mb-4" size={22} />
             <div className="space-y-3">
-              <p className={`text-sm ${textMuted}`}>Get paid via <span className={textPrimary}>PayPal, Venmo, Wise (international)</span>, or gift cards via <span className={textPrimary}>Giftogram</span>.</p>
+              <p className={`text-sm ${textMuted}`}>Get paid via <span className={textPrimary}>PayPal, Wise (international)</span>, or gift cards via <span className={textPrimary}>Giftogram</span>.</p>
               <p className={`text-sm ${textMuted}`}>Minimum cashout: <span className={textPrimary}>$10</span>.</p>
               <p className={`text-sm ${textMuted}`}>If you earn <span className={textPrimary}>$599+ in a year</span>, we'll ask for tax info before releasing further payouts. You'll get notified at $500 and $550.</p>
               <p className={`text-sm ${textMuted}`}>Ages 13–17: <span className={textPrimary}>gift cards only</span>.</p>
