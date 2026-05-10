@@ -11,7 +11,6 @@ import { AdminPayouts }         from './admin/AdminPayouts';
 import { AdminWaitlist }        from './admin/AdminWaitlist';
 import { AdminTropes }          from './admin/AdminTropes';
 import { AdminReports }         from './admin/AdminReports';
-import { AdminTrivia }          from './admin/AdminTrivia';
 import { AdminTournaments }     from './admin/AdminTournaments';
 import { AdminEarning }         from './admin/AdminEarning';
 import { AdminAMA }             from './admin/AdminAMA';
@@ -42,7 +41,6 @@ type Tab =
 | 'waitlist'
 | 'tropes'
 | 'reports'
-| 'trivia'
 | 'tournaments'
 | 'earning'
 | 'ama'
@@ -61,7 +59,6 @@ const TABS: { key: Tab; label: string }[] = [
 { key: 'sprints',        label: 'Sprints'           },
 { key: 'payouts',        label: 'Payouts'           },
 { key: 'reports',        label: 'Reports'           },
-{ key: 'trivia',         label: 'Daily Trivia'      },
 { key: 'tournaments',    label: 'Tournaments'       },
 { key: 'earning',        label: 'Earning Tasks'     },
 { key: 'submissions',    label: 'Submissions'       },
@@ -140,7 +137,6 @@ return (
       {activeTab === 'waitlist'       && <AdminWaitlist />}
       {activeTab === 'tropes'         && <AdminTropes />}
       {activeTab === 'reports'        && <AdminReports />}
-      {activeTab === 'trivia'         && <AdminTrivia />}
       {activeTab === 'tournaments'    && <AdminTournaments />}
       {activeTab === 'earning'        && <AdminEarning />}
       {activeTab === 'ama'            && <AdminAMA />}
