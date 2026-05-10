@@ -339,7 +339,7 @@ All quizzes run at 8 minutes. Boosts add 2 minutes to a user's quiz timer.
 ## Payouts & Financial Rules
 
 ### Payout Methods
-- PayPal, Venmo (US)
+- PayPal (US)
 - Wise (international users)
 - Giftogram gift cards (all users; only option for users under 18)
 
@@ -364,7 +364,7 @@ All quizzes run at 8 minutes. Boosts add 2 minutes to a user's quiz timer.
 - **13+** with verifiable parental consent
 - Users must provide their birthday at signup
 - Users 13–17: parent phone number verified at signup + consent checkbox with logged timestamp
-- Gift cards only for users under 18; full payout methods (PayPal, Venmo, Wise + gift cards) available at 18+
+- Gift cards only for users under 18; full payout methods (PayPal, Wise + gift cards) available at 18+
 
 ### Fraud Prevention
 - Phone number verification required at signup — one account per number
