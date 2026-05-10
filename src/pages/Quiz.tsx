@@ -29,6 +29,7 @@ interface QuizProps {
 bookId: string;
 competitionId?: string;
 competitionRound?: number;
+sprintId?: string;
 }
 
 const QUIZ_DURATION = 8 * 60;
@@ -72,7 +73,7 @@ const s = totalSec % 60;
 return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
-export function Quiz({ bookId, competitionId, competitionRound }: QuizProps) {
+export function Quiz({ bookId, competitionId, competitionRound, sprintId }: QuizProps) {
 const { user } = useAuth();
 const { navigateTo } = useNavigate();
 const { isDark } = useTheme();
@@ -337,10 +338,11 @@ const loadQuiz = async () => {
     setQuestions(questionPool);
 
     const opts: Record<string, string[]> = {};
+    const userSeed = user?.id ?? '';
     questionPool.forEach((q) => {
       opts[q.id] = seededShuffle(
         [q.correct_answer, q.wrong_answer_1, q.wrong_answer_2, q.wrong_answer_3],
-        q.id
+        q.id + userSeed
       );
     });
     setShuffledOptions(opts);
@@ -414,6 +416,7 @@ const handleSubmit = async (fromTimer = false) => {
           competition_round: competitionRound,
           is_final_round: isFinalRound,
           time_spent_ms: timeSpent,
+          sprint_id: sprintId,
         }),
       }
     );
