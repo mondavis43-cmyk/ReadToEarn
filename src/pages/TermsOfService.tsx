@@ -104,13 +104,7 @@ By submitting a listing, authors acknowledge that their books may be included in
 Author AMAs (Ask Me Anything sessions) are free and open to all listed authors. AMA content is public and subject to our community guidelines.`,
     },
     {
-      title: '12. Daily Trivia & Site Credits',
-      body: `Users may earn $0.10 in site credit per day through Daily Trivia. Site credits may be redeemed for competition entry discounts, time boosts, and future merchandise. Site credits cannot be redeemed for cash, subscriptions, or cashouts.
-
-Time boosts are available for purchase: Single ($0.99), Starter Pack of 6 ($4.99), Marathoner Pack of 15 ($9.99). Time boosts are non-refundable once purchased.`,
-    },
-    {
-      title: '13. Prohibited Conduct',
+      title: '12. Prohibited Conduct',
       body: `You agree not to:
 • Use bots, scripts, AI tools, or automated methods to complete quizzes, tasks, or surveys
 • Create multiple accounts to circumvent earning limits or verification requirements
