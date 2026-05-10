@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from '../hooks/useNavigate';
-import { Zap, ClipboardList, MessageSquare, BookOpen, Star, Eye, ArrowRight, CheckCircle } from 'lucide-react';
+import { Zap, ClipboardList, MessageSquare, BookOpen, Eye, ArrowRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 type Bounty = {
@@ -48,15 +48,6 @@ type SensitivityPanel = {
   max_responses: number;
 };
 
-type TodayTrivia = {
-  id: string;
-  question: string;
-  options: string[];
-  book_title?: string;
-  author_name?: string;
-  trivia_date: string;
-};
-
 const taskTypeLabel = (type: string) => {
   if (type === 'cover_vote') return 'Cover Vote';
   if (type === 'title_test') return 'Title Test';
@@ -76,10 +67,6 @@ export const Earn = () => {
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [betaPanels, setBetaPanels] = useState<BetaPanel[]>([]);
   const [sensitivityPanels, setSensitivityPanels] = useState<SensitivityPanel[]>([]);
-  const [trivia, setTrivia] = useState<TodayTrivia | null>(null);
-  const [triviaAnswer, setTriviaAnswer] = useState<string | null>(null);
-  const [triviaResult, setTriviaResult] = useState<'correct' | 'wrong' | null>(null);
-  const [triviaAnswered, setTriviaAnswered] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -89,22 +76,18 @@ export const Earn = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) setUserId(user.id);
 
-      const today = new Date().toISOString().split('T')[0];
-
       const [
         { data: bData },
         { data: tData },
         { data: sData },
         { data: bpData },
         { data: spData },
-        { data: trivData },
       ] = await Promise.all([
         supabase.from('bounties').select('*, books(title, author, cover_url)').eq('status', 'active').limit(3),
         supabase.from('quick_tasks').select('*').eq('status', 'active').limit(4),
         supabase.from('surveys').select('*').eq('status', 'active').limit(3),
         supabase.from('beta_panels').select('*').eq('status', 'active').limit(3),
         supabase.from('sensitivity_panels').select('*').eq('status', 'active').limit(3),
-        supabase.from('daily_trivia').select('*').eq('trivia_date', today).single(),
       ]);
 
       if (bData) setBounties(bData);
@@ -112,49 +95,11 @@ export const Earn = () => {
       if (sData) setSurveys(sData);
       if (bpData) setBetaPanels(bpData);
       if (spData) setSensitivityPanels(spData);
-      if (trivData) {
-        setTrivia(trivData);
-        if (user) {
-          const { data: answered } = await supabase
-            .from('daily_trivia_answers')
-            .select('selected_answer, is_correct')
-            .eq('trivia_id', trivData.id)
-            .eq('user_id', user.id)
-            .single();
-          if (answered) {
-            setTriviaAnswered(true);
-            setTriviaAnswer(answered.selected_answer);
-            setTriviaResult(answered.is_correct ? 'correct' : 'wrong');
-          }
-        }
-      }
 
       setLoading(false);
     };
     load();
   }, []);
-
-  const handleTriviaAnswer = async (option: string) => {
-    if (!trivia || triviaAnswered) return;
-    if (!userId) { navigateTo('/signup'); return; }
-
-    const isCorrect = option === trivia.correct_answer;
-    setTriviaAnswer(option);
-    setTriviaResult(isCorrect ? 'correct' : 'wrong');
-    setTriviaAnswered(true);
-
-    await supabase.from('daily_trivia_answers').insert({
-      trivia_id: trivia.id,
-      user_id: userId,
-      selected_answer: option,
-      is_correct: isCorrect,
-      credit_earned: isCorrect ? 0.10 : 0.00,
-    });
-
-    if (isCorrect) {
-      await supabase.rpc('increment_site_credit', { user_id: userId, amount: 0.10 });
-    }
-  };
 
   const SectionHeader = ({ icon, title, payout, desc }: { icon: React.ReactNode; title: string; payout: string; desc: string }) => (
     <div className="mb-6">
@@ -208,74 +153,8 @@ export const Earn = () => {
             More Ways to Earn
           </h1>
           <p className={`text-base max-w-xl mx-auto ${textMuted}`}>
-            Competitions are the main event, but there's always something to do between them. Surveys, quick tasks, bounties, beta panels, and daily trivia keep the earnings coming in all month.
+            Competitions are the main event, but there's always something to do between them. Surveys, quick tasks, bounties, and beta panels keep the earnings coming in all month.
           </p>
-        </div>
-
-        {/* Daily Trivia — always first, most time-sensitive */}
-        <div className="mb-16">
-          <SectionHeader
-            icon={<Star className="text-[#D4A843]" size={22} />}
-            title="Daily Trivia"
-            payout="$0.10 site credit"
-            desc="One book trivia question every day. Answer correctly and earn $0.10 in site credit — redeemable for competition entry discounts and more. Log in, answer, earn."
-          />
-          {loading ? (
-            <div className={`rounded-xl border p-6 animate-pulse ${cardBg}`}>
-              <div className={`h-4 w-3/4 rounded mb-4 ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#1B2A4A]/10'}`} />
-              <div className="space-y-2">
-                {[1,2,3,4].map(i => <div key={i} className={`h-10 rounded ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#1B2A4A]/10'}`} />)}
-              </div>
-            </div>
-          ) : !trivia ? (
-            <EmptyState message="No trivia today. Check back tomorrow." />
-          ) : (
-            <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
-              {trivia.book_title && (
-                <p className={`text-xs mb-3 ${textMuted}`}>
-                  From: <span className={textPrimary}>{trivia.book_title}</span>
-                  {trivia.author_name ? ` by ${trivia.author_name}` : ''}
-                </p>
-              )}
-              <p className={`text-base font-medium mb-5 ${textPrimary}`}>{trivia.question}</p>
-              <div className="space-y-2">
-                {trivia.options.map((option) => {
-                  const isSelected = triviaAnswer === option;
-                  const isCorrect = option === trivia.correct_answer;
-                  let btnClass = `w-full text-left px-4 py-3 rounded-lg border text-sm transition-colors `;
-                  if (!triviaAnswered) {
-                    btnClass += isDark
-                      ? 'border-[#D4A843]/20 text-[#F5F0E8]/80 hover:border-[#D4A843]/50 hover:bg-[#D4A843]/5'
-                      : 'border-[#1B2A4A]/20 text-[#1B2A4A]/80 hover:border-[#1B2A4A]/40 hover:bg-[#1B2A4A]/5';
-                  } else if (isCorrect) {
-                    btnClass += 'border-green-500 bg-green-500/10 text-green-400';
-                  } else if (isSelected && !isCorrect) {
-                    btnClass += 'border-red-400 bg-red-400/10 text-red-400';
-                  } else {
-                    btnClass += isDark ? 'border-[#D4A843]/10 text-[#F5F0E8]/30' : 'border-[#1B2A4A]/10 text-[#1B2A4A]/30';
-                  }
-                  return (
-                    <button
-                      key={option}
-                      className={btnClass}
-                      onClick={() => handleTriviaAnswer(option)}
-                      disabled={triviaAnswered}
-                    >
-                      {option}
-                    </button>
-                  );
-                })}
-              </div>
-              {triviaAnswered && (
-                <div className={`mt-4 flex items-center gap-2 text-sm font-medium ${triviaResult === 'correct' ? 'text-green-400' : 'text-red-400'}`}>
-                  <CheckCircle size={16} />
-                  {triviaResult === 'correct'
-                    ? '+$0.10 site credit added to your account!'
-                    : `Not quite. The answer was: ${trivia.correct_answer}`}
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Author Bounties */}
