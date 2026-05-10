@@ -34,7 +34,7 @@ const sections: FAQSection[] = [
       },
       {
         q: 'Is ReadToEarn free to join?',
-        a: 'Yes. Creating an account is free. You only pay when you enter a reader-funded competition or purchase optional add-ons like Time Boosts. Daily Trivia, browsing books, and taking quizzes during active bounties are all free.',
+        a: 'Yes. Creating an account is free. You only pay when you enter a reader-funded competition or purchase optional add-ons like Time Boosts. Browsing books and taking quizzes during active bounties are all free.',
       },
     ],
   },
@@ -140,10 +140,6 @@ const sections: FAQSection[] = [
         ),
       },
       {
-        q: 'What is Daily Trivia?',
-        a: 'One book trivia question per day. Answer correctly = $0.10 in site credit. Site credit can be used for competition entry discounts, time boosts, and more. Not redeemable for cash or subscription fees.',
-      },
-      {
         q: 'What is a bounty and how do I earn from one?',
         a: 'An author funds a prize pool and sets a per-reader payout. When you pass that book\'s quiz during an active bounty, you earn the per-pass amount directly from the pool. No entry fee required — bounties are always free to readers. Payouts are released after a 24–48 hour review.',
       },
@@ -201,7 +197,7 @@ const sections: FAQSection[] = [
       },
       {
         q: 'Can I use site credit toward my subscription?',
-        a: 'No. Site credit from Daily Trivia is for entry discounts, time boosts, and future eligible purchases only — not subscription fees.',
+        a: 'No. Site credit is for entry discounts, time boosts, and future eligible purchases only — not subscription fees.',
       },
     ],
   },
