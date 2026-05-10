@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useTheme } from '../contexts/ThemeContext';
 import {
   Zap, BookOpen, Trophy, DollarSign,
-  ClipboardList, MessageSquare, Star, Users,
+  ClipboardList, MessageSquare, Users,
   ArrowRight, ChevronDown
 } from 'lucide-react';
 
