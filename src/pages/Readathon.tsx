@@ -166,7 +166,6 @@ export const Readathon = () => {
         readathon_id: readathon.id,
         entry_fee_paid: 0,
         paid_at: new Date().toISOString(),
-        status: 'active',
       }).then(() => navigateTo('/readathon'));
       return;
     }
@@ -190,7 +189,6 @@ export const Readathon = () => {
         readathon_id: readathon.id,
         entry_fee_paid: 0,
         paid_at: new Date().toISOString(),
-        status: 'active',
       }).then(() => navigateTo('/readathon'));
       return;
     }
