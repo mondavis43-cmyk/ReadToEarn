@@ -133,6 +133,7 @@ const CARD_STYLE = {
     },
     invalid: { color: "#ef4444" },
   },
+  disableLink: true,
 };
 
 // ─── Shared post-payment DB logic ────────────────────────────────────────────
