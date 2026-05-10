@@ -22,11 +22,12 @@ const sections: FAQSection[] = [
       },
       {
         q: 'Who can join?',
-        a: 'Anyone 13 and older. Users 13–17 must have verifiable parental consent at signup — parent email is verified and consent is logged with a timestamp. Gift cards only for under 18. Cash transfers (PayPal and Wise) available for 18+.',
+        a: 'Anyone 13 and older. Users 13–17 must have verifiable parental consent at signup. Parent email's consent is verified through phone. Gift cards only for under 18. Cash transfers (PayPal and Wise) available for 18+.',
       },
       {
         q: 'What countries are supported?',
-        a: 'We explicitly list which countries are eligible at signup so there\'s no surprise. See the country eligibility page for the full list.',
+        a: 'Argentina, Australia, Austria, Bangladesh, Belgium, Bolivia, Brazil, Bulgaria, Canada, Chile, Colombia, Costa Rica, Croatia, Cyprus, Czech Republic, Denmark, Ecuador, Egypt, Estonia, Finland, France, Georgia, Germany, Ghana, Greece, Hong Kong,
+Hungary, India, Indonesia, Ireland, Israel, Italy, Japan, Kenya, Latvia, Lithuania, Luxembourg, Malaysia, Malta, Mexico, Morocco, Nepal, Netherlands, New Zealand, Nigeria, Norway, Pakistan, Peru, Philippines, Poland, Portugal, Romania, Singapore, Slovakia, Slovenia, South Africa, South Korea, Spain, Sri Lanka, Sweden, Switzerland, Tanzania, Thailand, Turkey, Uganda, Ukraine, United Arab Emirates, United Kingdom, United States, Uruguay, Vietnam, Zimbabwe.',
       },
       {
         q: 'Can I have more than one account?',
@@ -34,7 +35,7 @@ const sections: FAQSection[] = [
       },
       {
         q: 'Is ReadToEarn free to join?',
-        a: 'Yes. Creating an account is free. You only pay when you enter a reader-funded competition or purchase optional add-ons like Time Boosts. Browsing books and taking quizzes during active bounties are all free.',
+        a: 'Yes. Creating an account is free. You only pay when you enter a reader-funded competition or purchase optional add-ons like Time Boosts. Taking quizzes during active bounties, author sponsored comptitions, surveys, quick tasks, beta and sensitivity reader panels are all free to readers.',
       },
     ],
   },
@@ -43,7 +44,7 @@ const sections: FAQSection[] = [
     items: [
       {
         q: 'How do competitions work?',
-        a: 'A book is announced. A quiz window opens. You take a 10-question quiz in 8 minutes or less. Your score and speed determine your rank. Top performers earn from the prize pool.',
+        a: 'A book is announced. A quiz window opens. You take a 10-question quiz in 8 minutes or less. Your score and speed determine your rank. Top performer(s) earn from the prize pool.',
       },
       {
         q: 'What are the different competition formats?',
@@ -53,7 +54,7 @@ const sections: FAQSection[] = [
             <br /><br />
             <strong>Sprint</strong> — One book. One quiz. The clock is running. Score the most, finish fastest.
             <br /><br />
-            <strong>Read-A-Thon</strong> — Read every book you can within the time window and pass their quizzes. Most pages read wins.
+            <strong>Read-A-Thon</strong> — Take as any quizzes as you can within the time window and pass their quizzes. Most pages read from passed quizzes wins 1st place. 2nd and 3rd place win smaller prizes.
             <br /><br />
             <strong>Elimination Bracket</strong> — Multi-round tournament. Readers advance by not only passsing each round's quiz, but by scoring high enough to survive. 1st place takes the top prize. 2nd & 3rd place prizes are also rewarded.
           </span>
@@ -69,7 +70,7 @@ const sections: FAQSection[] = [
       },
       {
         q: 'What is pre-registration?',
-        a: 'A free way to lock in your interest before a competition goes live. When the competition opens, pre-registrants are notified and get 48 hours to pay the entry fee before it launches to the general public.',
+        a: 'A free way to lock in your interest before a competition goes live. Pre-registrants and paid subscribers get notified first when a competition formally opens so they can pay the entry fee.',
       },
       {
         q: 'Can the same book appear in multiple competitions?',
@@ -81,7 +82,7 @@ const sections: FAQSection[] = [
       },
       {
         q: 'When do I get paid?',
-        a: 'There is a 24–48 hour review window after a competition closes. After review, winnings are released to your account for cashout.',
+        a: 'There is a 24–48 hour review window after a competition closes to ensure no cheating occured. After review, winnings are released to your account.',
       },
     ],
   },
@@ -94,11 +95,11 @@ const sections: FAQSection[] = [
       },
       {
         q: 'Why is the quiz locked on some books?',
-        a: 'Quizzes are only active when a book is part of a live competition or has an active author bounty. When neither is running, the quiz is locked — but the book page stays live so you can browse, read the description, and save it for later. You can tap "Notify Me" to get an alert when that book enters a competition or bounty.',
+        a: 'Quizzes are only active when a book is part of a live competition or has an active author bounty. When neither is running, the quiz is locked so users cannot get answers to quizzes before they become paid, but the book page stays live so you can browse, read blurbs, and save it for later. You can tap "Notify Me" to get an alert when that book enters a competition or bounty.',
       },
       {
         q: 'What if I had a technical problem during a quiz?',
-        a: 'Technical failures are reviewed case-by-case within 72 hours. Contact support with details.',
+        a: 'Technical failures are reviewed case-by-case within 72 hours. Contact info@joinreadtoearn.com with details to open a review.',
       },
       {
         q: 'What if a quiz question is wrong?',
@@ -109,8 +110,8 @@ const sections: FAQSection[] = [
         a: 'Yes. Time Boosts add 2 extra minutes to a quiz. One boost per book. Single $0.99 | 6-pack $4.99 | 15-pack $9.99',
       },
       {
-        q: 'Can I retake a quiz?',
-        a: 'No. Each reader gets one attempt per book per competition or bounty window. This keeps the competition fair and results meaningful.',
+        q: 'Can I retake a quiz and still earn?',
+        a: 'No. Each reader gets one chance per book per competition or bounty window to earn a payout or compete for a prize. This keeps the competition fair and results meaningful.',
       },
     ],
   },
@@ -119,17 +120,17 @@ const sections: FAQSection[] = [
     items: [
       {
         q: 'What is the minimum to cash out?',
-        a: '$10 across all tiers and earning types.',
+        a: '$10 for free users and $5 for paid users.',
       },
       {
         q: 'How do I get paid?',
-        a: 'PayPal, Wise (for international users), or gift cards via Giftogram. Select your preferred method in your account settings.',
+        a: 'PayPal, Wise (for international users), or gift cards via Giftogram.',
       },
       {
         q: 'What about taxes?',
         a: (
           <span>
-            If you earn $500+ in a year, you\'ll be notified (in-app and via email) that we\'ll need your tax info (SSN for a 1099) before releasing further payouts past $600. Payout requests pause at $599 until we have your info — you can still earn in the meantime.
+            If you earn $500+ in a year, you\'ll be notified that we\'ll need your tax info (SSN for a 1099) before releasing further payouts past $600. Payout requests pause at $599 until we have your info — you can still earn in the meantime.
             <br /><br />
             Warning at $500: "To keep earning past $600, we\'ll need your tax info soon."
             <br />
@@ -141,7 +142,7 @@ const sections: FAQSection[] = [
       },
       {
         q: 'What is a bounty and how do I earn from one?',
-        a: 'An author funds a prize pool and sets a per-reader payout. When you pass that book\'s quiz during an active bounty, you earn the per-pass amount directly from the pool. No entry fee required — bounties are always free to readers. Payouts are released after a 24–48 hour review.',
+        a: 'An author funds a prize pool and sets a per-reader payout. When you pass that book\'s quiz during an active bounty, you earn the per-pass amount directly from the pool. No entry fee required — bounties are always free to readers.',
       },
     ],
   },
@@ -150,33 +151,37 @@ const sections: FAQSection[] = [
     items: [
       {
         q: 'Do I have to pay to list my book?',
-        a: 'Yes. Standard Listing starts at $7/book and gives your book a permanent home on the platform. Volume pricing is available for multiple titles.',
+        a: 'Yes. Standard Listing starts at $7/book and gives your book a quiz and permanent home on the platform where it is eligible to be picked for competitions. Volume pricing is available for multiple titles.',
       },
       {
         q: 'What does a bounty mean?',
         a: 'You fund a pool and set a per-reader payout. We distribute to readers who pass your book\'s quiz. You only pay per verified pass. We keep 20%. Unused bounty funds can be refunded after one year.',
       },
       {
-        q: 'What if I sponsor a competition — do readers pay too?',
-        a: 'Author-sponsored competitions are free to readers. Entry fees only apply to reader-funded competitions. Hybrid competitions exist where the author funds the base pool and readers also pay entry fees.',
+        q: 'What if I sponsor a competition? Do readers pay too?',
+        a: 'Author-sponsored competitions are free to readers. Entry fees only apply to reader-funded competitions.',
       },
       {
         q: 'Can I create my own quiz for my book?',
-        a: 'Yes. When you purchase a Standard Listing, you can submit your own quiz questions for your book. This also grants us permission to use minimal text from your book where necessary for the quiz.',
+        a: 'Yes. When you purchase a Standard Listing, you submit your own quiz questions for your book.',
       },
       {
-        q: 'What other services do you offer authors?',
+        q: 'Do you offer free services to authors?',
+        a: 'Yes. Author AMA — Host a Reddit-style Q&A directly on the platform and get free promotion. Bulletin Board — Post your new release or upcoming book on our reader bulletin board. Author Ambassador Program — Join and refer another author who buys a listing and earn 25% of their first listing fee.',
+      },
+      {
+        q: 'What other paid services do you offer authors?',
         a: (
           <span>
             Beyond standard listings and bounties, we offer:
             <br /><br />
-            <strong>Quick Tasks</strong> — Pay readers to complete short tasks like leaving a review, following your author page, or sharing your book.
+            <strong>Quick Tasks</strong> — Pay readers to complete short tasks like helping you decide between cover options, titles, and blurbs.
             <br /><br />
-            <strong>Reader Feedback Surveys</strong> — Collect structured feedback from real readers on covers, blurbs, tropes, and more.
+            <strong>Reader Feedback Surveys</strong> — Collect structured feedback from readers who have read from you before.
             <br /><br />
-            <strong>Beta Readers</strong> — Get early manuscript feedback from readers matched to your genre.
+            <strong>Beta Readers</strong> — Get feedback on the first chapter of your manuscript from readers and recurit your favorites to read the full book.
             <br /><br />
-            <strong>Sensitivity Readers</strong> — Have your manuscript reviewed by readers with lived experience in the identities or topics you\'re writing about.
+            <strong>Sensitivity Readers</strong> — Have an excerpt from your book reviewed by readers with lived experience in the identities or topics you\'re writing about. Recurit your favorites to read the full book.
             <br /><br />
             Visit the Authors page to explore all services.
           </span>
@@ -184,7 +189,7 @@ const sections: FAQSection[] = [
       },
       {
         q: 'How do I know my book is reaching the right readers?',
-        a: 'Books are tagged by genre and trope. Readers browse and filter by what they already love. Your listing puts your book in front of readers who are actively looking for it — not a general audience.',
+        a: 'Books are tagged by genre and trope. Readers browse and filter by what they already love. Your listing puts your book in front of readers who are actively looking for it, not a general audience.',
       },
     ],
   },
@@ -194,10 +199,6 @@ const sections: FAQSection[] = [
       {
         q: 'What happens if I cancel mid-month?',
         a: 'Your subscriber benefits are honored through the end of your current billing period.',
-      },
-      {
-        q: 'Can I use site credit toward my subscription?',
-        a: 'No. Site credit is for entry discounts, time boosts, and future eligible purchases only — not subscription fees.',
       },
     ],
   },
