@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
 
 interface FAQItem {
   q: string;
@@ -22,12 +21,11 @@ const sections: FAQSection[] = [
       },
       {
         q: 'Who can join?',
-        a: 'Anyone 13 and older. Users 13–17 must have verifiable parental consent at signup. Parent email's consent is verified through phone. Gift cards only for under 18. Cash transfers (PayPal and Wise) available for 18+.',
+        a: 'Anyone 13 and older. Users 13–17 must have verifiable parental consent at signup. Parent email consent is verified through phone. Gift cards only for under 18. Cash transfers (PayPal and Wise) available for 18+.',
       },
       {
         q: 'What countries are supported?',
-        a: 'Argentina, Australia, Austria, Bangladesh, Belgium, Bolivia, Brazil, Bulgaria, Canada, Chile, Colombia, Costa Rica, Croatia, Cyprus, Czech Republic, Denmark, Ecuador, Egypt, Estonia, Finland, France, Georgia, Germany, Ghana, Greece, Hong Kong,
-Hungary, India, Indonesia, Ireland, Israel, Italy, Japan, Kenya, Latvia, Lithuania, Luxembourg, Malaysia, Malta, Mexico, Morocco, Nepal, Netherlands, New Zealand, Nigeria, Norway, Pakistan, Peru, Philippines, Poland, Portugal, Romania, Singapore, Slovakia, Slovenia, South Africa, South Korea, Spain, Sri Lanka, Sweden, Switzerland, Tanzania, Thailand, Turkey, Uganda, Ukraine, United Arab Emirates, United Kingdom, United States, Uruguay, Vietnam, Zimbabwe.',
+        a: 'Argentina, Australia, Austria, Bangladesh, Belgium, Bolivia, Brazil, Bulgaria, Canada, Chile, Colombia, Costa Rica, Croatia, Cyprus, Czech Republic, Denmark, Ecuador, Egypt, Estonia, Finland, France, Georgia, Germany, Ghana, Greece, Hong Kong, Hungary, India, Indonesia, Ireland, Israel, Italy, Japan, Kenya, Latvia, Lithuania, Luxembourg, Malaysia, Malta, Mexico, Morocco, Nepal, Netherlands, New Zealand, Nigeria, Norway, Pakistan, Peru, Philippines, Poland, Portugal, Romania, Singapore, Slovakia, Slovenia, South Africa, South Korea, Spain, Sri Lanka, Sweden, Switzerland, Tanzania, Thailand, Turkey, Uganda, Ukraine, United Arab Emirates, United Kingdom, United States, Uruguay, Vietnam, Zimbabwe.',
       },
       {
         q: 'Can I have more than one account?',
@@ -35,7 +33,7 @@ Hungary, India, Indonesia, Ireland, Israel, Italy, Japan, Kenya, Latvia, Lithuan
       },
       {
         q: 'Is ReadToEarn free to join?',
-        a: 'Yes. Creating an account is free. You only pay when you enter a reader-funded competition or purchase optional add-ons like Time Boosts. Taking quizzes during active bounties, author sponsored comptitions, surveys, quick tasks, beta and sensitivity reader panels are all free to readers.',
+        a: "Yes. Creating an account is free. You only pay when you enter a reader-funded competition or purchase optional add-ons like Time Boosts. Taking quizzes during active bounties, author sponsored competitions, surveys, quick tasks, beta and sensitivity reader panels are all free to readers.",
       },
     ],
   },
@@ -44,7 +42,7 @@ Hungary, India, Indonesia, Ireland, Israel, Italy, Japan, Kenya, Latvia, Lithuan
     items: [
       {
         q: 'How do competitions work?',
-        a: 'A book is announced. A quiz window opens. You take a 10-question quiz in 8 minutes or less. Your score and speed determine your rank. Top performer(s) earn from the prize pool.',
+        a: 'A book is announced. A quiz window opens. You take a 10-question quiz in 8 minutes or less. Depending on the competition format, your score and speed determine your rank. Top performer(s) earn from the prize pool.',
       },
       {
         q: 'What are the different competition formats?',
@@ -54,7 +52,7 @@ Hungary, India, Indonesia, Ireland, Israel, Italy, Japan, Kenya, Latvia, Lithuan
             <br /><br />
             <strong>Sprint</strong> — One book. One quiz. The clock is running. Score the most, finish fastest.
             <br /><br />
-            <strong>Read-A-Thon</strong> — Take as any quizzes as you can within the time window and pass their quizzes. Most pages read from passed quizzes wins 1st place. 2nd and 3rd place win smaller prizes.
+            <strong>Read-A-Thon</strong> — Take as many quizzes as you can within the time window and pass them. Most pages read from passed quizzes wins 1st place. 2nd and 3rd place win smaller prizes.
             <br /><br />
             <strong>Elimination Bracket</strong> — Multi-round tournament. Readers advance by not only passsing each round's quiz, but by scoring high enough to survive. 1st place takes the top prize. 2nd & 3rd place prizes are also rewarded.
           </span>
@@ -82,7 +80,7 @@ Hungary, India, Indonesia, Ireland, Israel, Italy, Japan, Kenya, Latvia, Lithuan
       },
       {
         q: 'When do I get paid?',
-        a: 'There is a 24–48 hour review window after a competition closes to ensure no cheating occured. After review, winnings are released to your account.',
+        a: 'There is a 24–48 hour review window after a competition closes to ensure no cheating occurred. After review, winnings are released to your account.',
       },
     ],
   },
@@ -166,10 +164,6 @@ Hungary, India, Indonesia, Ireland, Israel, Italy, Japan, Kenya, Latvia, Lithuan
         a: 'Yes. When you purchase a Standard Listing, you submit your own quiz questions for your book.',
       },
       {
-        q: 'Do you offer free services to authors?',
-        a: 'Yes. Author AMA — Host a Reddit-style Q&A directly on the platform and get free promotion. Bulletin Board — Post your new release or upcoming book on our reader bulletin board. Author Ambassador Program — Join and refer another author who buys a listing and earn 25% of their first listing fee.',
-      },
-      {
         q: 'What other paid services do you offer authors?',
         a: (
           <span>
@@ -179,9 +173,9 @@ Hungary, India, Indonesia, Ireland, Israel, Italy, Japan, Kenya, Latvia, Lithuan
             <br /><br />
             <strong>Reader Feedback Surveys</strong> — Collect structured feedback from readers who have read from you before.
             <br /><br />
-            <strong>Beta Readers</strong> — Get feedback on the first chapter of your manuscript from readers and recurit your favorites to read the full book.
+            <strong>Beta Readers</strong> — Get feedback on the first chapter of your manuscript from readers and recruit your favorites to read the full book.
             <br /><br />
-            <strong>Sensitivity Readers</strong> — Have an excerpt from your book reviewed by readers with lived experience in the identities or topics you\'re writing about. Recurit your favorites to read the full book.
+            <strong>Sensitivity Readers</strong> — Have an excerpt from your book reviewed by readers with lived experience in the identities or topics you\'re writing about. Recruit your favorites to read the full book.
             <br /><br />
             Visit the Authors page to explore all services.
           </span>
