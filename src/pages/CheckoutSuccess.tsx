@@ -69,7 +69,7 @@ export const CheckoutSuccess = () => {
         amount:               item.amount,
         type:                 item.type,
         label:                item.label,
-        metadata:             item.metadata ?? {},
+        metadata:             { ...(item.metadata ?? {}), is_late: pending?.is_late ?? false },
         status:               'succeeded',
       });
 
