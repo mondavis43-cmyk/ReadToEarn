@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Trophy, Users, BookOpen, Plus, Play, Square, ChevronDown, ChevronUp, DollarSign, Trash2 } from 'lucide-react';
+import { Trophy, Users, BookOpen, Plus, Play, Square, ChevronDown, ChevronUp, DollarSign, Trash2, Pencil, Check, X } from 'lucide-react';
 
 interface Readathon {
   id: string;
@@ -56,6 +56,8 @@ export function AdminReadathon() {
   const [stats, setStats] = useState<Record<string, ReadathonStats>>({});
   const [loadingLeaderboard, setLoadingLeaderboard] = useState<string | null>(null);
   const [payingOut, setPayingOut] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ entry_fee: '', prize_pool: '', start_date: '', end_date: '' });
 
   const load = async () => {
     setLoading(true);
@@ -151,6 +153,30 @@ export function AdminReadathon() {
       });
     }
 
+    load();
+  };
+
+  const handleEditOpen = (r: Readathon) => {
+    setEditingId(r.id);
+    setEditForm({
+      entry_fee: String(r.entry_fee),
+      prize_pool: String(r.prize_pool),
+      start_date: r.start_date.slice(0, 16),
+      end_date: r.end_date.slice(0, 16),
+    });
+  };
+
+  const handleSaveEdit = async (id: string) => {
+    setSaving(true);
+    const { error: updateError } = await supabase.from('readathons').update({
+      entry_fee: Number(editForm.entry_fee),
+      prize_pool: Number(editForm.prize_pool),
+      start_date: new Date(editForm.start_date).toISOString(),
+      end_date: new Date(editForm.end_date).toISOString(),
+    }).eq('id', id);
+    setSaving(false);
+    if (updateError) { setError(updateError.message); return; }
+    setEditingId(null);
     load();
   };
 
@@ -481,6 +507,13 @@ export function AdminReadathon() {
                         </button>
                       )}
                       <button
+                        onClick={() => handleEditOpen(r)}
+                        className="p-1.5 rounded-lg text-blue-400 hover:text-blue-600 hover:bg-blue-500/10 transition-colors"
+                        title="Edit readathon"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
                         onClick={() => handleDelete(r.id, r.title)}
                         className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-500/10 transition-colors"
                         title="Delete readathon"
@@ -496,6 +529,48 @@ export function AdminReadathon() {
                     </div>
                   </div>
                 </div>
+
+                {editingId === r.id && (
+                  <div className="border-t border-[#e8e8d5] dark:border-gray-700 p-5 space-y-3">
+                    <h4 className="text-sm font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Edit Readathon</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-[#6B7280] dark:text-gray-400 mb-1">Entry Fee ($)</label>
+                        <input type="number" min="0" step="0.01" value={editForm.entry_fee}
+                          onChange={(e) => setEditForm((p) => ({ ...p, entry_fee: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-xl border border-[#e8e8d5] dark:border-gray-600 bg-[#F5F0E8] dark:bg-gray-700 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-[#6B7280] dark:text-gray-400 mb-1">Prize Pool ($)</label>
+                        <input type="number" min="0" step="0.01" value={editForm.prize_pool}
+                          onChange={(e) => setEditForm((p) => ({ ...p, prize_pool: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-xl border border-[#e8e8d5] dark:border-gray-600 bg-[#F5F0E8] dark:bg-gray-700 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-[#6B7280] dark:text-gray-400 mb-1">Start Date</label>
+                        <input type="datetime-local" value={editForm.start_date}
+                          onChange={(e) => setEditForm((p) => ({ ...p, start_date: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-xl border border-[#e8e8d5] dark:border-gray-600 bg-[#F5F0E8] dark:bg-gray-700 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-[#6B7280] dark:text-gray-400 mb-1">End Date</label>
+                        <input type="datetime-local" value={editForm.end_date}
+                          onChange={(e) => setEditForm((p) => ({ ...p, end_date: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-xl border border-[#e8e8d5] dark:border-gray-600 bg-[#F5F0E8] dark:bg-gray-700 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleSaveEdit(r.id)} disabled={saving}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#D4A843] text-white text-sm font-semibold hover:bg-[#c49a3e] disabled:opacity-50">
+                        <Check size={14} /> {saving ? 'Saving...' : 'Save'}
+                      </button>
+                      <button onClick={() => setEditingId(null)}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#e8e8d5] dark:border-gray-600 text-[#6B7280] text-sm hover:opacity-70">
+                        <X size={14} /> Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {isExpanded && (
                   <div className="border-t border-[#e8e8d5] dark:border-gray-700 p-5 space-y-4">
