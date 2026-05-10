@@ -483,7 +483,7 @@ serve(async (req) => {
 
   const [bookResult, profileResult] = await Promise.all([
     adminClient.from("books").select("bounty_amount, book_type, page_count").eq("id", book_id).maybeSingle(),
-    adminClient.from("profiles").select("available_balance, streak_count, referral_id, referred_by").eq("id", user.id).maybeSingle(),
+    adminClient.from("profiles").select("available_balance, referral_id, referred_by").eq("id", user.id).maybeSingle(),
   ]);
 
   const book = bookResult.data;
@@ -512,13 +512,9 @@ serve(async (req) => {
   }
 
   let earnedAmount = book.bounty_amount ?? 0;
-  let streakBonus = 0;
-
-  const streak = profile.streak_count ?? 0;
-  if (streak >= 7) streakBonus = 0.10;
 
   let payoutStatus = isSuspicious ? "flagged" : "completed";
-  const projectedBalance = (profile.available_balance ?? 0) + earnedAmount + streakBonus;
+  const projectedBalance = (profile.available_balance ?? 0) + earnedAmount;
   if (projectedBalance >= 500) payoutStatus = "pending_review";
 
   if (book.book_type === "sponsored") {
@@ -528,13 +524,13 @@ serve(async (req) => {
     });
     earnedAmount = rpcResult ?? 0;
   } else {
-    const newBalance = (profile.available_balance ?? 0) + earnedAmount + streakBonus;
+    const newBalance = (profile.available_balance ?? 0) + earnedAmount;
     await adminClient.from("profiles").update({ available_balance: newBalance }).eq("id", user.id);
   }
 
   await adminClient.from("payout_logs").insert({
     user_id: user.id,
-    amount: earnedAmount + streakBonus,
+    amount: earnedAmount,
     status: payoutStatus,
     reason: "Bounty payout",
   });
@@ -559,7 +555,6 @@ serve(async (req) => {
       score: correct,
       total,
       earned_amount: earnedAmount,
-      streak_bonus: streakBonus > 0 ? streakBonus : undefined,
       pool_exhausted: false,
     }),
     { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
