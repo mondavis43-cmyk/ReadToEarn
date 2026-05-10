@@ -11,7 +11,6 @@ interface Profile {
   site_credit: number;
   birthday: string | null;
   birthday_bonus_last_claimed: number | null;
-  streak_count: number | null;
   is_upgraded: boolean;
   accuracy_rate: number;
   wins_count: number;
@@ -199,18 +198,16 @@ export const Profile = () => {
         )}
 
         {/* Earning Overview */}
-        <div className={`${cardBg} rounded-xl p-8 border ${cardBorder} shadow-sm`}>
-          <div>
-            <p className={`text-xs font-bold uppercase tracking-wider ${subColor} mb-1`}>Cash Balance</p>
-            <p className={`text-4xl font-serif ${headingColor}`}>${profile?.available_balance?.toFixed(2) ?? '0.00'}</p>
-            <button
-              onClick={() => navigateTo('/cashout')}
-              disabled={!profile || profile.available_balance < 10}
-              className="mt-4 flex items-center gap-2 bg-[#D4A843] text-[#1B2A4A] font-bold px-4 py-2 rounded-lg text-sm hover:bg-[#c49a38] disabled:opacity-40"
-            >
-              <DollarSign className="w-4 h-4" /> Cash Out
-            </button>
-          </div>
+        <div className={`${cardBg} rounded-xl p-8 border ${cardBorder} shadow-sm text-center`}>
+          <p className={`text-xs font-bold uppercase tracking-wider ${subColor} mb-1`}>Cash Balance</p>
+          <p className={`text-4xl font-serif ${headingColor}`}>${profile?.available_balance?.toFixed(2) ?? '0.00'}</p>
+          <button
+            onClick={() => navigateTo('/cashout')}
+            disabled={!profile || profile.available_balance < 10}
+            className="mt-4 inline-flex items-center gap-2 bg-[#D4A843] text-[#1B2A4A] font-bold px-4 py-2 rounded-lg text-sm hover:bg-[#c49a38] disabled:opacity-40"
+          >
+            <DollarSign className="w-4 h-4" /> Cash Out
+          </button>
         </div>
 
         {/* Stats Grid */}
@@ -327,34 +324,26 @@ export const Profile = () => {
           )}
         </div>
 
-        {/* Birthday & Streak */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className={`${cardBg} rounded-xl p-6 border ${cardBorder}`}>
-            <h3 className={`text-sm font-bold ${headingColor} mb-4 flex items-center gap-2`}>
-              <Gift className="w-4 h-4 text-[#D4A843]" /> Birthday Bonus
-            </h3>
-            <input
-              type="date"
-              value={birthdayInput}
-              onChange={(e) => setBirthdayInput(e.target.value)}
-              className={`w-full mb-3 p-2 rounded border ${isDark ? 'bg-[#1B2A4A] border-white/10 text-white' : 'bg-gray-50 border-black/10'}`}
-            />
-            {birthdayError   && <p className="text-red-400 text-xs mb-2">{birthdayError}</p>}
-            {birthdaySuccess && <p className="text-green-400 text-xs mb-2">Birthday saved!</p>}
-            <button
-              onClick={handleSaveBirthday}
-              disabled={savingBirthday}
-              className="text-xs font-bold text-[#D4A843] hover:underline disabled:opacity-50"
-            >
-              {savingBirthday ? 'Saving...' : 'Update Birthday'}
-            </button>
-          </div>
-
-          <div className={`${cardBg} rounded-xl p-6 border ${cardBorder} flex flex-col justify-center items-center text-center`}>
-            <p className="text-3xl font-serif text-[#D4A843]">{profile?.streak_count ?? 0}</p>
-            <p className={`text-xs font-bold ${headingColor} uppercase`}>Day Reading Streak</p>
-            <p className={`text-[10px] ${subColor} mt-1`}>Keep reading to earn site credits!</p>
-          </div>
+        {/* Birthday Bonus */}
+        <div className={`${cardBg} rounded-xl p-6 border ${cardBorder} text-center`}>
+          <h3 className={`text-sm font-bold ${headingColor} mb-4 flex items-center justify-center gap-2`}>
+            <Gift className="w-4 h-4 text-[#D4A843]" /> Birthday Bonus
+          </h3>
+          <input
+            type="date"
+            value={birthdayInput}
+            onChange={(e) => setBirthdayInput(e.target.value)}
+            className={`w-full mb-3 p-2 rounded border ${isDark ? 'bg-[#1B2A4A] border-white/10 text-white' : 'bg-gray-50 border-black/10'}`}
+          />
+          {birthdayError   && <p className="text-red-400 text-xs mb-2">{birthdayError}</p>}
+          {birthdaySuccess && <p className="text-green-400 text-xs mb-2">Birthday saved!</p>}
+          <button
+            onClick={handleSaveBirthday}
+            disabled={savingBirthday}
+            className="text-xs font-bold text-[#D4A843] hover:underline disabled:opacity-50"
+          >
+            {savingBirthday ? 'Saving...' : 'Update Birthday'}
+          </button>
         </div>
 
       </div>
