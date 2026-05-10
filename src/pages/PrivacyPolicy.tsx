@@ -32,7 +32,7 @@ We also collect usage data automatically, including quiz activity, reading histo
 • Operate and improve the Platform
 • Verify your identity and prevent fraud, including multi-account detection via phone and email
 • Determine payout eligibility based on your country
-• Process earnings and cashout requests via PayPal, Venmo, Wise, or gift cards
+• Process earnings and cashout requests via PayPal, Wise, or gift cards
 • Enforce the 8-minute quiz timer and other anti-cheating measures
 • Comply with legal obligations, including IRS 1099 tax reporting for users earning $600 or more in a calendar year
 • Communicate with you about your account, earnings, competitions, and platform updates
@@ -46,7 +46,7 @@ For users aged 13–17 (minors):
 • A parent or guardian must verify their phone number at signup via SMS one-time passcode
 • The parent or guardian must complete a consent checkbox with a logged timestamp before the account is created
 • Both the minor's and parent's verified phone numbers are stored on the account
-• Minors are eligible for gift card payouts only. Cash transfers (PayPal, Venmo, Wise) are available to users 18 and older
+• Minors are eligible for gift card payouts only. Cash transfers (PayPal and Wise) are available to users 18 and older
 • If you believe a child under 13 has created an account, contact us immediately at info@joinreadtoearn.com and we will delete that information promptly`,
     },
     {
@@ -65,7 +65,7 @@ Additional fraud prevention measures include:
       body: `Earnings are subject to the following rules:
 
 • Minimum cashout threshold: $10 for all users
-• Payment methods: PayPal and Venmo (US, 18+), Wise (international, 18+), gift cards (all ages)
+• Payment methods: PayPal (US, 18+), Wise (international, 18+), gift cards (all ages)
 • Earnings from bounties represent 80% of the author's pool; the platform retains 20%
 • Competition prize pools are funded by reader entry fees (75% to winners, 25% to platform) or by author sponsorship fees
 • Affiliate earnings ($0.50/month per referred subscriber) are available to paid subscribers only and begin after the referred user has been active for 30 days
@@ -81,7 +81,7 @@ Tax compliance:
       title: '6. Sharing Your Information',
       body: `We do not sell your personal information. We may share your information with:
 
-• Payment processors (PayPal, Venmo, Wise, Giftogram) to fulfill cashout requests
+• Payment processors (PayPal, Wise, Giftogram) to fulfill cashout requests
 • Hosting and infrastructure providers necessary to operate the Platform
 • The IRS or equivalent tax authority, as required by law for 1099 reporting
 • Law enforcement or regulatory bodies when required by applicable law
