@@ -22,7 +22,7 @@ const sections: FAQSection[] = [
       },
       {
         q: 'Who can join?',
-        a: 'Anyone 13 and older. Users 13–17 must have verifiable parental consent at signup — parent email is verified and consent is logged with a timestamp. Gift cards only for under 18. Cash transfers (PayPal, Venmo, Wise) available for 18+.',
+        a: 'Anyone 13 and older. Users 13–17 must have verifiable parental consent at signup — parent email is verified and consent is logged with a timestamp. Gift cards only for under 18. Cash transfers (PayPal and Wise) available for 18+.',
       },
       {
         q: 'What countries are supported?',
@@ -123,7 +123,7 @@ const sections: FAQSection[] = [
       },
       {
         q: 'How do I get paid?',
-        a: 'PayPal, Venmo, Wise (for international users), or gift cards via Giftogram. Select your preferred method in your account settings.',
+        a: 'PayPal, Wise (for international users), or gift cards via Giftogram. Select your preferred method in your account settings.',
       },
       {
         q: 'What about taxes?',
