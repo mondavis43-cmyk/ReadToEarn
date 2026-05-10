@@ -211,7 +211,8 @@ return (
       const params = new URLSearchParams(window.location.search);
       const competitionId = params.get('competition') ?? undefined;
       const competitionRound = params.get('round') ? Number(params.get('round')) : undefined;
-      return <Quiz bookId={bookId} competitionId={competitionId} competitionRound={competitionRound} />;
+      const sprintId = params.get('sprint') ?? undefined;
+      return <Quiz bookId={bookId} competitionId={competitionId} competitionRound={competitionRound} sprintId={sprintId} />;
     })()}
     {route.startsWith('/book/') && <BookPage />}
     {!isKnownRoute && <Home />}
