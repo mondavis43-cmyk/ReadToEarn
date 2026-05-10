@@ -200,23 +200,16 @@ export const Profile = () => {
 
         {/* Earning Overview */}
         <div className={`${cardBg} rounded-xl p-8 border ${cardBorder} shadow-sm`}>
-          <div className="grid grid-cols-2 gap-8">
-            <div>
-              <p className={`text-xs font-bold uppercase tracking-wider ${subColor} mb-1`}>Cash Balance</p>
-              <p className={`text-4xl font-serif ${headingColor}`}>${profile?.available_balance?.toFixed(2) ?? '0.00'}</p>
-              <button
-                onClick={() => navigateTo('/cashout')}
-                disabled={!profile || profile.available_balance < 10}
-                className="mt-4 flex items-center gap-2 bg-[#D4A843] text-[#1B2A4A] font-bold px-4 py-2 rounded-lg text-sm hover:bg-[#c49a38] disabled:opacity-40"
-              >
-                <DollarSign className="w-4 h-4" /> Cash Out
-              </button>
-            </div>
-            <div className={`border-l ${dividerColor} pl-8`}>
-              <p className={`text-xs font-bold uppercase tracking-wider ${subColor} mb-1`}>Site Credit</p>
-              <p className="text-4xl font-serif text-[#D4A843]">${profile?.site_credit?.toFixed(2) ?? '0.00'}</p>
-              <p className={`text-[10px] ${subColor} mt-2 uppercase`}>Use site credit for entries & boosts</p>
-            </div>
+          <div>
+            <p className={`text-xs font-bold uppercase tracking-wider ${subColor} mb-1`}>Cash Balance</p>
+            <p className={`text-4xl font-serif ${headingColor}`}>${profile?.available_balance?.toFixed(2) ?? '0.00'}</p>
+            <button
+              onClick={() => navigateTo('/cashout')}
+              disabled={!profile || profile.available_balance < 10}
+              className="mt-4 flex items-center gap-2 bg-[#D4A843] text-[#1B2A4A] font-bold px-4 py-2 rounded-lg text-sm hover:bg-[#c49a38] disabled:opacity-40"
+            >
+              <DollarSign className="w-4 h-4" /> Cash Out
+            </button>
           </div>
         </div>
 
