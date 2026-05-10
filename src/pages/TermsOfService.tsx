@@ -35,7 +35,7 @@ You are responsible for maintaining the security of your account credentials. Re
 
 Earnings are subject to the following rules:
 • Minimum cashout threshold: $10
-• Payment methods: PayPal and Venmo (US residents, 18+), Wise (international, 18+), Giftogram gift cards (all ages including minors)
+• Payment methods: PayPal (US residents, 18+), Wise (international, 18+), Giftogram gift cards (all ages including minors)
 • Earnings are credited only after verification and approval
 • We reserve the right to withhold or reverse earnings obtained through fraudulent activity, cheating, or abuse of the Platform
 
