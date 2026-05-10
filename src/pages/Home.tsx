@@ -156,7 +156,7 @@ export const Home = () => {
         </div>
 
         <p className="text-xs" style={{ color: textMuted }}>
-          Payouts via PayPal, Wise & Gift Cards. Cash out at $10.
+          Payouts via PayPal, Venmo, Wise & Gift Cards. Cash out at $10.
         </p>
       </section>
 
@@ -189,7 +189,7 @@ export const Home = () => {
               icon: <DollarSign className="w-5 h-5" style={{ color: gold }} />,
               step: '03',
               title: 'Collect Your Winnings',
-              body: 'Top performers split the prize pool. Funds go to PayPal, Wise, or a gift card — your choice.',
+              body: 'Top performers split the prize pool. Funds go to PayPal, Venmo, Wise, or a gift card — your choice.',
             },
           ].map(({ icon, step, title, body }) => (
             <div
@@ -317,11 +317,6 @@ export const Home = () => {
               icon: <MessageSquare className="w-5 h-5" />,
               title: 'Feedback Surveys',
               body: 'Share your reader opinion. Authors want to know what you think.',
-            },
-            {
-              icon: <Star className="w-5 h-5" />,
-              title: 'Daily Trivia',
-              body: 'Answer one book question each day for site credit.',
             },
             {
               icon: <Users className="w-5 h-5" />,
