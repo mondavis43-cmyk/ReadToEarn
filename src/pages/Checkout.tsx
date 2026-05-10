@@ -4,7 +4,6 @@ import { createClient } from '@supabase/supabase-js';
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
-);
 import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
@@ -27,7 +26,9 @@ export type CheckoutItem = {
     | "subscription"
     | "time_boost"
     | "competition_entry"
-    | "tournament_entry";
+    | "tournament_entry"
+    | "sprint_entry"
+    | "readathon_entry";
   label: string;
   amount: number;
   metadata?: Record<string, string | number>;
@@ -112,6 +113,8 @@ const REDIRECT_MAP: Record<string, string> = {
   time_boost: "/profile",
   competition_entry: "/competitions",
   tournament_entry: "/competitions",
+  sprint_entry:     "/sprints",
+  readathon_entry:  "/readathon",
 };
 
 const goTo = (path: string) => {
@@ -180,6 +183,50 @@ async function handlePostPayment(
       } else {
         await supabase.from("user_boosts").insert({ user_id: userId, balance: boostCount });
       }
+    } else if (item.type === "sprint_entry") {
+      await supabase.from("sprint_entries").insert({
+        sprint_id: pending.sprint_id,
+        user_id:   userId,
+        paid_at:   new Date().toISOString(),
+        status:    "active",
+      });
+
+      const entryFee    = item.amount / 100;
+      const readerShare = entryFee - entryFee * 0.25;
+      const { data: sprintData } = await supabase
+        .from("sprints")
+        .select("prize_pool")
+        .eq("id", pending.sprint_id)
+        .single();
+      if (sprintData) {
+        await supabase
+          .from("sprints")
+          .update({ prize_pool: (sprintData.prize_pool ?? 0) + readerShare })
+          .eq("id", pending.sprint_id);
+      }
+
+    } else if (item.type === "readathon_entry") {
+      await supabase.from("readathon_entries").insert({
+        readathon_id:   pending.readathon_id,
+        user_id:        userId,
+        entry_fee_paid: item.amount / 100,
+        paid_at:        new Date().toISOString(),
+      });
+
+      const entryFee    = item.amount / 100;
+      const readerShare = entryFee - entryFee * 0.25;
+      const { data: readathonData } = await supabase
+        .from("readathons")
+        .select("prize_pool")
+        .eq("id", pending.readathon_id)
+        .single();
+      if (readathonData) {
+        await supabase
+          .from("readathons")
+          .update({ prize_pool: (readathonData.prize_pool ?? 0) + readerShare })
+          .eq("id", pending.readathon_id);
+      }
+
     } else if (pending.table) {
       await supabase.from(pending.table).insert(pending.data);
     }
