@@ -92,7 +92,7 @@ export const Waitlist = () => {
             </div>
             <h3 className="text-[#1B2A4A] dark:text-[#F5F0E8] font-semibold mb-2">3. Cash out</h3>
             <p className="text-[#2C2C2C]/60 dark:text-gray-400 text-sm">
-              Once you hit $10, redeem via PayPal, Venmo, Wise (international), or gift cards. No subscription required to start earning.
+              Once you hit $10, redeem via PayPal, Wise (international), or gift cards. No subscription required to start earning.
             </p>
           </div>
         </div>
