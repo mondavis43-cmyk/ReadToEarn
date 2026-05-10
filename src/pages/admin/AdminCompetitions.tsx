@@ -185,6 +185,8 @@ export function AdminCompetitions() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ entry_fee: '', prize_pool: '', start_date: '', end_date: '' });
 
   const inputClass =
     'w-full px-3 py-2 rounded-lg border border-[#e8e0d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none focus:ring-2';
@@ -307,6 +309,30 @@ export function AdminCompetitions() {
       setSuccess('Competition closed and prizes distributed.');
       loadData();
     }
+  }
+
+  function handleEditOpen(comp: Competition) {
+    setEditingId(comp.id);
+    setEditForm({
+      entry_fee: String(comp.entry_fee),
+      prize_pool: String(comp.prize_pool),
+      start_date: comp.start_date ? comp.start_date.slice(0, 16) : '',
+      end_date: comp.end_date ? comp.end_date.slice(0, 16) : '',
+    });
+  }
+
+  async function handleSaveEdit(id: string) {
+    setSaving(true);
+    const { error: updateError } = await supabase.from('competitions').update({
+      entry_fee: Number(editForm.entry_fee),
+      prize_pool: Number(editForm.prize_pool),
+      start_date: editForm.start_date ? new Date(editForm.start_date).toISOString() : null,
+      end_date: editForm.end_date ? new Date(editForm.end_date).toISOString() : null,
+    }).eq('id', id);
+    setSaving(false);
+    if (updateError) { setError(updateError.message); return; }
+    setEditingId(null);
+    loadData();
   }
 
   async function handleDelete(id: string) {
@@ -597,12 +623,60 @@ export function AdminCompetitions() {
                   </button>
                 )}
                 <button
+                  onClick={() => handleEditOpen(comp)}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-blue-300 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
+                >
+                  Edit
+                </button>
+                <button
                   onClick={() => handleDelete(comp.id)}
                   className="text-xs px-3 py-1.5 rounded-lg border border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition ml-auto"
                 >
                   Delete
                 </button>
               </div>
+
+              {editingId === comp.id && (
+                <div className="mt-3 pt-3 border-t border-[#e8e0d5] dark:border-gray-700 space-y-3">
+                  <p className="text-xs font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Edit Competition</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-[#6B7280] dark:text-gray-400 mb-1">Entry Fee ($)</label>
+                      <input type="number" min="0" step="0.01" value={editForm.entry_fee}
+                        onChange={(e) => setEditForm((p) => ({ ...p, entry_fee: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-lg border border-[#e8e0d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-[#6B7280] dark:text-gray-400 mb-1">Prize Pool ($)</label>
+                      <input type="number" min="0" step="0.01" value={editForm.prize_pool}
+                        onChange={(e) => setEditForm((p) => ({ ...p, prize_pool: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-lg border border-[#e8e0d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-[#6B7280] dark:text-gray-400 mb-1">Start Date</label>
+                      <input type="datetime-local" value={editForm.start_date}
+                        onChange={(e) => setEditForm((p) => ({ ...p, start_date: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-lg border border-[#e8e0d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-[#6B7280] dark:text-gray-400 mb-1">End Date</label>
+                      <input type="datetime-local" value={editForm.end_date}
+                        onChange={(e) => setEditForm((p) => ({ ...p, end_date: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-lg border border-[#e8e0d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleSaveEdit(comp.id)} disabled={saving}
+                      className="px-4 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-semibold hover:bg-[#c49a3a] disabled:opacity-50">
+                      {saving ? 'Saving...' : 'Save'}
+                    </button>
+                    <button onClick={() => setEditingId(null)}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-[#6B7280] hover:bg-gray-50 dark:hover:bg-gray-700">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
