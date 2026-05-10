@@ -30,7 +30,7 @@ export const Cashout = () => {
   const { navigateTo } = useNavigate();
   const [balance, setBalance]             = useState(0);
   const [isUpgraded, setIsUpgraded]       = useState(false);
-  const [payoutType, setPayoutType]       = useState<'paypal' | 'venmo' | 'gift_card'>('gift_card');
+  const [payoutType, setPayoutType]       = useState<'paypal' | 'wise' | 'gift_card'>('gift_card');
   const [payoutDetails, setPayoutDetails] = useState('');
   const [loading, setLoading]             = useState(true);
   const [submitting, setSubmitting]       = useState(false);
@@ -88,7 +88,7 @@ export const Cashout = () => {
 
     if (payoutType !== 'gift_card' && !payoutDetails.trim()) {
       setError(
-        payoutType === 'paypal' ? 'Please enter your PayPal email.' : 'Please enter your Venmo username.'
+        payoutType === 'paypal' ? 'Please enter your PayPal email.' : 'Please enter your Wise email.'
       );
       return;
     }
@@ -142,7 +142,7 @@ export const Cashout = () => {
                 ? `${selectedCard.name} gift card`
                 : payoutType === 'paypal'
                 ? 'PayPal payment'
-                : 'Venmo payment'}{' '}
+                : 'Wise payment'}{' '}
               within 1-3 business days.
             </p>
             <button
@@ -195,7 +195,7 @@ export const Cashout = () => {
                 How would you like to be paid?
               </label>
               <div className="grid grid-cols-3 gap-3">
-                {(['gift_card', 'paypal', 'venmo'] as const).map((type) => (
+                {(['gift_card', 'paypal', 'wise'] as const).map((type) => (
                   <button
                     key={type}
                     type="button"
@@ -206,7 +206,7 @@ export const Cashout = () => {
                         : 'bg-transparent text-gray-300 border-gray-700 hover:border-gray-500'
                     }`}
                   >
-                    {type === 'gift_card' ? 'Gift Card' : type === 'paypal' ? 'PayPal' : 'Venmo'}
+                    {type === 'gift_card' ? 'Gift Card' : type === 'paypal' ? 'PayPal' : 'Wise'}
                   </button>
                 ))}
               </div>
@@ -256,20 +256,17 @@ export const Cashout = () => {
               </div>
             )}
 
-            {payoutType === 'venmo' && (
+            {payoutType === 'wise' && (
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-300 mb-2">Venmo Username</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">@</span>
-                  <input
-                    type="text"
-                    value={payoutDetails}
-                    onChange={(e) => setPayoutDetails(e.target.value)}
-                    placeholder="username"
-                    className="w-full pl-8 pr-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 transition"
-                    required
-                  />
-                </div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Wise Email</label>
+                <input
+                  type="email"
+                  value={payoutDetails}
+                  onChange={(e) => setPayoutDetails(e.target.value)}
+                  placeholder="your@email.com"
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 transition"
+                  required
+                />
               </div>
             )}
 
@@ -310,7 +307,7 @@ export const Cashout = () => {
                         ? `${req.gift_card_brand} Gift Card`
                         : req.payout_type === 'paypal'
                         ? 'PayPal'
-                        : 'Venmo'}
+                        : 'Wise'}
                     </p>
                     <p className="text-gray-500 text-xs mt-0.5">
                       {new Date(req.created_at).toLocaleDateString()}
