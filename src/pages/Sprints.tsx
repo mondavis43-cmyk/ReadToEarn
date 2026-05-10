@@ -379,7 +379,7 @@ export const Sprints = () => {
 
                   {tab === 'active' && isEntered && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); navigateTo(`/quiz/${sprint.book_id}?sprint_id=${sprint.id}`); }}
+                      onClick={(e) => { e.stopPropagation(); navigateTo(`/quiz/${sprint.book_id}?sprint=${sprint.id}`); }}
                       className="w-full py-2 rounded-lg text-sm font-semibold bg-green-500 text-white hover:bg-green-600"
                     >
                       Take Quiz
