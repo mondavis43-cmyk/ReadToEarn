@@ -55,8 +55,7 @@ export function Pricing() {
               "Enter any competition",
               "Take quizzes and earn from the prize pool",
               "Access Author Bounties",
-              "Complete Quick Tasks, Surveys & Beta Panels",
-              "Daily Trivia ($0.10 site credit)",
+              "Complete Quick Tasks, Surveys, & Beta and Sensitivity Panels",
               "Cash out at $10 minimum",
               "Public leaderboard visibility",
               "Reader Dashboard with personal stats"
