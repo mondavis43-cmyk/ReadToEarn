@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface FAQItem {
   q: string;
-  a: string | React.ReactNode;
+  a: string | ReactNode;
 }
 
 interface FAQSection {
@@ -42,7 +43,7 @@ const sections: FAQSection[] = [
     items: [
       {
         q: 'How do competitions work?',
-        a: 'A book is announced. A quiz window opens. You take a 10-question quiz in 8 minutes or less. Depending on the competition format, your score and speed determine your rank. Top performer(s) earn from the prize pool.',
+        a: 'A book is announced. A quiz window opens. You take a 10-question quiz in 8 minutes or less. Your score and speed determine your rank. Top performer(s) earn from the prize pool.',
       },
       {
         q: 'What are the different competition formats?',
@@ -52,7 +53,7 @@ const sections: FAQSection[] = [
             <br /><br />
             <strong>Sprint</strong> — One book. One quiz. The clock is running. Score the most, finish fastest.
             <br /><br />
-            <strong>Read-A-Thon</strong> — Take as many quizzes as you can within the time window and pass them. Most pages read from passed quizzes wins 1st place. 2nd and 3rd place win smaller prizes.
+            <strong>Read-A-Thon</strong> — A 4x4 bingo card of books organized by genre. Pass a quiz on each book to complete that square. Complete all 4 books in a row to score a Bingo. First 3 players to bingo win prizes — 50% / 30% / 20% of the pool. Ties broken by who completed faster.
             <br /><br />
             <strong>Elimination Bracket</strong> — Multi-round tournament. Readers advance by not only passsing each round's quiz, but by scoring high enough to survive. 1st place takes the top prize. 2nd & 3rd place prizes are also rewarded.
           </span>
@@ -72,7 +73,11 @@ const sections: FAQSection[] = [
       },
       {
         q: 'Can the same book appear in multiple competitions?',
-        a: 'The same book cannot appear in the same format within 90 days, but it can appear across different formats (e.g., Sprint and Read-A-Thon).',
+        a: 'The same book cannot appear in the same format within 90 days of its last use, but it can appear across different formats simultaneously (e.g., a Sprint and a Read-A-Thon running at the same time). If you enter both, you get a separate quiz attempt for each — your entry fee covers each competition independently.',
+      },
+      {
+        q: 'What if a book has an active bounty and is also in a competition?',
+        a: "You can earn from both. If you pass a book's quiz as part of a competition and that book also has an active bounty, your single quiz submission counts toward both. One attempt. One quiz. Both payouts apply if you pass.",
       },
       {
         q: 'What happens if there\'s a tie?',
@@ -109,7 +114,7 @@ const sections: FAQSection[] = [
       },
       {
         q: 'Can I retake a quiz and still earn?',
-        a: 'No. Each reader gets one chance per book per competition or bounty window to earn a payout or compete for a prize. This keeps the competition fair and results meaningful.',
+        a: 'No. Each reader gets one attempt per book per competition entry or bounty window. If the same book appears in multiple competition formats (e.g., a Sprint and a Read-A-Thon), your entry into each format gives you one attempt for that format — they are tracked separately. This keeps competition fair and results meaningful.',
       },
     ],
   },
