@@ -1,11 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
 const DISPOSABLE_DOMAINS = new Set([
   "mailinator.com", "guerrillamail.com", "tempmail.com", "throwaway.email",
   "yopmail.com", "sharklasers.com", "guerrillamailblock.com", "grr.la",
@@ -19,38 +17,31 @@ const DISPOSABLE_DOMAINS = new Set([
   "trashmail.io", "trashmail.xyz", "tempmail.ninja", "tempr.email",
   "spamfree24.org", "spamfree24.de", "spamfree24.eu",
 ]);
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
-
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
     return new Response(JSON.stringify({ error: "Missing authorization" }), {
       status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-
   const ipRaw = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
   const ipAddress = ipRaw.split(",")[0].trim();
   const userAgent = req.headers.get("user-agent") ?? "unknown";
-
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
   const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
     global: { headers: { Authorization: authHeader } },
   });
   const adminClient = createClient(supabaseUrl, serviceKey);
-
   const { data: { user }, error: authError } = await userClient.auth.getUser();
   if (authError || !user) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-
   const emailDomain = user.email?.split("@")[1]?.toLowerCase() ?? "";
   if (DISPOSABLE_DOMAINS.has(emailDomain)) {
     return new Response(JSON.stringify({ error: "Disposable email addresses are not allowed." }), {
@@ -67,7 +58,6 @@ serve(async (req) => {
       status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-
   let body: {
     book_id: string;
     answers: { question_id: string; selected_answer: string }[];
@@ -84,10 +74,8 @@ serve(async (req) => {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-
   const { book_id, answers, competition_id, competition_round, is_final_round, time_spent_ms, sprint_id } = body;
   const isCompetition = !!competition_id && !!competition_round;
-
   // ── SPRINT PATH ─────────────────────────────────────────────────────────────
   if (sprint_id) {
     // Verify user entered this sprint
@@ -97,32 +85,27 @@ serve(async (req) => {
       .eq("sprint_id", sprint_id)
       .eq("user_id", user.id)
       .maybeSingle();
-
     if (!sprintEntry) {
       return new Response(JSON.stringify({ error: "You must enter the sprint to participate." }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
     // Only allow one submission
     if (sprintEntry.score !== null) {
       return new Response(JSON.stringify({ error: "You have already submitted for this sprint." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
     // Grade the quiz
     const { data: questions, error: qErr } = await adminClient
       .from("questions")
       .select("id, correct_answer")
       .eq("book_id", book_id);
-
     if (qErr || !questions) {
       return new Response(JSON.stringify({ error: "Could not load questions" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
     const answerMap = new Map(answers.map((a) => [a.question_id, a.selected_answer]));
     let correct = 0;
     for (const q of questions) {
@@ -130,7 +113,6 @@ serve(async (req) => {
     }
     const total = questions.length;
     const passed = correct >= 8;
-
     // Fraud detection
     let isSuspicious = false;
     let fraudReason = "";
@@ -160,7 +142,6 @@ serve(async (req) => {
         reason: fraudReason,
       });
     }
-
     // Log quiz attempt
     await adminClient.from("quiz_attempts").insert({
       user_id: user.id,
@@ -170,7 +151,6 @@ serve(async (req) => {
       ip_address: ipAddress,
       user_agent: userAgent,
     });
-
     // Write score + time to sprint_entries
     await adminClient
       .from("sprint_entries")
@@ -182,61 +162,67 @@ serve(async (req) => {
       })
       .eq("sprint_id", sprint_id)
       .eq("user_id", user.id);
-
     return new Response(
       JSON.stringify({ passed, score: correct, total, time_spent_ms }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
   // ── END SPRINT PATH ─────────────────────────────────────────────────────────
-
-  // ── READATHON PATH ──────────────────────────────────────────────────────────
+  // ── READATHON (BINGO) PATH ──────────────────────────────────────────────────
   if (!isCompetition) {
     const { data: activeReadathon } = await adminClient
       .from("readathons")
       .select("id")
       .eq("status", "active")
       .maybeSingle();
-
     if (activeReadathon) {
+      // 1. Verify user has entered this readathon
       const { data: entry } = await adminClient
         .from("readathon_entries")
         .select("id")
         .eq("readathon_id", activeReadathon.id)
         .eq("user_id", user.id)
         .maybeSingle();
-
       if (!entry) {
         return new Response(JSON.stringify({ error: "You must enter the readathon to participate." }), {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-
-      const { data: alreadyDone } = await adminClient
-        .from("readathon_progress")
-        .select("id")
+      // 2. Check the book belongs to a square on this readathon's card
+      const { data: square } = await adminClient
+        .from("readathon_squares")
+        .select("id, row_index, col_index")
         .eq("readathon_id", activeReadathon.id)
-        .eq("user_id", user.id)
         .eq("book_id", book_id)
         .maybeSingle();
-
-      if (alreadyDone) {
-        return new Response(JSON.stringify({ error: "Already completed this book in the current readathon." }), {
+      if (!square) {
+        return new Response(JSON.stringify({ error: "This book is not on the current readathon card." }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-
+      // 3. Check if already completed this square
+      const { data: alreadyDone } = await adminClient
+        .from("readathon_completions")
+        .select("id")
+        .eq("readathon_id", activeReadathon.id)
+        .eq("user_id", user.id)
+        .eq("square_id", square.id)
+        .maybeSingle();
+      if (alreadyDone) {
+        return new Response(JSON.stringify({ error: "You have already completed this square." }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // 4. Grade the quiz
       const { data: questions, error: qErr } = await adminClient
         .from("questions")
         .select("id, correct_answer")
         .eq("book_id", book_id);
-
       if (qErr || !questions) {
         return new Response(JSON.stringify({ error: "Could not load questions" }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-
       const answerMap = new Map(answers.map((a) => [a.question_id, a.selected_answer]));
       let correct = 0;
       for (const q of questions) {
@@ -244,7 +230,7 @@ serve(async (req) => {
       }
       const total = questions.length;
       const passed = correct >= 8;
-
+      // 5. Log quiz attempt
       await adminClient.from("quiz_attempts").insert({
         user_id: user.id,
         book_id,
@@ -253,7 +239,7 @@ serve(async (req) => {
         ip_address: ipAddress,
         user_agent: userAgent,
       });
-
+      // 6. Fraud detection
       let isSuspicious = false;
       let fraudReason = "";
       if (passed && correct === total && time_spent_ms < 150_000) {
@@ -276,101 +262,78 @@ serve(async (req) => {
       if (isSuspicious) {
         await adminClient.from("profiles").update({ requires_tax_review: true }).eq("id", user.id);
         await adminClient.from("payout_logs").insert({
-          user_id: user.id,
-          amount: 0,
-          status: "flagged",
-          reason: fraudReason,
+          user_id: user.id, amount: 0, status: "flagged", reason: fraudReason,
         });
       }
-
-      if (passed) {
-        const { data: bookData } = await adminClient
-          .from("books")
-          .select("page_count")
-          .eq("id", book_id)
-          .maybeSingle();
-
-        const pages = bookData?.page_count ?? 0;
-
-        await adminClient.from("readathon_progress").insert({
-          readathon_id: activeReadathon.id,
-          user_id: user.id,
-          book_id,
-          pages_read: pages,
-        });
-
-        const { data: bounty } = await adminClient
-          .from("bounties")
-          .select("id, reader_pool, book_type")
-          .eq("book_id", book_id)
-          .eq("status", "active")
-          .gt("reader_pool", 0)
-          .maybeSingle();
-
-        let earnedAmount = 0;
-        if (bounty) {
-          const { data: bookFull } = await adminClient
-            .from("books")
-            .select("bounty_amount, book_type")
-            .eq("id", book_id)
-            .maybeSingle();
-
-          if (bookFull) {
-            if (bookFull.book_type === "sponsored") {
-              const { data: rpcResult } = await adminClient.rpc("claim_bounty_payout", {
-                p_book_id: book_id,
-                p_user_id: user.id,
-              });
-              earnedAmount = rpcResult ?? 0;
-            } else {
-              earnedAmount = bookFull.bounty_amount ?? 0;
-              await adminClient
-                .from("profiles")
-                .update({ available_balance: adminClient.rpc("increment_balance", { amount: earnedAmount }) })
-                .eq("id", user.id);
-            }
-            await adminClient.from("payout_logs").insert({
-              user_id: user.id,
-              amount: earnedAmount,
-              status: isSuspicious ? "flagged" : "completed",
-              reason: "Bounty payout during readathon",
-            });
-          }
-        }
-
+      if (!passed) {
         return new Response(
-          JSON.stringify({ passed: true, score: correct, total, earned_amount: earnedAmount, pages_logged: pages }),
+          JSON.stringify({ passed: false, score: correct, total }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-
+      // 7. Record square completion
+      await adminClient.from("readathon_completions").insert({
+        readathon_id: activeReadathon.id,
+        user_id: user.id,
+        square_id: square.id,
+      });
+      // 8. Check if this completes the row (all 4 squares in same row_index)
+      const { data: rowSquares } = await adminClient
+        .from("readathon_squares")
+        .select("id")
+        .eq("readathon_id", activeReadathon.id)
+        .eq("row_index", square.row_index);
+      const rowSquareIds = (rowSquares ?? []).map((s: { id: string }) => s.id);
+      const { data: rowCompletions } = await adminClient
+        .from("readathon_completions")
+        .select("square_id")
+        .eq("readathon_id", activeReadathon.id)
+        .eq("user_id", user.id)
+        .in("square_id", rowSquareIds);
+      const completedIds = new Set((rowCompletions ?? []).map((c: { square_id: string }) => c.square_id));
+      const rowComplete = rowSquareIds.every((id: string) => completedIds.has(id));
+      let bingo = false;
+      if (rowComplete) {
+        // Only record bingo once per row per user
+        const { data: existingBingo } = await adminClient
+          .from("readathon_bingos")
+          .select("id")
+          .eq("readathon_id", activeReadathon.id)
+          .eq("user_id", user.id)
+          .eq("row_index", square.row_index)
+          .maybeSingle();
+        if (!existingBingo) {
+          await adminClient.from("readathon_bingos").insert({
+            readathon_id: activeReadathon.id,
+            user_id: user.id,
+            row_index: square.row_index,
+          });
+          bingo = true;
+        }
+      }
       return new Response(
-        JSON.stringify({ passed: false, score: correct, total, earned_amount: 0, pages_logged: 0 }),
+        JSON.stringify({ passed: true, score: correct, total, bingo, row_index: square.row_index }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
   }
   // ── END READATHON PATH ──────────────────────────────────────────────────────
-
   // Load questions
   const { data: questions, error: questionsError } = await adminClient
     .from("questions")
     .select("id, correct_answer")
     .eq("book_id", book_id);
-
   if (questionsError || !questions) {
     return new Response(JSON.stringify({ error: "Could not load questions" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-
   const answerMap = new Map(answers.map((a) => [a.question_id, a.selected_answer]));
   let correct = 0;
   for (const q of questions) {
     if (answerMap.get(q.id) === q.correct_answer) correct++;
   }
   const total = questions.length;
-
   let passed = false;
   if (is_final_round) {
     passed = true;
@@ -381,7 +344,6 @@ serve(async (req) => {
   } else {
     passed = correct >= 8;
   }
-
   await adminClient.from("quiz_attempts").insert({
     user_id: user.id,
     book_id,
@@ -390,7 +352,6 @@ serve(async (req) => {
     ip_address: ipAddress,
     user_agent: userAgent,
   });
-
   let isSuspicious = false;
   let fraudReason = "";
   if (passed && correct === total && time_spent_ms < 150_000) {
@@ -419,7 +380,6 @@ serve(async (req) => {
       reason: fraudReason,
     });
   }
-
   // ── COMPETITION PATH ────────────────────────────────────────────────────────
   if (isCompetition) {
     const { data: existing } = await adminClient
@@ -429,13 +389,11 @@ serve(async (req) => {
       .eq("user_id", user.id)
       .eq("round", competition_round)
       .maybeSingle();
-
     if (existing) {
       return new Response(JSON.stringify({ error: "Already submitted for this round" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
     await adminClient.from("elimination_progress").insert({
       competition_id,
       user_id: user.id,
@@ -445,14 +403,12 @@ serve(async (req) => {
       passed,
       submitted_at: new Date().toISOString(),
     });
-
     return new Response(
       JSON.stringify({ passed, score: correct, total, is_final_round: !!is_final_round }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
   // ── END COMPETITION PATH ────────────────────────────────────────────────────
-
   // ── STANDARD LIBRARY PATH ──────────────────────────────────────────────────
   const { data: existing } = await adminClient
     .from("completed_books")
@@ -460,19 +416,23 @@ serve(async (req) => {
     .eq("user_id", user.id)
     .eq("book_id", book_id)
     .maybeSingle();
+  const alreadyCompletedLibrary = !!existing;
 
-  if (existing) {
-    return new Response(JSON.stringify({ error: "Already completed this book" }), {
-      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  if (!alreadyCompletedLibrary) {
+    await adminClient.from("completed_books").upsert({
+      user_id: user.id,
+      book_id,
+      passed,
+      completed_at: new Date().toISOString(),
     });
   }
 
-  await adminClient.from("completed_books").upsert({
-    user_id: user.id,
-    book_id,
-    passed,
-    completed_at: new Date().toISOString(),
-  });
+  if (alreadyCompletedLibrary) {
+    return new Response(
+      JSON.stringify({ passed, score: correct, total, earned_amount: 0, already_completed: true }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
 
   if (!passed) {
     return new Response(
@@ -480,22 +440,18 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-
   const [bookResult, profileResult] = await Promise.all([
     adminClient.from("books").select("bounty_amount, book_type, page_count").eq("id", book_id).maybeSingle(),
     adminClient.from("profiles").select("available_balance, referral_id, referred_by").eq("id", user.id).maybeSingle(),
   ]);
-
   const book = bookResult.data;
   const profile = profileResult.data;
-
   if (!book || !profile) {
     return new Response(
       JSON.stringify({ passed: true, score: correct, total, earned_amount: 0 }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-
   const { data: bounty } = await adminClient
     .from("bounties")
     .select("id, reader_pool")
@@ -503,20 +459,16 @@ serve(async (req) => {
     .eq("status", "active")
     .gt("reader_pool", 0)
     .maybeSingle();
-
   if (!bounty) {
     return new Response(
       JSON.stringify({ passed: true, score: correct, total, earned_amount: 0, pool_exhausted: true }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-
   let earnedAmount = book.bounty_amount ?? 0;
-
   let payoutStatus = isSuspicious ? "flagged" : "completed";
   const projectedBalance = (profile.available_balance ?? 0) + earnedAmount;
   if (projectedBalance >= 500) payoutStatus = "pending_review";
-
   if (book.book_type === "sponsored") {
     const { data: rpcResult } = await adminClient.rpc("claim_bounty_payout", {
       p_book_id: book_id,
@@ -527,14 +479,12 @@ serve(async (req) => {
     const newBalance = (profile.available_balance ?? 0) + earnedAmount;
     await adminClient.from("profiles").update({ available_balance: newBalance }).eq("id", user.id);
   }
-
   await adminClient.from("payout_logs").insert({
     user_id: user.id,
     amount: earnedAmount,
     status: payoutStatus,
     reason: "Bounty payout",
   });
-
   if (profile.referred_by) {
     const { data: referrer } = await adminClient
       .from("profiles")
@@ -548,7 +498,6 @@ serve(async (req) => {
         .eq("referral_id", profile.referred_by);
     }
   }
-
   return new Response(
     JSON.stringify({
       passed: true,
