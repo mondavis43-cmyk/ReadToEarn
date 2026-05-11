@@ -138,29 +138,7 @@ const isQuizUnlocked = async (
   const noSprint = { sprintActive: false, sprintEntrant: false, sprint: null };
   const noReadathon = { readathonActive: false, readathonEntrant: false, readathon: null };
 
-  // Check active bounty
-  const { data: bounty } = await supabase
-    .from('bounties')
-    .select('id')
-    .eq('book_id', bookId)
-    .eq('status', 'active')
-    .gt('reader_pool', 0)
-    .maybeSingle();
-  if (bounty) return { unlocked: true, ...noReadathon, ...noSprint };
-
-  // Check active competition containing this book (non-readathon)
-  const { data: competitions } = await supabase
-    .from('competitions')
-    .select('book_ids')
-    .eq('status', 'active');
-  if (competitions) {
-    for (const comp of competitions) {
-      const ids: string[] = comp.book_ids ?? [];
-      if (ids.includes(bookId)) return { unlocked: true, ...noReadathon, ...noSprint };
-    }
-  }
-
-  // Check active sprint for this book
+  // Check active sprint for this book first — takes priority over bounty
   const { data: sprint } = await supabase
     .from('sprints')
     .select('id, title')
@@ -186,7 +164,7 @@ const isQuizUnlocked = async (
     };
   }
 
-  // Check active readathon
+  // Check active readathon — takes priority over bounty
   const { data: readathon } = await supabase
     .from('readathons')
     .select('id, title')
@@ -194,21 +172,53 @@ const isQuizUnlocked = async (
     .maybeSingle();
 
   if (readathon) {
-    const { data: entry } = await supabase
-      .from('readathon_entries')
+    // Only gate if this book is actually on the readathon card
+    const { data: square } = await supabase
+      .from('readathon_squares')
       .select('id')
       .eq('readathon_id', readathon.id)
-      .eq('user_id', user!.id)
+      .eq('book_id', bookId)
       .maybeSingle();
 
-    const entrant = !!entry;
-    return {
-      unlocked: entrant,
-      readathonActive: true,
-      readathonEntrant: entrant,
-      readathon: { id: readathon.id, title: readathon.title },
-      ...noSprint,
-    };
+    if (square) {
+      const { data: entry } = await supabase
+        .from('readathon_entries')
+        .select('id')
+        .eq('readathon_id', readathon.id)
+        .eq('user_id', user!.id)
+        .maybeSingle();
+
+      const entrant = !!entry;
+      return {
+        unlocked: entrant,
+        readathonActive: true,
+        readathonEntrant: entrant,
+        readathon: { id: readathon.id, title: readathon.title },
+        ...noSprint,
+      };
+    }
+  }
+
+  // Check active bounty (fallback — only if no active competition covers this book)
+  const { data: bounty } = await supabase
+    .from('bounties')
+    .select('id')
+    .eq('book_id', bookId)
+    .eq('status', 'active')
+    .gt('reader_pool', 0)
+    .maybeSingle();
+  if (bounty) return { unlocked: true, ...noReadathon, ...noSprint };
+
+  // Check active competition containing this book (elimination/non-sprint)
+  const { data: competitions } = await supabase
+    .from('competitions')
+    .select('book_ids')
+    .eq('status', 'active');
+  if (competitions) {
+    for (const comp of competitions) {
+      const ids: string[] = comp.book_ids ?? [];
+      if (ids.includes(bookId)) return { unlocked: true, ...noReadathon, ...noSprint };
+    }
   }
 
   return { unlocked: false, ...noReadathon, ...noSprint };
