@@ -99,18 +99,18 @@ export const HowItWorks = () => {
               <div className="flex items-center gap-3 mb-3">
                 <BookOpen className="text-[#D4A843] shrink-0" size={22} />
                 <h3 className={`font-serif text-xl ${textPrimary}`}>The Read-A-Thon</h3>
-                <span className={`text-xs ${textMuted} italic`}>— "A Reading Marathon"</span>
+                <span className={`text-xs ${textMuted} italic`}>— "Book Bingo"</span>
               </div>
               <p className={`text-sm mb-4 ${textMuted}`}>
-                A set window. A list of eligible books. Whoever reads the most pages (from passed quizzes only) wins. Failed quizzes add zero pages to your total. No partial credit. Pass the quiz or it doesn't count.
+                A 4×4 bingo card of books organized by genre — one genre per row, four books per row. Pass the quiz on a book to complete that square. Complete all four books in a row to score a Bingo. The first three players to score a Bingo win from the prize pool. You don't need to read all 16 books — just one full row.
               </p>
               <div className={`text-xs rounded-lg p-3 mb-4 ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#D4A843]/10'}`}>
                 <p className="text-[#D4A843] font-semibold mb-1">Scoring</p>
-                <p className={textMuted}>Total pages from passed quizzes, ranked at deadline. Same page count = prize split.</p>
+                <p className={textMuted}>First to complete a full row scores a Bingo. 1st Bingo takes 50%, 2nd takes 30%, 3rd takes 20%. Ties broken by who completed the row fastest.</p>
               </div>
               <div className={`text-xs rounded-lg p-3 border-l-2 border-[#D4A843] ${isDark ? 'bg-[#1B2A4A]/60' : 'bg-[#F5F0E8]'}`}>
                 <p className={`font-semibold mb-1 ${textPrimary}`}>Example</p>
-                <p className={textMuted}>"Fantasy Weekend Read-A-Thon" — Any Fantasy books in our catalog. Saturday morning to Sunday midnight. Entry fee: $7. You pass quizzes on three books: 320 + 280 + 400 = 1,000 pages. Someone else logs 1,200. They win.</p>
+                <p className={textMuted}>"October Book Bingo" — 4×4 card. Row 1: Fantasy. Row 2: Mystery. Row 3: Thriller. Row 4: Romance. Entry fee: $7. You focus on the Mystery row — pass all four quizzes before anyone else completes a full row. You score the 1st Bingo and take 50% of the prize pool.</p>
               </div>
               <p className={`text-xs mt-3 ${textMuted}`}>Duration: A weekend to a full week</p>
             </div>
@@ -166,7 +166,8 @@ export const HowItWorks = () => {
           <h2 className={`font-serif text-3xl mb-8 ${textPrimary}`}>The Leaderboard</h2>
           <div className="space-y-3">
             {[
-              { label: 'Sprint & Read-A-Thon', desc: 'Live leaderboard updates every ~60 seconds during the active competition window.' },
+              { label: 'Sprint', desc: 'Live leaderboard updates every ~60 seconds during the active competition window.' },
+              { label: 'Read-A-Thon', desc: 'Live bingo leaderboard shows who has scored Bingos and how many squares each player has completed. Updates every ~60 seconds.' },
               { label: 'Elimination Bracket', desc: 'Live "Survived / Eliminated" status per round. Rankings shown in the final round only.' },
               { label: 'After Competition Closes', desc: 'Leaderboard freezes and stays visible for 7–14 days. Then archived in the Winners Archive.' },
             ].map(({ label, desc }) => (
@@ -184,7 +185,7 @@ export const HowItWorks = () => {
           <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
             <BarChart2 className="text-[#D4A843] mb-4" size={22} />
             <div className="space-y-3">
-              <p className={`text-sm ${textMuted}`}>Get paid via <span className={textPrimary}>PayPal, Wise (international)</span>, or gift cards via <span className={textPrimary}>Giftogram</span>.</p>
+              <p className={`text-sm ${textMuted}`}>Get paid via <span className={textPrimary}>PayPal, Venmo, Wise (international)</span>, or gift cards via <span className={textPrimary}>Giftogram</span>.</p>
               <p className={`text-sm ${textMuted}`}>Minimum cashout: <span className={textPrimary}>$10</span>.</p>
               <p className={`text-sm ${textMuted}`}>If you earn <span className={textPrimary}>$599+ in a year</span>, we'll ask for tax info before releasing further payouts. You'll get notified at $500 and $550.</p>
               <p className={`text-sm ${textMuted}`}>Ages 13–17: <span className={textPrimary}>gift cards only</span>.</p>
