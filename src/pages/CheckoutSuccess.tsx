@@ -39,17 +39,29 @@ export const CheckoutSuccess = () => {
       const orderId = params.get('token');
       if (!orderId) throw new Error('No PayPal order ID found in URL.');
 
-      // 2. Get logged-in user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) throw new Error('You must be logged in.');
+      // 2. Get logged-in user — wait up to 5s for session to restore after redirect
+      let user = null;
+      for (let i = 0; i < 10; i++) {
+        const { data } = await supabase.auth.getUser();
+        if (data.user) { user = data.user; break; }
+        await new Promise(r => setTimeout(r, 500));
+      }
+      if (!user) throw new Error('You must be logged in.');
 
-      // 3. Capture the PayPal order
-      const { data: capture, error: captureError } = await supabase.functions.invoke(
-        'capture-paypal-order',
-        { body: { order_id: orderId } }
-      );
-      if (captureError) throw new Error(captureError.message);
-      if (capture?.status !== 'COMPLETED') throw new Error('Payment was not completed.');
+      // 3. Capture the PayPal order (call directly with anon key so it works even if JWT is still loading)
+      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/capture-paypal-order`;
+      const captureRes = await fetch(fnUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ order_id: orderId }),
+      });
+      const capture = await captureRes.json();
+      if (!captureRes.ok) throw new Error(capture?.error || 'Capture request failed.');
+      if (capture?.status !== 'COMPLETED') throw new Error(`Payment not completed (status: ${capture?.status ?? 'unknown'}).`);
 
       // 4. Pull item + pending submission from sessionStorage
       const item    = JSON.parse(sessionStorage.getItem('checkoutItem')    ?? 'null');
