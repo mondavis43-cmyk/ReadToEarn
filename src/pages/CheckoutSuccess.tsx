@@ -1,10 +1,5 @@
 import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+import { supabase } from '../lib/supabase';
 
 const REDIRECT_MAP: Record<string, string> = {
   listing:               '/author-dashboard',
@@ -177,8 +172,10 @@ export const CheckoutSuccess = () => {
       setTimeout(() => goTo(REDIRECT_MAP[item.type] ?? '/profile'), 2500);
 
     } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Something went wrong.';
+      console.error('[CheckoutSuccess] Error:', msg, err);
       setStatus('error');
-      setMessage(err instanceof Error ? err.message : 'Something went wrong.');
+      setMessage(msg);
     }
   }
 
