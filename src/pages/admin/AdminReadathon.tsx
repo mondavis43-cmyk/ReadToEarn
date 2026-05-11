@@ -21,7 +21,7 @@ interface BingoSquare {
   id: string;
   row_index: number;
   col_index: number;
-  genre: string;
+  genre_label: string;
   subgenre: string;
   book_id: string;
   books: { title: string; author: string } | null;
@@ -109,7 +109,7 @@ export function AdminReadathon() {
     setLoadingExpanded(readathonId);
 
     const [{ data: sq }, { data: entries }, { data: bingos }, { data: completions }] = await Promise.all([
-      supabase.from('readathon_squares').select('id, row_index, col_index, genre, subgenre, book_id, books(title, author)').eq('readathon_id', readathonId).order('row_index').order('col_index'),
+      supabase.from('readathon_squares').select('id, row_index, col_index, genre_label, subgenre, book_id, books(title, author)').eq('readathon_id', readathonId).order('row_index').order('col_index'),
       supabase.from('readathon_entries').select('user_id, entry_fee_paid').eq('readathon_id', readathonId),
       supabase.from('readathon_bingos').select('user_id, row_index, created_at, profiles(display_name)').eq('readathon_id', readathonId).order('created_at', { ascending: true }),
       supabase.from('readathon_completions').select('user_id, square_id').eq('readathon_id', readathonId),
@@ -156,7 +156,7 @@ export function AdminReadathon() {
       readathon_id: readathonId,
       row_index: Number(squareForm.row_index),
       col_index: Number(squareForm.col_index),
-      genre: squareForm.genre,
+      genre_label: squareForm.genre,
       subgenre: squareForm.subgenre,
       book_id: squareForm.book_id,
     });
@@ -176,7 +176,7 @@ export function AdminReadathon() {
   const handleSaveSquareEdit = async (squareId: string, readathonId: string) => {
     if (!editSquareForm.book_id || !editSquareForm.genre) { setError('Book and genre are required'); return; }
     const { error: updateError } = await supabase.from('readathon_squares').update({
-      genre: editSquareForm.genre,
+      genre_label: editSquareForm.genre,
       subgenre: editSquareForm.subgenre,
       book_id: editSquareForm.book_id,
     }).eq('id', squareId);
@@ -668,7 +668,7 @@ export function AdminReadathon() {
                       <div className="space-y-3">
                         {[0, 1, 2, 3].map((rowIdx) => {
                           const rowSquares = (squares[r.id] ?? []).filter((s) => s.row_index === rowIdx).sort((a, b) => a.col_index - b.col_index);
-                          const rowGenre = rowSquares[0]?.genre ?? `Row ${rowIdx + 1}`;
+                          const rowGenre = rowSquares[0]?.genre_label ?? `Row ${rowIdx + 1}`;
                           return (
                             <div key={rowIdx} className="border border-[#e8e8d5] dark:border-gray-700 rounded-xl overflow-hidden">
                               <div className="bg-[#F5F0E8] dark:bg-gray-700/50 px-4 py-2 flex items-center justify-between">
@@ -711,14 +711,14 @@ export function AdminReadathon() {
                                       <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-[#F5F0E8] dark:bg-gray-700/30">
                                         <div>
                                           <p className="text-xs font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">
-                                            Col {sq.col_index} · {sq.subgenre || sq.genre}
+                                            Col {sq.col_index} · {sq.subgenre || sq.genre_label}
                                           </p>
                                           <p className="text-xs text-[#6B7280] dark:text-gray-400">
                                             {sq.books?.title ?? sq.book_id} — {sq.books?.author ?? ''}
                                           </p>
                                         </div>
                                         <div className="flex gap-1">
-                                          <button onClick={() => { setEditingSquareId(sq.id); setEditSquareForm({ genre: sq.genre, subgenre: sq.subgenre, book_id: sq.book_id }); }}
+                                          <button onClick={() => { setEditingSquareId(sq.id); setEditSquareForm({ genre: sq.genre_label, subgenre: sq.subgenre, book_id: sq.book_id }); }}
                                             className="p-1 rounded text-blue-400 hover:bg-blue-500/10 transition-colors"><Pencil size={13} /></button>
                                           <button onClick={() => handleDeleteSquare(sq.id, r.id)}
                                             className="p-1 rounded text-red-400 hover:bg-red-500/10 transition-colors"><Trash2 size={13} /></button>
