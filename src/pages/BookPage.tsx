@@ -411,8 +411,8 @@ export const BookPage = () => {
                 </div>
               )}
 
-              {/* Quiz unlocked — Take Quiz button */}
-              {quizUnlocked && !isCompleted && (
+              {/* Quiz unlocked — Take Quiz button (active competition always overrides isCompleted) */}
+              {(quizUnlocked && (!isCompleted || activeCompetitions.length > 0)) && (
                 <button
                   onClick={() => navigateTo(`/quiz/${book.id}`)}
                   className="w-full py-3 rounded-xl bg-[#D4A843] hover:bg-[#D4A843]/90 text-[#1B2A4A] font-semibold text-sm transition"
