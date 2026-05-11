@@ -52,7 +52,6 @@ export const Library = () => {
   const { theme, toggleTheme } = useTheme();
 
   const [books, setBooks] = useState<Book[]>([]);
-  const [completedBookIds, setCompletedBookIds] = useState<Set<string>>(new Set());
   const [activeBounties, setActiveBounties] = useState<ActiveBounty[]>([]);
   const [activeCompetitionBookIds, setActiveCompetitionBookIds] = useState<Set<string>>(new Set());
   const [allTropes, setAllTropes] = useState<Trope[]>([]);
@@ -112,22 +111,11 @@ export const Library = () => {
       supabase.from('tropes').select('*').order('name'),
     ];
 
-    if (user) {
-      queries.push(
-        supabase
-          .from('quiz_attempts')
-          .select('book_id')
-          .eq('user_id', user.id)
-          .eq('passed', true)
-      );
-    }
-
     const [
       { data: booksData },
       { data: bountiesData },
       { data: compsData },
       { data: tropesData },
-      completedData,
     ] = await Promise.all(queries);
 
     setBooks(booksData || []);
@@ -140,10 +128,6 @@ export const Library = () => {
       (c.book_ids || []).forEach((id: string) => compBookIds.add(id));
     });
     setActiveCompetitionBookIds(compBookIds);
-
-    if (user && completedData?.data) {
-      setCompletedBookIds(new Set(completedData.data.map((r: any) => r.book_id)));
-    }
 
     setLoading(false);
   }, [user]);
@@ -373,7 +357,6 @@ export const Library = () => {
         {!loading && filtered.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
             {filtered.map((book) => {
-              const completed = completedBookIds.has(book.id);
               const unlocked = isQuizUnlocked(book.id);
               const bounty = getActiveBounty(book.id);
               const inCompetition = activeCompetitionBookIds.has(book.id);
@@ -419,12 +402,6 @@ export const Library = () => {
                       </div>
                     )}
 
-                    {/* Completed badge — only when no active earning opportunity */}
-                    {completed && !inCompetition && !bounty && (
-                      <div className="absolute bottom-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                        <Check size={10} /> Done
-                      </div>
-                    )}
                   </div>
 
                   {/* Info */}
