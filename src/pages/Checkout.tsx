@@ -107,8 +107,8 @@ const REDIRECT_MAP: Record<string, string> = {
   sensitivity_reader: "/author-dashboard",
   subscription: "/profile",
   time_boost: "/profile",
-  competition_entry: "/competitions",
-  tournament_entry: "/competitions",
+  competition_entry: "/elimination",
+  tournament_entry: "/elimination",
   sprint_entry:     "/sprints",
   readathon_entry:  "/readathon",
 };
