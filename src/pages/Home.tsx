@@ -130,7 +130,7 @@ export const Home = () => {
         </h1>
 
         <p className="text-lg max-w-xl mx-auto mb-8" style={{ color: textMuted }}>
-          Compete in reading competitions, pass book quizzes, and earn real money.
+          Compete in reading tournaments, pass book quizzes, and earn real money.
           ReadToEarn turns your reading habit into a reward.
         </p>
 
@@ -156,7 +156,7 @@ export const Home = () => {
         </div>
 
         <p className="text-xs" style={{ color: textMuted }}>
-          Payouts via PayPal, Wise & Gift Cards. Cash out at $10.
+          Payouts via PayPal, Venmo, Wise & Gift Cards. Cash out at $10.
         </p>
       </section>
 
@@ -177,7 +177,7 @@ export const Home = () => {
               icon: <BookOpen className="w-5 h-5" style={{ color: gold }} />,
               step: '01',
               title: 'Pick a Competition',
-              body: 'Browse our monthly lineup of Sprints, Read-A-Thons, and Elimination Brackets. Pay your entry fee. A book is announced. You read it.',
+              body: 'Browse our monthly lineup of Sprints, Read-A-Thons, and Elimination Brackets. Pay your entry fee. Read, quiz, and compete for your share of the prize pool.',
             },
             {
               icon: <Zap className="w-5 h-5" style={{ color: gold }} />,
@@ -244,19 +244,19 @@ export const Home = () => {
             {[
               {
                 emoji: '⚡',
-                title: 'The Sprint',
+                title: 'Sprint',
                 duration: '24–72 hours',
                 body: 'One book. One quiz. The clock is running. Score the most, finish fastest.',
               },
               {
                 emoji: '📚',
-                title: 'The Read-A-Thon',
+                title: 'Read-A-Thon',
                 duration: 'A weekend to a week',
-                body: 'More pages, more money. Read every book you can within the window and pass the quizzes. Most pages read wins.',
+                body: 'A 4×4 bingo card of books by genre. Pass quizzes to complete squares. Complete a full row to score a Bingo. First 3 bingos claim 50/30/20 of the prize pool.',
               },
               {
                 emoji: '🏆',
-                title: 'The Elimination Bracket',
+                title: 'Elimination Bracket',
                 duration: '1–2 weeks',
                 body: 'Round by round. Score high enough to survive. One person takes the top prize.',
               },
