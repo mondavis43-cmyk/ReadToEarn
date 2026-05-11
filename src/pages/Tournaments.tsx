@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { supabase } from '../lib/supabase';
-import { Trophy, Copy, Check, Zap, BookOpen, X, Search } from 'lucide-react';
+import { Trophy, Copy, Check, Zap, X, Search } from 'lucide-react';
+import type { ReactNode } from 'react';
 
-type Format = 'sprint' | 'readathon' | 'elimination';
+type Format = 'sprint' | 'elimination';
 
 type Book = {
   id: string;
@@ -188,10 +189,11 @@ export const Tournaments = () => {
 
   useEffect(() => {
     supabase
-  .from('books')
-  .select('id, title, author')
-  .eq('on_bulletin', false)
-  .order('title', { ascending: true })
+      .from('books')
+      .select('id, title, author')
+      .neq('book_type', 'bulletin_board')
+      .order('title', { ascending: true })
+      .then(({ data }) => setBooks(data ?? []));
   }, []);
 
   useEffect(() => {
@@ -266,9 +268,8 @@ export const Tournaments = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const formatOptions: { key: Format; label: string; icon: React.ReactNode; desc: string }[] = [
+  const formatOptions: { key: Format; label: string; icon: ReactNode; desc: string }[] = [
     { key: 'sprint', label: 'Sprint', icon: <Zap size={15} />, desc: 'One book, fastest accurate readers win. 100% of prize pool to 1st place.' },
-    { key: 'readathon', label: 'Read-A-Thon', icon: <BookOpen size={15} />, desc: 'Readers track pages across any books they choose. Top 3 split 50/30/20.' },
     { key: 'elimination', label: 'Elimination', icon: <Trophy size={15} />, desc: 'Multi-book bracket. Pick 3 books. Top 3 split 50/30/20.' },
   ];
 
@@ -368,13 +369,6 @@ export const Tournaments = () => {
                 textPrimary={textPrimary}
                 textMuted={textMuted}
               />
-            </div>
-          )}
-
-          {/* Book — Read-A-Thon: open format, no selection */}
-          {format === 'readathon' && (
-            <div className={`rounded-lg border px-4 py-3 text-sm ${isDark ? 'border-[#D4A843]/20 text-[#F5F0E8]/60' : 'border-[#1B2A4A]/20 text-[#1B2A4A]/60'}`}>
-              📚 Read-A-Thon is open format — participants track pages across any books they choose. No book selection needed.
             </div>
           )}
 
