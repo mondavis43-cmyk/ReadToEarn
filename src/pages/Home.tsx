@@ -252,7 +252,7 @@ export const Home = () => {
                 emoji: '📚',
                 title: 'Read-A-Thon',
                 duration: 'A weekend to a week',
-                body: 'A 4×4 bingo card of books by genre. Pass quizzes to complete squares. Complete a full row to score a Bingo. First 3 bingos claim 50/30/20 of the prize pool.',
+                body: 'A 4×4 bingo card of books by genre. Pass quizzes to complete squares. Complete a full row to score a Bingo.',
               },
               {
                 emoji: '🏆',
