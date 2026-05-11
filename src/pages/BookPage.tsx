@@ -577,7 +577,7 @@ export const BookPage = () => {
               )}
             </div>
 
-            {/* Completed badge — removed */
+            {/* Completed badge — removed */}
             {false && (
               <div
                 className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg border ${
