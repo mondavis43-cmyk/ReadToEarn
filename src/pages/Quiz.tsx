@@ -138,14 +138,22 @@ const isQuizUnlocked = async (
   const noSprint = { sprintActive: false, sprintEntrant: false, sprint: null };
   const noReadathon = { readathonActive: false, readathonEntrant: false, readathon: null };
 
-  // Check active sprint for this book first — takes priority over bounty
-  const { data: sprint } = await supabase
-    .from('sprints')
-    .select('id, title')
-    .eq('status', 'active')
-    .eq('book_id', bookId)
-    .maybeSingle();
+  // Run all active competition checks in parallel — any match unlocks immediately
+  const [{ data: competitions }, { data: sprint }, { data: readathon }] = await Promise.all([
+    supabase.from('competitions').select('book_ids').eq('status', 'active'),
+    supabase.from('sprints').select('id, title').eq('status', 'active').eq('book_id', bookId).maybeSingle(),
+    supabase.from('readathons').select('id, title').eq('status', 'active').maybeSingle(),
+  ]);
 
+  // Elimination: book in any active competition bracket — always unlocked
+  if (competitions) {
+    for (const comp of competitions) {
+      const ids: string[] = comp.book_ids ?? [];
+      if (ids.includes(bookId)) return { unlocked: true, ...noReadathon, ...noSprint };
+    }
+  }
+
+  // Sprint: book is in an active sprint — gate by entrant status
   if (sprint) {
     const { data: sprintEntry } = await supabase
       .from('sprint_entries')
@@ -164,15 +172,8 @@ const isQuizUnlocked = async (
     };
   }
 
-  // Check active readathon — takes priority over bounty
-  const { data: readathon } = await supabase
-    .from('readathons')
-    .select('id, title')
-    .eq('status', 'active')
-    .maybeSingle();
-
+  // Readathon: book is on the active readathon card — gate by entrant status
   if (readathon) {
-    // Only gate if this book is actually on the readathon card
     const { data: square } = await supabase
       .from('readathon_squares')
       .select('id')
@@ -199,7 +200,7 @@ const isQuizUnlocked = async (
     }
   }
 
-  // Check active bounty (fallback — only if no active competition covers this book)
+  // Bounty fallback
   const { data: bounty } = await supabase
     .from('bounties')
     .select('id')
@@ -208,18 +209,6 @@ const isQuizUnlocked = async (
     .gt('reader_pool', 0)
     .maybeSingle();
   if (bounty) return { unlocked: true, ...noReadathon, ...noSprint };
-
-  // Check active competition containing this book (elimination/non-sprint)
-  const { data: competitions } = await supabase
-    .from('competitions')
-    .select('book_ids')
-    .eq('status', 'active');
-  if (competitions) {
-    for (const comp of competitions) {
-      const ids: string[] = comp.book_ids ?? [];
-      if (ids.includes(bookId)) return { unlocked: true, ...noReadathon, ...noSprint };
-    }
-  }
 
   return { unlocked: false, ...noReadathon, ...noSprint };
 };
