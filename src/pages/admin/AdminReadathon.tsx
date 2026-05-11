@@ -22,7 +22,7 @@ interface BingoSquare {
   row_index: number;
   col_index: number;
   genre_label: string;
-  subgenre: string;
+  subgenre_label: string;
   book_id: string;
   books: { title: string; author: string } | null;
 }
@@ -109,7 +109,7 @@ export function AdminReadathon() {
     setLoadingExpanded(readathonId);
 
     const [{ data: sq }, { data: entries }, { data: bingos }, { data: completions }] = await Promise.all([
-      supabase.from('readathon_squares').select('id, row_index, col_index, genre_label, subgenre, book_id, books(title, author)').eq('readathon_id', readathonId).order('row_index').order('col_index'),
+      supabase.from('readathon_squares').select('id, row_index, col_index, genre_label, subgenre_label, book_id, books(title, author)').eq('readathon_id', readathonId).order('row_index').order('col_index'),
       supabase.from('readathon_entries').select('user_id, entry_fee_paid').eq('readathon_id', readathonId),
       supabase.from('readathon_bingos').select('user_id, row_index, created_at, profiles(display_name)').eq('readathon_id', readathonId).order('created_at', { ascending: true }),
       supabase.from('readathon_completions').select('user_id, square_id').eq('readathon_id', readathonId),
@@ -157,7 +157,7 @@ export function AdminReadathon() {
       row_index: Number(squareForm.row_index),
       col_index: Number(squareForm.col_index),
       genre_label: squareForm.genre,
-      subgenre: squareForm.subgenre,
+      subgenre_label: squareForm.subgenre,
       book_id: squareForm.book_id,
     });
     if (insertError) { setError(insertError.message); return; }
@@ -177,7 +177,7 @@ export function AdminReadathon() {
     if (!editSquareForm.book_id || !editSquareForm.genre) { setError('Book and genre are required'); return; }
     const { error: updateError } = await supabase.from('readathon_squares').update({
       genre_label: editSquareForm.genre,
-      subgenre: editSquareForm.subgenre,
+      subgenre_label: editSquareForm.subgenre,
       book_id: editSquareForm.book_id,
     }).eq('id', squareId);
     if (updateError) { setError(updateError.message); return; }
@@ -711,14 +711,14 @@ export function AdminReadathon() {
                                       <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-[#F5F0E8] dark:bg-gray-700/30">
                                         <div>
                                           <p className="text-xs font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">
-                                            Col {sq.col_index} · {sq.subgenre || sq.genre_label}
+                                            Col {sq.col_index} · {sq.subgenre_label || sq.genre_label}
                                           </p>
                                           <p className="text-xs text-[#6B7280] dark:text-gray-400">
                                             {sq.books?.title ?? sq.book_id} — {sq.books?.author ?? ''}
                                           </p>
                                         </div>
                                         <div className="flex gap-1">
-                                          <button onClick={() => { setEditingSquareId(sq.id); setEditSquareForm({ genre: sq.genre_label, subgenre: sq.subgenre, book_id: sq.book_id }); }}
+                                          <button onClick={() => { setEditingSquareId(sq.id); setEditSquareForm({ genre: sq.genre_label, subgenre: sq.subgenre_label, book_id: sq.book_id }); }}
                                             className="p-1 rounded text-blue-400 hover:bg-blue-500/10 transition-colors"><Pencil size={13} /></button>
                                           <button onClick={() => handleDeleteSquare(sq.id, r.id)}
                                             className="p-1 rounded text-red-400 hover:bg-red-500/10 transition-colors"><Trash2 size={13} /></button>
