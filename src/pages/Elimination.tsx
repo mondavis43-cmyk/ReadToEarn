@@ -35,6 +35,7 @@ export const Elimination = () => {
   const [preRegCounts, setPreRegCounts] = useState<Record<string, number>>({});
   const [userId, setUserId] = useState<string | null>(null);
   const [preRegLoading, setPreRegLoading] = useState(false);
+  const [entered, setEntered] = useState<Set<string>>(new Set());
 
   const bg = isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]';
   const cardBg = isDark ? 'bg-[#1a2235]' : 'bg-white';
@@ -52,10 +53,11 @@ export const Elimination = () => {
 
   useEffect(() => {
     fetchCompetitions();
+    if (userId) fetchEntered();
   }, [tab]);
 
   useEffect(() => {
-    if (userId) fetchPreRegs();
+    if (userId) { fetchPreRegs(); fetchEntered(); }
   }, [userId]);
 
   const fetchCompetitions = async () => {
@@ -111,6 +113,15 @@ export const Elimination = () => {
       .select('competition_id')
       .eq('user_id', userId);
     setPreRegged(new Set((data ?? []).map((r) => r.competition_id)));
+  };
+
+  const fetchEntered = async () => {
+    if (!userId) return;
+    const { data } = await supabase
+      .from('competition_entries')
+      .select('competition_id')
+      .eq('user_id', userId);
+    setEntered(new Set((data ?? []).map((r) => r.competition_id)));
   };
 
   const handlePreRegister = async (competitionId: string) => {
@@ -200,6 +211,7 @@ export const Elimination = () => {
     const count = preRegCounts[competition.id] ?? 0;
     const atRisk = tab === 'upcoming' && count < MIN_PRE_REG;
     const alreadyPreRegged = preRegged.has(competition.id);
+    const alreadyEntered = entered.has(competition.id);
     const withinWindow = isWithin48HrWindow(competition);
 
     return (
@@ -308,7 +320,11 @@ export const Elimination = () => {
 
         {tab === 'active' && (
           <div className="space-y-2">
-            {withinWindow ? (
+            {alreadyEntered ? (
+              <div className="w-full py-2 rounded-lg text-sm font-semibold bg-green-500/20 text-green-400 text-center">
+                ✓ Entered
+              </div>
+            ) : withinWindow ? (
               <button
                 onClick={() => handleEnter(competition)}
                 className="w-full py-2 rounded-lg text-sm font-semibold bg-[#D4A843] text-white hover:bg-[#c49a3a]"
