@@ -324,25 +324,16 @@ const loadQuiz = async () => {
 
     const questionPool = isMasterQuiz
       ? allQuestions
-      : (() => {
-          const seed = (user?.id ?? '') + bookId;
-          const seedNum = seed.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-          const shuffled = [...allQuestions].sort((a, b) => {
-            const hashA = (a.id + seed).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-            const hashB = (b.id + seed).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-            return (hashA % (seedNum || 7)) - (hashB % (seedNum || 7));
-          });
-          return shuffled.slice(0, 10);
-        })();
+      : seededShuffle(allQuestions, (user?.id ?? '') + bookId).slice(0, 10);
 
     setQuestions(questionPool);
 
     const opts: Record<string, string[]> = {};
     const userSeed = user?.id ?? '';
-    questionPool.forEach((q) => {
+    questionPool.forEach((q, idx) => {
       opts[q.id] = seededShuffle(
         [q.correct_answer, q.wrong_answer_1, q.wrong_answer_2, q.wrong_answer_3],
-        q.id + userSeed
+        userSeed + q.id + String(idx)
       );
     });
     setShuffledOptions(opts);
