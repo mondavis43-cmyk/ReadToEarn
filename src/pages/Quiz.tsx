@@ -305,12 +305,7 @@ const loadQuiz = async () => {
         .eq('user_id', user.id)
         .eq('round', competitionRound)
         .maybeSingle()
-    : supabase
-        .from('completed_books')
-        .select('id, passed')
-        .eq('user_id', user.id)
-        .eq('book_id', bookId)
-        .maybeSingle();
+    : Promise.resolve({ data: null });
 
   const [questionsResult, completedResult] = await Promise.all([
     supabase.from('public_questions').select('*').eq('book_id', bookId),
@@ -338,7 +333,7 @@ const loadQuiz = async () => {
     setShuffledOptions(opts);
   }
 
-  if (completedResult.data) setAlreadyCompleted(true);
+  if (isCompetitionQuiz && completedResult.data) setAlreadyCompleted(true);
   setLoading(false);
 };
 
