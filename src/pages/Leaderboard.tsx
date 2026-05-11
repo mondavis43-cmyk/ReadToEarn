@@ -17,8 +17,8 @@ avatar_url?: string | null;
 accuracy?: number;
 completion_time_seconds?: number;
 // readathon
-pages_read?: number;
-books_completed?: number;
+bingo_count?: number;
+squares_completed?: number;
 // elimination
 round_reached?: number;
 eliminated?: boolean;
@@ -266,26 +266,27 @@ const loadEntries = async (comp: CompetitionItem) => {
     setEntries(mapped);
 
   } else if (comp.isReadathon) {
-    // ── Readathon: aggregate from readathon_progress ──────────────────────
-    const { data: progress } = await supabase
-      .from('readathon_progress')
-      .select('user_id, pages_read, book_id')
-      .eq('readathon_id', comp.id);
+    // ── Readathon: aggregate from readathon_bingos + readathon_completions ──
+    const [{ data: bingos }, { data: completions }] = await Promise.all([
+      supabase.from('readathon_bingos').select('user_id').eq('readathon_id', comp.id),
+      supabase.from('readathon_completions').select('user_id').eq('readathon_id', comp.id),
+    ]);
 
-    if (!progress || progress.length === 0) {
+    const userMap: Record<string, { bingo_count: number; squares_completed: number }> = {};
+
+    for (const row of (bingos ?? [])) {
+      if (!userMap[row.user_id]) userMap[row.user_id] = { bingo_count: 0, squares_completed: 0 };
+      userMap[row.user_id].bingo_count += 1;
+    }
+    for (const row of (completions ?? [])) {
+      if (!userMap[row.user_id]) userMap[row.user_id] = { bingo_count: 0, squares_completed: 0 };
+      userMap[row.user_id].squares_completed += 1;
+    }
+
+    if (Object.keys(userMap).length === 0) {
       setEntries([]);
       setLoadingEntries(false);
       return;
-    }
-
-    // Aggregate per user
-    const userMap: Record<string, { total_pages: number; books: Set<string> }> = {};
-    for (const row of progress) {
-      if (!userMap[row.user_id]) {
-        userMap[row.user_id] = { total_pages: 0, books: new Set() };
-      }
-      userMap[row.user_id].total_pages += row.pages_read ?? 0;
-      if (row.book_id) userMap[row.user_id].books.add(row.book_id);
     }
 
     const userIds = Object.keys(userMap);
@@ -300,14 +301,14 @@ const loadEntries = async (comp: CompetitionItem) => {
     });
 
     const sorted = Object.entries(userMap)
-      .sort(([, a], [, b]) => b.total_pages - a.total_pages)
+      .sort(([, a], [, b]) => b.bingo_count !== a.bingo_count ? b.bingo_count - a.bingo_count : b.squares_completed - a.squares_completed)
       .map(([userId, data], i) => ({
         rank: i + 1,
         user_id: userId,
         display_name: nameMap[userId]?.display_name ?? 'Reader',
         username: nameMap[userId]?.username ?? null,
-        pages_read: data.total_pages,
-        books_completed: data.books.size,
+        bingo_count: data.bingo_count,
+        squares_completed: data.squares_completed,
       }));
 
     setEntries(sorted);
@@ -516,7 +517,7 @@ return (
                   {/* Ranking explanation */}
                   <div className={`px-5 py-2.5 text-xs border-b border-[#D4A843]/10 ${textMuted}`}>
                     {selectedComp.format === 'sprint' && 'Ranked by score (out of 10), then fastest time'}
-                    {selectedComp.format === 'readathon' && 'Ranked by total pages from passed quizzes'}
+                    {selectedComp.format === 'readathon' && 'Ranked by Bingos scored, then squares completed'}
                     {selectedComp.format === 'elimination' && 'Ranked by round reached — finals determine winner'}
                   </div>
 
@@ -568,10 +569,10 @@ return (
                                   {entry.completion_time_seconds !== undefined && ` · ${formatTime(entry.completion_time_seconds)}`}
                                 </p>
                               )}
-                              {selectedComp.format === 'readathon' && entry.pages_read !== undefined && (
+                              {selectedComp.format === 'readathon' && (
                                 <p className={`text-xs ${textMuted}`}>
-                                  {entry.pages_read.toLocaleString()} pages
-                                  {entry.books_completed !== undefined && ` · ${entry.books_completed} book${entry.books_completed !== 1 ? 's' : ''}`}
+                                  {entry.bingo_count ?? 0} {(entry.bingo_count ?? 0) === 1 ? 'Bingo' : 'Bingos'}
+                                  {` · ${entry.squares_completed ?? 0} square${(entry.squares_completed ?? 0) !== 1 ? 's' : ''}`}
                                 </p>
                               )}
                               {selectedComp.format === 'elimination' && (
