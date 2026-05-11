@@ -208,7 +208,7 @@ export const AuthorCompetition = () => {
                   {type === 'Sprint'
                     ? 'Readers quiz only on your book within a set time window.'
                     : type === 'Read-A-Thon'
-                      ? 'Your book is required reading. Readers also quiz freely across the platform.'
+                      ? 'A 4×4 bingo card of books by genre. Your book is guaranteed a square. Readers pass quizzes to complete rows and score Bingos.'
                       : 'A three round bracket. If you have one listing, your book will be the featured book in one of the rounds. If you have at least three listings, the entire competition can revolve around those three books.'}
                 </p>
               </button>
@@ -220,7 +220,7 @@ export const AuthorCompetition = () => {
             <div className={`flex items-start gap-3 rounded-xl border p-4 text-sm ${calloutBg}`}>
               <Info size={16} className="flex-shrink-0 mt-0.5" />
               <p className="leading-relaxed">
-                <strong>Read-A-Thon is an open platform event.</strong> Readers are free to quiz on any active book during the event window — the goal is to read and quiz on as many books as possible. Your book is <strong>guaranteed to be included</strong> as required reading, but readers are not limited to your book only. You're buying featured placement, not exclusivity.
+                <strong>Read-A-Thon uses a Book Bingo format.</strong> A 4×4 card is built around books grouped by genre. Your book is <strong>guaranteed a square</strong> on the card. Readers pass quizzes to complete squares and score Bingos. The first 3 players to complete a full row win 50/30/20 of the prize pool. You’re buying a guaranteed spot on the card, not exclusivity.
               </p>
             </div>
           )}
@@ -264,7 +264,7 @@ export const AuthorCompetition = () => {
             {[
               ['Tier',          selectedTier.label],
               ['Format',        isReadAThon
-                ? "Open platform event — your book is required, all others are reader's choice"
+                ? 'Book Bingo — your book is guaranteed to be a featured square on the 4×4 card'
                 : selectedType],
               ['Price',         `$${selectedTier.price}`],
               ['Platform Fee',  `$${selectedTier.platformFee}`],
@@ -331,7 +331,7 @@ export const AuthorCompetition = () => {
             {isReadAThon && bookTitle && (
               <p className={`text-xs ${textMuted}`}>
                 <Info size={11} className="inline mr-1 mb-0.5" />
-                Readers will be required to quiz on <strong>{bookTitle}</strong>, but may also quiz on any other active book during the event.
+                <strong>{bookTitle}</strong> will be placed as a square on the bingo card. Readers must pass its quiz to complete that square on their way to hitting bingo.
               </p>
             )}
 
