@@ -57,7 +57,6 @@ export const BookPage = () => {
   const { isDark } = useTheme();
 
   const [book, setBook] = useState<Book | null>(null);
-  const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [bookTropes, setBookTropes] = useState<BookTrope[]>([]);
@@ -109,18 +108,8 @@ export const BookPage = () => {
   const loadBook = async () => {
     if (!user || !bookId) return;
 
-    const [bookResult, completedResult] = await Promise.all([
-      supabase.from('books').select('*').eq('id', bookId).maybeSingle(),
-      supabase
-        .from('completed_books')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('book_id', bookId)
-        .maybeSingle(),
-    ]);
-
-    if (bookResult.data) setBook(bookResult.data);
-    setIsCompleted(!!completedResult.data);
+    const { data: bookData } = await supabase.from('books').select('*').eq('id', bookId).maybeSingle();
+    if (bookData) setBook(bookData);
     setLoading(false);
   };
 
@@ -411,8 +400,8 @@ export const BookPage = () => {
                 </div>
               )}
 
-              {/* Quiz unlocked — Take Quiz button (active competition always overrides isCompleted) */}
-              {(quizUnlocked && (!isCompleted || activeCompetitions.length > 0)) && (
+              {/* Quiz unlocked — Take Quiz button */}
+              {quizUnlocked && (
                 <button
                   onClick={() => navigateTo(`/quiz/${book.id}`)}
                   className="w-full py-3 rounded-xl bg-[#D4A843] hover:bg-[#D4A843]/90 text-[#1B2A4A] font-semibold text-sm transition"
@@ -422,7 +411,7 @@ export const BookPage = () => {
               )}
 
               {/* Quiz locked state */}
-              {!quizUnlocked && !isCompleted && (
+              {!quizUnlocked && (
                 <div className={`rounded-xl border p-5 ${isDark ? 'bg-[#1B2A4A]/30 border-[#F5F0E8]/10' : 'bg-[#1B2A4A]/5 border-[#1B2A4A]/10'}`}>
                   <p className={`text-sm font-medium mb-1 ${textPrimary}`}>
                     Quiz unlocks when this book enters a competition or bounty.
@@ -588,8 +577,8 @@ export const BookPage = () => {
               )}
             </div>
 
-            {/* Completed badge */}
-            {isCompleted && (
+            {/* Completed badge — removed */
+            {false && (
               <div
                 className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg border ${
                   isDark
