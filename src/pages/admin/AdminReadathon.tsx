@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Trophy, Users, BookOpen, Plus, Play, Square, ChevronDown, ChevronUp, DollarSign, Trash2, Pencil, Check, X } from 'lucide-react';
+import { Trophy, Users, BookOpen, Plus, Play, Square, ChevronDown, ChevronUp, DollarSign, Trash2, Pencil, Check, X, Grid3X3 } from 'lucide-react';
 
 interface Readathon {
   id: string;
@@ -17,12 +17,28 @@ interface Readathon {
   created_at: string;
 }
 
-interface LeaderboardEntry {
+interface BingoSquare {
+  id: string;
+  row_index: number;
+  col_index: number;
+  genre: string;
+  subgenre: string;
+  book_id: string;
+  books: { title: string; author: string } | null;
+}
+
+interface Book {
+  id: string;
+  title: string;
+  author: string;
+  genre: string;
+}
+
+interface BingoLeaderboardEntry {
   user_id: string;
   display_name: string;
-  total_pages: number;
-  books_completed: number;
-  rank: number;
+  bingo_count: number;
+  squares_completed: number;
 }
 
 interface ReadathonStats {
@@ -52,12 +68,22 @@ export function AdminReadathon() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [leaderboards, setLeaderboards] = useState<Record<string, LeaderboardEntry[]>>({});
+  const [expandedTab, setExpandedTab] = useState<Record<string, 'card' | 'leaderboard'>>({});
+  const [squares, setSquares] = useState<Record<string, BingoSquare[]>>({});
+  const [leaderboards, setLeaderboards] = useState<Record<string, BingoLeaderboardEntry[]>>({});
   const [stats, setStats] = useState<Record<string, ReadathonStats>>({});
-  const [loadingLeaderboard, setLoadingLeaderboard] = useState<string | null>(null);
+  const [loadingExpanded, setLoadingExpanded] = useState<string | null>(null);
   const [payingOut, setPayingOut] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ entry_fee: '', prize_pool: '', start_date: '', end_date: '' });
+
+  // Card builder state
+  const [allBooks, setAllBooks] = useState<Book[]>([]);
+  const [bookSearch, setBookSearch] = useState('');
+  const [addingSquare, setAddingSquare] = useState<string | null>(null);
+  const [squareForm, setSquareForm] = useState({ row_index: '0', col_index: '0', genre: '', subgenre: '', book_id: '' });
+  const [editingSquareId, setEditingSquareId] = useState<string | null>(null);
+  const [editSquareForm, setEditSquareForm] = useState({ genre: '', subgenre: '', book_id: '' });
 
   const load = async () => {
     setLoading(true);
@@ -69,63 +95,49 @@ export function AdminReadathon() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    loadAllBooks();
+  }, []);
 
-  const loadLeaderboard = async (readathonId: string) => {
-    if (leaderboards[readathonId]) return;
-    setLoadingLeaderboard(readathonId);
+  const loadAllBooks = async () => {
+    const { data } = await supabase.from('books').select('id, title, author, genre').order('title');
+    setAllBooks(data ?? []);
+  };
 
-    const { data: progress } = await supabase
-      .from('readathon_progress')
-      .select('user_id, pages_read, book_id')
-      .eq('readathon_id', readathonId);
+  const loadExpanded = async (readathonId: string) => {
+    setLoadingExpanded(readathonId);
 
-    const { data: entries } = await supabase
-      .from('readathon_entries')
-      .select('user_id, entry_fee_paid')
-      .eq('readathon_id', readathonId);
+    const [{ data: sq }, { data: entries }, { data: bingos }, { data: completions }] = await Promise.all([
+      supabase.from('readathon_squares').select('id, row_index, col_index, genre, subgenre, book_id, books(title, author)').eq('readathon_id', readathonId).order('row_index').order('col_index'),
+      supabase.from('readathon_entries').select('user_id, entry_fee_paid').eq('readathon_id', readathonId),
+      supabase.from('readathon_bingos').select('user_id, row_index, created_at, profiles(display_name)').eq('readathon_id', readathonId).order('created_at', { ascending: true }),
+      supabase.from('readathon_completions').select('user_id, square_id').eq('readathon_id', readathonId),
+    ]);
+
+    setSquares((prev) => ({ ...prev, [readathonId]: (sq ?? []) as BingoSquare[] }));
 
     const entrantCount = entries?.length ?? 0;
-    const totalPool = entries?.reduce((sum, e) => sum + (e.entry_fee_paid ?? 0), 0) ?? 0;
+    const totalPool = entries?.reduce((sum: number, e: any) => sum + (e.entry_fee_paid ?? 0), 0) ?? 0;
     setStats((prev) => ({ ...prev, [readathonId]: { entrant_count: entrantCount, total_pool: totalPool } }));
 
-    if (!progress || progress.length === 0) {
-      setLeaderboards((prev) => ({ ...prev, [readathonId]: [] }));
-      setLoadingLeaderboard(null);
-      return;
-    }
+    const bingoTotals: Record<string, { display_name: string; bingo_count: number; squares_completed: number }> = {};
+    (bingos ?? []).forEach((b: any) => {
+      if (!bingoTotals[b.user_id]) {
+        bingoTotals[b.user_id] = { display_name: b.profiles?.display_name ?? b.user_id.slice(0, 8), bingo_count: 0, squares_completed: 0 };
+      }
+      bingoTotals[b.user_id].bingo_count += 1;
+    });
+    (completions ?? []).forEach((c: any) => {
+      if (bingoTotals[c.user_id]) bingoTotals[c.user_id].squares_completed += 1;
+    });
 
-    const userMap: Record<string, { total_pages: number; books: Set<string> }> = {};
-    for (const row of progress) {
-      if (!userMap[row.user_id]) userMap[row.user_id] = { total_pages: 0, books: new Set() };
-      userMap[row.user_id].total_pages += row.pages_read ?? 0;
-      userMap[row.user_id].books.add(row.book_id);
-    }
+    const lb = Object.entries(bingoTotals)
+      .map(([user_id, v]) => ({ user_id, ...v }))
+      .sort((a, b) => b.bingo_count - a.bingo_count || b.squares_completed - a.squares_completed);
+    setLeaderboards((prev) => ({ ...prev, [readathonId]: lb }));
 
-    const userIds = Object.keys(userMap);
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, display_name, email')
-      .in('id', userIds);
-
-    const nameMap: Record<string, string> = {};
-    for (const p of profiles ?? []) {
-      nameMap[p.id] = p.display_name ?? p.email?.slice(0, 8);
-    }
-
-    const sorted = Object.entries(userMap)
-      .map(([user_id, data]) => ({
-        user_id,
-        display_name: nameMap[user_id] ?? user_id.slice(0, 8),
-        total_pages: data.total_pages,
-        books_completed: data.books.size,
-        rank: 0,
-      }))
-      .sort((a, b) => b.total_pages - a.total_pages)
-      .map((entry, idx) => ({ ...entry, rank: idx + 1 }));
-
-    setLeaderboards((prev) => ({ ...prev, [readathonId]: sorted }));
-    setLoadingLeaderboard(null);
+    setLoadingExpanded(null);
   };
 
   const toggleExpand = (id: string) => {
@@ -133,8 +145,44 @@ export function AdminReadathon() {
       setExpandedId(null);
     } else {
       setExpandedId(id);
-      loadLeaderboard(id);
+      setExpandedTab((prev) => ({ ...prev, [id]: prev[id] ?? 'card' }));
+      loadExpanded(id);
     }
+  };
+
+  const handleAddSquare = async (readathonId: string) => {
+    if (!squareForm.book_id || !squareForm.genre) { setError('Book and genre are required'); return; }
+    const { error: insertError } = await supabase.from('readathon_squares').insert({
+      readathon_id: readathonId,
+      row_index: Number(squareForm.row_index),
+      col_index: Number(squareForm.col_index),
+      genre: squareForm.genre,
+      subgenre: squareForm.subgenre,
+      book_id: squareForm.book_id,
+    });
+    if (insertError) { setError(insertError.message); return; }
+    setAddingSquare(null);
+    setSquareForm({ row_index: '0', col_index: '0', genre: '', subgenre: '', book_id: '' });
+    setBookSearch('');
+    loadExpanded(readathonId);
+  };
+
+  const handleDeleteSquare = async (squareId: string, readathonId: string) => {
+    if (!window.confirm('Remove this square from the card?')) return;
+    await supabase.from('readathon_squares').delete().eq('id', squareId);
+    loadExpanded(readathonId);
+  };
+
+  const handleSaveSquareEdit = async (squareId: string, readathonId: string) => {
+    if (!editSquareForm.book_id || !editSquareForm.genre) { setError('Book and genre are required'); return; }
+    const { error: updateError } = await supabase.from('readathon_squares').update({
+      genre: editSquareForm.genre,
+      subgenre: editSquareForm.subgenre,
+      book_id: editSquareForm.book_id,
+    }).eq('id', squareId);
+    if (updateError) { setError(updateError.message); return; }
+    setEditingSquareId(null);
+    loadExpanded(readathonId);
   };
 
   const handleStatusChange = async (id: string, newStatus: 'upcoming' | 'active' | 'ended') => {
@@ -182,7 +230,8 @@ export function AdminReadathon() {
 
   const handleDelete = async (id: string, title: string) => {
     if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return;
-    await supabase.from('readathons').delete().eq('id', id);
+    const { error: deleteError } = await supabase.from('readathons').delete().eq('id', id);
+    if (deleteError) { setError(`Delete failed: ${deleteError.message}`); return; }
     load();
   };
 
@@ -272,12 +321,13 @@ export function AdminReadathon() {
     return 'bg-amber-500/15 text-amber-400 border-amber-500/20';
   };
 
-  const rankMedal = (rank: number) => {
-    if (rank === 1) return '🥇';
-    if (rank === 2) return '🥈';
-    if (rank === 3) return '🥉';
-    return `#${rank}`;
-  };
+  const rankMedal = (i: number) => ['🥇', '🥈', '🥉'][i] ?? `#${i + 1}`;
+
+  const filteredBooks = allBooks.filter((b: Book) =>
+    bookSearch.length < 2 ? false :
+    b.title.toLowerCase().includes(bookSearch.toLowerCase()) ||
+    b.author.toLowerCase().includes(bookSearch.toLowerCase())
+  );
 
   if (loading) return (
     <div className="flex items-center justify-center py-16">
@@ -574,67 +624,189 @@ export function AdminReadathon() {
 
                 {isExpanded && (
                   <div className="border-t border-[#e8e8d5] dark:border-gray-700 p-5 space-y-4">
+                    {/* Stats row */}
                     {st && (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-3 gap-3">
                         <div className="bg-[#F5F0E8] dark:bg-gray-700/50 rounded-xl p-3 text-center">
-                          <div className="flex items-center justify-center gap-1.5 mb-1">
-                            <Users size={14} className="text-[#D4A843]" />
-                            <span className="text-xs text-[#6B7280] dark:text-gray-400 font-medium">Entrants</span>
-                          </div>
+                          <div className="flex items-center justify-center gap-1 mb-1"><Users size={13} className="text-[#D4A843]" /><span className="text-xs text-[#6B7280] dark:text-gray-400">Entrants</span></div>
                           <p className="text-xl font-bold text-[#1B2A4A] dark:text-[#F5F0E8]">{st.entrant_count}</p>
                         </div>
                         <div className="bg-[#F5F0E8] dark:bg-gray-700/50 rounded-xl p-3 text-center">
-                          <div className="flex items-center justify-center gap-1.5 mb-1">
-                            <Trophy size={14} className="text-[#D4A843]" />
-                            <span className="text-xs text-[#6B7280] dark:text-gray-400 font-medium">Entry Pool</span>
-                          </div>
+                          <div className="flex items-center justify-center gap-1 mb-1"><Trophy size={13} className="text-[#D4A843]" /><span className="text-xs text-[#6B7280] dark:text-gray-400">Entry Pool</span></div>
                           <p className="text-xl font-bold text-[#1B2A4A] dark:text-[#F5F0E8]">${st.total_pool.toFixed(2)}</p>
                         </div>
                         <div className="bg-[#F5F0E8] dark:bg-gray-700/50 rounded-xl p-3 text-center">
-                          <div className="flex items-center justify-center gap-1.5 mb-1">
-                            <BookOpen size={14} className="text-[#D4A843]" />
-                            <span className="text-xs text-[#6B7280] dark:text-gray-400 font-medium">Active Readers</span>
-                          </div>
-                          <p className="text-xl font-bold text-[#1B2A4A] dark:text-[#F5F0E8]">{lb.length}</p>
+                          <div className="flex items-center justify-center gap-1 mb-1"><Grid3X3 size={13} className="text-[#D4A843]" /><span className="text-xs text-[#6B7280] dark:text-gray-400">Squares</span></div>
+                          <p className="text-xl font-bold text-[#1B2A4A] dark:text-[#F5F0E8]">{(squares[r.id] ?? []).length}</p>
                         </div>
                       </div>
                     )}
 
-                    <div>
-                      <h4 className="text-sm font-semibold text-[#1B2A4A] dark:text-[#F5F0E8] mb-3">Leaderboard</h4>
-                      {loadingLeaderboard === r.id ? (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="w-5 h-5 border-2 border-[#D4A843] border-t-transparent rounded-full animate-spin" />
-                        </div>
-                      ) : lb.length === 0 ? (
-                        <p className="text-sm text-[#6B7280] dark:text-gray-400 text-center py-6">No quiz completions yet.</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {lb.map((entry) => (
-                            <div
-                              key={entry.user_id}
-                              className={`flex items-center justify-between px-4 py-3 rounded-xl border ${
-                                entry.rank <= 3
-                                  ? 'border-[#D4A843]/30 bg-[#D4A843]/5'
-                                  : 'border-[#e8e8d5] dark:border-gray-700 bg-[#F5F0E8] dark:bg-gray-700/30'
-                              }`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <span className="text-base w-8 text-center">{rankMedal(entry.rank)}</span>
-                                <div>
-                                  <p className="text-sm font-medium text-[#1B2A4A] dark:text-[#F5F0E8]">{entry.display_name}</p>
-                                  <p className="text-xs text-[#6B7280] dark:text-gray-400">{entry.books_completed} book{entry.books_completed !== 1 ? 's' : ''} completed</p>
-                                </div>
+                    {/* Tab switcher */}
+                    <div className="flex gap-2 border-b border-[#e8e8d5] dark:border-gray-700 pb-2">
+                      {(['card', 'leaderboard'] as const).map((t) => (
+                        <button
+                          key={t}
+                          onClick={() => setExpandedTab((prev) => ({ ...prev, [r.id]: t }))}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                            (expandedTab[r.id] ?? 'card') === t
+                              ? 'bg-[#D4A843] text-white'
+                              : 'text-[#6B7280] dark:text-gray-400 hover:text-[#1B2A4A] dark:hover:text-white'
+                          }`}
+                        >
+                          {t === 'card' ? 'Bingo Card' : 'Leaderboard'}
+                        </button>
+                      ))}
+                    </div>
+
+                    {loadingExpanded === r.id ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="w-5 h-5 border-2 border-[#D4A843] border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    ) : (expandedTab[r.id] ?? 'card') === 'card' ? (
+                      /* ── BINGO CARD BUILDER ── */
+                      <div className="space-y-3">
+                        {[0, 1, 2, 3].map((rowIdx) => {
+                          const rowSquares = (squares[r.id] ?? []).filter((s) => s.row_index === rowIdx).sort((a, b) => a.col_index - b.col_index);
+                          const rowGenre = rowSquares[0]?.genre ?? `Row ${rowIdx + 1}`;
+                          return (
+                            <div key={rowIdx} className="border border-[#e8e8d5] dark:border-gray-700 rounded-xl overflow-hidden">
+                              <div className="bg-[#F5F0E8] dark:bg-gray-700/50 px-4 py-2 flex items-center justify-between">
+                                <span className="text-xs font-bold text-[#1B2A4A] dark:text-[#F5F0E8] uppercase tracking-wide">
+                                  Row {rowIdx + 1} — {rowGenre}
+                                </span>
+                                <span className="text-xs text-[#6B7280] dark:text-gray-400">{rowSquares.length}/4 squares</span>
                               </div>
-                              <div className="text-right">
-                                <p className="text-sm font-bold text-[#1B2A4A] dark:text-[#F5F0E8]">{entry.total_pages.toLocaleString()}</p>
-                                <p className="text-xs text-[#6B7280] dark:text-gray-400">pages</p>
+                              <div className="p-3 space-y-2">
+                                {rowSquares.map((sq) => (
+                                  <div key={sq.id}>
+                                    {editingSquareId === sq.id ? (
+                                      <div className="bg-[#F5F0E8] dark:bg-gray-700/30 rounded-lg p-3 space-y-2">
+                                        <div className="grid grid-cols-2 gap-2">
+                                          <input placeholder="Genre" value={editSquareForm.genre}
+                                            onChange={(e) => setEditSquareForm((p) => ({ ...p, genre: e.target.value }))}
+                                            className="px-2 py-1.5 rounded-lg border border-[#e8e8d5] dark:border-gray-600 bg-white dark:bg-gray-800 text-xs text-[#1B2A4A] dark:text-[#F5F0E8] focus:outline-none" />
+                                          <input placeholder="Subgenre" value={editSquareForm.subgenre}
+                                            onChange={(e) => setEditSquareForm((p) => ({ ...p, subgenre: e.target.value }))}
+                                            className="px-2 py-1.5 rounded-lg border border-[#e8e8d5] dark:border-gray-600 bg-white dark:bg-gray-800 text-xs text-[#1B2A4A] dark:text-[#F5F0E8] focus:outline-none" />
+                                        </div>
+                                        <select value={editSquareForm.book_id}
+                                          onChange={(e) => setEditSquareForm((p) => ({ ...p, book_id: e.target.value }))}
+                                          className="w-full px-2 py-1.5 rounded-lg border border-[#e8e8d5] dark:border-gray-600 bg-white dark:bg-gray-800 text-xs text-[#1B2A4A] dark:text-[#F5F0E8] focus:outline-none">
+                                          <option value="">Select book…</option>
+                                          {allBooks.map((b) => <option key={b.id} value={b.id}>{b.title} — {b.author}</option>)}
+                                        </select>
+                                        <div className="flex gap-2">
+                                          <button onClick={() => handleSaveSquareEdit(sq.id, r.id)}
+                                            className="flex items-center gap-1 px-3 py-1 rounded-lg bg-[#D4A843] text-white text-xs font-semibold">
+                                            <Check size={11} /> Save
+                                          </button>
+                                          <button onClick={() => setEditingSquareId(null)}
+                                            className="flex items-center gap-1 px-3 py-1 rounded-lg border border-[#e8e8d5] dark:border-gray-600 text-[#6B7280] text-xs">
+                                            <X size={11} /> Cancel
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-[#F5F0E8] dark:bg-gray-700/30">
+                                        <div>
+                                          <p className="text-xs font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">
+                                            Col {sq.col_index} · {sq.subgenre || sq.genre}
+                                          </p>
+                                          <p className="text-xs text-[#6B7280] dark:text-gray-400">
+                                            {sq.books?.title ?? sq.book_id} — {sq.books?.author ?? ''}
+                                          </p>
+                                        </div>
+                                        <div className="flex gap-1">
+                                          <button onClick={() => { setEditingSquareId(sq.id); setEditSquareForm({ genre: sq.genre, subgenre: sq.subgenre, book_id: sq.book_id }); }}
+                                            className="p-1 rounded text-blue-400 hover:bg-blue-500/10 transition-colors"><Pencil size={13} /></button>
+                                          <button onClick={() => handleDeleteSquare(sq.id, r.id)}
+                                            className="p-1 rounded text-red-400 hover:bg-red-500/10 transition-colors"><Trash2 size={13} /></button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                                {rowSquares.length < 4 && addingSquare !== `${r.id}-${rowIdx}` && (
+                                  <button
+                                    onClick={() => { setAddingSquare(`${r.id}-${rowIdx}`); setSquareForm((p) => ({ ...p, row_index: String(rowIdx), col_index: String(rowSquares.length) })); }}
+                                    className="w-full py-1.5 rounded-lg border border-dashed border-[#D4A843]/40 text-[#D4A843] text-xs hover:bg-[#D4A843]/5 transition-colors flex items-center justify-center gap-1"
+                                  >
+                                    <Plus size={11} /> Add square
+                                  </button>
+                                )}
+                                {addingSquare === `${r.id}-${rowIdx}` && (
+                                  <div className="bg-[#F5F0E8] dark:bg-gray-700/30 rounded-lg p-3 space-y-2">
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <input placeholder="Genre (e.g. Fantasy)" value={squareForm.genre}
+                                        onChange={(e) => setSquareForm((p) => ({ ...p, genre: e.target.value }))}
+                                        className="px-2 py-1.5 rounded-lg border border-[#e8e8d5] dark:border-gray-600 bg-white dark:bg-gray-800 text-xs text-[#1B2A4A] dark:text-[#F5F0E8] focus:outline-none" />
+                                      <input placeholder="Subgenre (e.g. Epic)" value={squareForm.subgenre}
+                                        onChange={(e) => setSquareForm((p) => ({ ...p, subgenre: e.target.value }))}
+                                        className="px-2 py-1.5 rounded-lg border border-[#e8e8d5] dark:border-gray-600 bg-white dark:bg-gray-800 text-xs text-[#1B2A4A] dark:text-[#F5F0E8] focus:outline-none" />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <input placeholder="Search books…" value={bookSearch}
+                                        onChange={(e) => setBookSearch(e.target.value)}
+                                        className="w-full px-2 py-1.5 rounded-lg border border-[#e8e8d5] dark:border-gray-600 bg-white dark:bg-gray-800 text-xs text-[#1B2A4A] dark:text-[#F5F0E8] focus:outline-none" />
+                                      {filteredBooks.length > 0 && (
+                                        <div className="max-h-32 overflow-y-auto border border-[#e8e8d5] dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 divide-y divide-[#e8e8d5] dark:divide-gray-700">
+                                          {filteredBooks.slice(0, 10).map((b) => (
+                                            <button key={b.id} onClick={() => { setSquareForm((p) => ({ ...p, book_id: b.id })); setBookSearch(`${b.title} — ${b.author}`); }}
+                                              className={`w-full text-left px-3 py-2 text-xs hover:bg-[#F5F0E8] dark:hover:bg-gray-700 transition-colors ${squareForm.book_id === b.id ? 'bg-[#D4A843]/10 text-[#D4A843]' : 'text-[#1B2A4A] dark:text-[#F5F0E8]'}`}>
+                                              {b.title} <span className="text-[#6B7280] dark:text-gray-400">— {b.author}</span>
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <button onClick={() => handleAddSquare(r.id)}
+                                        className="flex items-center gap-1 px-3 py-1 rounded-lg bg-[#D4A843] text-white text-xs font-semibold">
+                                        <Check size={11} /> Add
+                                      </button>
+                                      <button onClick={() => { setAddingSquare(null); setBookSearch(''); setSquareForm({ row_index: '0', col_index: '0', genre: '', subgenre: '', book_id: '' }); }}
+                                        className="flex items-center gap-1 px-3 py-1 rounded-lg border border-[#e8e8d5] dark:border-gray-600 text-[#6B7280] text-xs">
+                                        <X size={11} /> Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      /* ── BINGO LEADERBOARD ── */
+                      <div>
+                        {lb.length === 0 ? (
+                          <p className="text-sm text-[#6B7280] dark:text-gray-400 text-center py-6">No bingos yet.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {lb.map((entry, i) => (
+                              <div key={entry.user_id}
+                                className={`flex items-center justify-between px-4 py-3 rounded-xl border ${
+                                  i < 3 ? 'border-[#D4A843]/30 bg-[#D4A843]/5' : 'border-[#e8e8d5] dark:border-gray-700 bg-[#F5F0E8] dark:bg-gray-700/30'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <span className="text-base w-8 text-center">{rankMedal(i)}</span>
+                                  <div>
+                                    <p className="text-sm font-medium text-[#1B2A4A] dark:text-[#F5F0E8]">{entry.display_name}</p>
+                                    <p className="text-xs text-[#6B7280] dark:text-gray-400">{entry.squares_completed} square{entry.squares_completed !== 1 ? 's' : ''} completed</p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm font-bold text-[#D4A843]">{entry.bingo_count}</p>
+                                  <p className="text-xs text-[#6B7280] dark:text-gray-400">{entry.bingo_count === 1 ? 'bingo' : 'bingos'}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
