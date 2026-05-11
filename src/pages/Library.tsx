@@ -419,8 +419,8 @@ export const Library = () => {
                       </div>
                     )}
 
-                    {/* Completed badge */}
-                    {completed && (
+                    {/* Completed badge — only when no active earning opportunity */}
+                    {completed && !inCompetition && !bounty && (
                       <div className="absolute bottom-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
                         <Check size={10} /> Done
                       </div>
