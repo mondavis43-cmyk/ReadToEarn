@@ -8,7 +8,8 @@ interface LeaderboardEntry {
   display_name: string | null;
   score: number;
   time_spent_ms?: number;
-  pages_read?: number;
+  bingo_count?: number;
+  squares_completed?: number;
   round?: number;
   passed?: boolean;
 }
@@ -91,29 +92,31 @@ export const CompetitionLeaderboard = ({ competitionId, format, status }: Props)
       }
 
     } else if (format === 'readathon') {
-      const { data } = await supabase
-        .from('readathon_progress')
-        .select('user_id, pages_logged, profiles(display_name)')
-        .eq('competition_id', competitionId);
+      const [{ data: bingos }, { data: completions }] = await Promise.all([
+        supabase.from('readathon_bingos').select('user_id, profiles(display_name)').eq('readathon_id', competitionId),
+        supabase.from('readathon_completions').select('user_id').eq('readathon_id', competitionId),
+      ]);
 
-      if (data) {
-        const totals: Record<string, { display_name: string; pages: number }> = {};
-        for (const row of data as any[]) {
-          if (!totals[row.user_id]) {
-            totals[row.user_id] = { display_name: row.profiles?.display_name ?? 'Reader', pages: 0 };
-          }
-          totals[row.user_id].pages += row.pages_logged ?? 0;
-        }
-        const sorted = Object.entries(totals)
-          .sort((a, b) => b[1].pages - a[1].pages)
-          .map(([user_id, val]) => ({
-            user_id,
-            display_name: val.display_name,
-            score: val.pages,
-            pages_read: val.pages,
-          }));
-        setEntries(sorted);
+      const totals: Record<string, { display_name: string; bingo_count: number; squares_completed: number }> = {};
+      for (const row of (bingos ?? []) as any[]) {
+        if (!totals[row.user_id]) totals[row.user_id] = { display_name: row.profiles?.display_name ?? 'Reader', bingo_count: 0, squares_completed: 0 };
+        totals[row.user_id].bingo_count += 1;
       }
+      for (const row of (completions ?? []) as any[]) {
+        if (!totals[row.user_id]) totals[row.user_id] = { display_name: 'Reader', bingo_count: 0, squares_completed: 0 };
+        totals[row.user_id].squares_completed += 1;
+      }
+
+      const sorted = Object.entries(totals)
+        .sort(([, a], [, b]) => b.bingo_count !== a.bingo_count ? b.bingo_count - a.bingo_count : b.squares_completed - a.squares_completed)
+        .map(([user_id, val]) => ({
+          user_id,
+          display_name: val.display_name,
+          score: val.bingo_count,
+          bingo_count: val.bingo_count,
+          squares_completed: val.squares_completed,
+        }));
+      setEntries(sorted);
     }
 
     setLastUpdated(new Date());
@@ -137,7 +140,7 @@ export const CompetitionLeaderboard = ({ competitionId, format, status }: Props)
 
   const subLabel = (entry: LeaderboardEntry) => {
     if (format === 'sprint') return `Score: ${entry.score}/10 · Time: ${formatTime(entry.time_spent_ms)}`;
-    if (format === 'readathon') return `${entry.pages_read?.toLocaleString()} pages read`;
+    if (format === 'readathon') return `${entry.bingo_count ?? 0} ${(entry.bingo_count ?? 0) === 1 ? 'Bingo' : 'Bingos'} · ${entry.squares_completed ?? 0} square${(entry.squares_completed ?? 0) !== 1 ? 's' : ''}`;
     if (format === 'elimination') return `Round ${entry.round} · ${entry.passed ? 'Advanced' : 'Eliminated'}`;
     return '';
   };
