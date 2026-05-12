@@ -38,8 +38,11 @@ export const Cashout = () => {
   const [success, setSuccess]             = useState(false);
   const [pastRequests, setPastRequests]   = useState<any[]>([]);
   const [selectedCard, setSelectedCard]   = useState<GiftCardOption>(GIFT_CARDS[0]);
+  const [cashoutAmount, setCashoutAmount]   = useState<string>('');
 
   const MIN_CASHOUT = isUpgraded ? 5 : 10;
+  const parsedAmount = parseFloat(cashoutAmount);
+  const validAmount = !isNaN(parsedAmount) && parsedAmount >= MIN_CASHOUT && parsedAmount <= balance;
 
   useEffect(() => {
     loadData();
@@ -86,6 +89,11 @@ export const Cashout = () => {
       return;
     }
 
+    if (!validAmount) {
+      setError(`Enter an amount between $${MIN_CASHOUT.toFixed(2)} and $${balance.toFixed(2)}.`);
+      return;
+    }
+
     if (payoutType !== 'gift_card' && !payoutDetails.trim()) {
       setError(
         payoutType === 'paypal' ? 'Please enter your PayPal email.' : 'Please enter your Wise email.'
@@ -98,7 +106,7 @@ export const Cashout = () => {
     const { error: rpcError } = await supabase.rpc('submit_cashout_request', {
       p_user_id:           user!.id,
       p_email:             user!.email ?? '',
-      p_amount:            balance,
+      p_amount:            parsedAmount,
       p_payout_type:       payoutType,
       p_payout_details:    payoutType === 'gift_card' ? selectedCard.name : payoutDetails,
       p_gift_card_brand:   payoutType === 'gift_card' ? selectedCard.name : null,
@@ -135,7 +143,7 @@ export const Cashout = () => {
           <h1 className="font-serif text-3xl text-white mb-4">Request Submitted!</h1>
           <div className="bg-[#1a1a1a] rounded-lg p-8 border border-gray-800">
             <p className="text-gray-300 mb-2">Your cashout request for</p>
-            <p className="text-white text-2xl font-semibold mb-2">${balance.toFixed(2)}</p>
+            <p className="text-white text-2xl font-semibold mb-2">${parsedAmount.toFixed(2)}</p>
             <p className="text-gray-400 text-sm mb-6">
               has been submitted. You'll receive your{' '}
               {payoutType === 'gift_card'
@@ -172,6 +180,34 @@ export const Cashout = () => {
         <div className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800 mb-8 text-center">
           <p className="text-gray-400 text-sm mb-1">Available Balance</p>
           <p className="text-4xl font-semibold text-white">${balance.toFixed(2)}</p>
+          {balance >= MIN_CASHOUT && (
+            <div className="mt-4">
+              <label className="block text-sm text-gray-400 mb-2">Amount to cash out</label>
+              <div className="flex items-center gap-2 justify-center">
+                <span className="text-gray-400">$</span>
+                <input
+                  type="number"
+                  min={MIN_CASHOUT}
+                  max={balance}
+                  step="0.01"
+                  value={cashoutAmount}
+                  onChange={(e) => setCashoutAmount(e.target.value)}
+                  placeholder={balance.toFixed(2)}
+                  className="w-32 px-3 py-2 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white text-center focus:outline-none focus:border-gray-500 transition"
+                />
+                <button
+                  type="button"
+                  onClick={() => setCashoutAmount(balance.toFixed(2))}
+                  className="text-xs text-[#D4A843] hover:underline"
+                >
+                  Max
+                </button>
+              </div>
+              {cashoutAmount && !validAmount && (
+                <p className="text-red-400 text-xs mt-1">Must be between ${MIN_CASHOUT.toFixed(2)} and ${balance.toFixed(2)}</p>
+              )}
+            </div>
+          )}
           {isUpgraded && (
             <p className="text-[#D4A843] text-xs mt-1">⭐ Subscriber minimum: $5.00</p>
           )}
@@ -272,10 +308,10 @@ export const Cashout = () => {
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !validAmount}
               className="w-full bg-white text-black font-medium py-3 rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitting ? 'Submitting...' : `Request $${balance.toFixed(2)} Cashout`}
+              {submitting ? 'Submitting...' : `Request $${validAmount ? parsedAmount.toFixed(2) : '—'} Cashout`}
             </button>
           </form>
         ) : (
