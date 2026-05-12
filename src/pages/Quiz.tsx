@@ -305,7 +305,12 @@ const loadQuiz = async () => {
         .eq('user_id', user.id)
         .eq('round', competitionRound)
         .maybeSingle()
-    : Promise.resolve({ data: null });
+    : supabase
+        .from('quiz_attempts')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('book_id', bookId)
+        .maybeSingle();
 
   const [questionsResult, completedResult] = await Promise.all([
     supabase.from('public_questions').select('*').eq('book_id', bookId),
@@ -333,7 +338,7 @@ const loadQuiz = async () => {
     setShuffledOptions(opts);
   }
 
-  if (isCompetitionQuiz && completedResult.data) setAlreadyCompleted(true);
+  if (completedResult.data) setAlreadyCompleted(true);
   setLoading(false);
 };
 
@@ -806,7 +811,7 @@ return (
       {alreadyCompleted && (
         <div className={`${cardBg} border ${cardBorder} rounded-xl p-4 flex items-start gap-3`}>
           <AlertCircle size={18} className="text-amber-400 mt-0.5 shrink-0" />
-          <p className={`text-sm ${subColor}`}>You've already completed this quiz. You can review the questions but won't earn again.</p>
+          <p className={`text-sm ${subColor}`}>You've already taken the quiz for this book. You can review the questions, but you won't be able to earn from it again.</p>
         </div>
       )}
 
