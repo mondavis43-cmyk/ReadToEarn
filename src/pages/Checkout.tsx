@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FEATURES } from '../config/features';
 import { supabase } from '../lib/supabase';
 import { loadStripe } from "@stripe/stripe-js";
 import {
@@ -107,10 +108,10 @@ const REDIRECT_MAP: Record<string, string> = {
   sensitivity_reader: "/author-dashboard",
   subscription: "/profile",
   time_boost: "/profile",
-  competition_entry: "/elimination",
-  tournament_entry: "/elimination",
-  sprint_entry:     "/sprints",
-  readathon_entry:  "/readathon",
+  competition_entry: FEATURES.elimination ? "/elimination" : "/sprints",
+  tournament_entry:  FEATURES.elimination ? "/elimination" : "/sprints",
+  sprint_entry:      "/sprints",
+  readathon_entry:   FEATURES.readathon  ? "/readathon"  : "/profile",
 };
 
 const goTo = (path: string) => {
