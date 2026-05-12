@@ -13,7 +13,7 @@ const BOUNTY_POOLS = [
   { size: 500, platform: 100, readerPool: 400, label: '$500 Pool'},
 ];
 
-const PER_PASS_OPTIONS = [0.25, 0.50, 0.75, 1.00, 1.50, 2.00];
+const PER_PASS_OPTIONS = [0.50, 0.75, 1.00, 1.50, 2.00, 2.50];
 
 const POOL_CENTS: Record<number, number> = {
   25: 2500, 50: 5000, 100: 10000, 200: 20000, 500: 50000,
@@ -28,7 +28,7 @@ export const AuthorBounty = () => {
   const [bookTitle, setBookTitle]       = useState('');
   const [bookId, setBookId]             = useState('');
   const [selectedPool, setSelectedPool] = useState(BOUNTY_POOLS[0]);
-  const [perPass, setPerPass]           = useState(PER_PASS_OPTIONS[1]);
+  const [perPass, setPerPass]           = useState(PER_PASS_OPTIONS[0]);
   const [notes, setNotes]               = useState('');
   const [error, setError]               = useState('');
 
@@ -285,7 +285,7 @@ export const AuthorBounty = () => {
           </span>
         </button>
         <p className={`text-xs text-center mt-3 ${textMuted}`}>
-          Your bounty goes live after payment is confirmed.
+          After payment, your bounty is reviewed by our team. If everything looks good, it goes live within 1–2 business days.
         </p>
 
       </div>
