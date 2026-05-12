@@ -45,6 +45,7 @@ import { TournamentDetail } from '../pages/TournamentDetail';
 import { AMARequest } from '../pages/AMARequest';
 import { AdminRoute } from './AdminRoute';
 import { Readathon } from '../pages/Readathon';
+import { FEATURES } from '../config/features';
 import { Sprints } from '../pages/Sprints';
 import QuickTasks from '../pages/QuickTasks';
 import SurveyFeed from '../pages/SurveyFeed';
@@ -130,7 +131,6 @@ const KNOWN_ROUTES = [
   '/home',
   '/library',
   '/how-it-works',
-  '/elimination',
   '/earn',
   '/pricing',
   '/profile',
@@ -155,7 +155,6 @@ const KNOWN_ROUTES = [
   '/tournaments/create',
   '/ama-request',
   '/author-dashboard',
-  '/readathon',
   '/sprints',
   '/quick-tasks',
   '/surveys',
@@ -177,7 +176,7 @@ return (
     {(route === '/' || route === '/home') && <Home />}
     {route === '/library' && <Library />}
     {route === '/how-it-works' && <HowItWorks />}
-    {route === '/elimination' && <Elimination />}
+    {FEATURES.elimination && route === '/elimination' && <Elimination />}
     {route === '/earn' && <Earn />}
     {route === '/profile' && <Profile />}
     {route === '/cashout' && <Cashout />}
@@ -195,7 +194,7 @@ return (
     {route === '/author-sensitivity-readers' && <AuthorSensitivityReaders />}
     {route === '/time-boosts' && <TimeBoosts />}
     {route === '/leaderboard' && <Leaderboard />}
-    {route === '/readathon' && <Readathon />}
+    {FEATURES.readathon && route === '/readathon' && <Readathon />}
     {route === '/sprints' && <Sprints />}
     {route === '/bulletin-board' && <BulletinBoard />}
     {route === '/bulletin-submit' && <BulletinSubmit />}
