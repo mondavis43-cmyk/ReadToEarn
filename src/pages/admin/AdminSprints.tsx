@@ -487,7 +487,7 @@ export function AdminSprints() {
                         <span>📖 {s.book_title} by {s.book_author}</span>
                         <span>📅 {new Date(s.start_date).toLocaleDateString()} → {new Date(s.end_date).toLocaleDateString()}</span>
                         <span>💲 ${s.entry_fee.toFixed(2)} entry</span>
-                        <span>🏆 ${s.prize_pool.toFixed(2)} pool (winner takes all)</span>
+                        <span>🏆 ${s.prize_pool.toFixed(2)} pool (top 3: 50/30/20)</span>
                       </div>
                     </div>
 
