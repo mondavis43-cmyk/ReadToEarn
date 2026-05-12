@@ -167,12 +167,22 @@ export const AuthorCompetition = () => {
           </p>
         </div>
 
+        {/* Overlap warning */}
+        <div className={`rounded-xl border p-4 mb-6 flex items-start gap-3 ${
+          isDark ? 'bg-amber-900/20 border-amber-500/40' : 'bg-amber-50 border-amber-400/60'
+        }`}>
+          <span className="text-lg flex-shrink-0 mt-0.5">⚠️</span>
+          <p className={`text-sm leading-relaxed ${isDark ? 'text-amber-200' : 'text-amber-900'}`}>
+            <strong>Competitions and author bounties cannot run at the same time on the same book.</strong> Each reader can only earn from your book once — either through a competition or a bounty, not both. Leave a gap between the two so a fresh set of readers can participate in each.
+          </p>
+        </div>
+
         {/* How it works */}
         <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
           <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>How It Works</h2>
           <ol className="space-y-3">
             {[
-              'Choose a competition format — Sprint, Read-A-Thon, or Elimination Bracket.',
+              COMPETITION_TYPES.length > 1 ? 'Choose a competition format — Sprint, Read-A-Thon, or Elimination Bracket.' : 'Your book will be featured in a Sprint competition.',
               'Select a tier — this sets your platform fee and the reader prize pool.',
               'We schedule and run the event. Readers compete for the prize pool.',
               'You get visibility, quiz engagement, and real reader data.',
@@ -187,8 +197,8 @@ export const AuthorCompetition = () => {
           </ol>
         </div>
 
-        {/* Competition format */}
-        <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
+        {/* Competition format — only show picker when multiple formats exist */}
+        {COMPETITION_TYPES.length > 1 && <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
           <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Competition Format</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
             {COMPETITION_TYPES.map(type => (
@@ -219,17 +229,7 @@ export const AuthorCompetition = () => {
               </button>
             ))}
           </div>
-
-          {/* Read-A-Thon callout */}
-          {isReadAThon && (
-            <div className={`flex items-start gap-3 rounded-xl border p-4 text-sm ${calloutBg}`}>
-              <Info size={16} className="flex-shrink-0 mt-0.5" />
-              <p className="leading-relaxed">
-                <strong>Read-A-Thon uses a Book Bingo format.</strong> A 4×4 card is built around books grouped by genre. Your book is <strong>guaranteed a square</strong> on the card. Readers pass quizzes to complete squares and score Bingos. The first 3 players to complete a full row win 50/30/20 of the prize pool. You’re buying a guaranteed spot on the card, not exclusivity.
-              </p>
-            </div>
-          )}
-        </div>
+        </div>}
 
         {/* Tier picker */}
         <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
