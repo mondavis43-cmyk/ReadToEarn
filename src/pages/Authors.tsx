@@ -43,7 +43,7 @@ export const Authors = () => {
             Get Your Book Read.<br />Really Read.
           </h1>
           <p className={`text-lg max-w-xl mx-auto transition-colors ${textMuted}`}>
-            Real readers. Verified completions. No bots, no fake reviews — just people who actually finished your book.
+            Real readers. Verified completions. No bots. Just people who actually finished your book.
           </p>
         </div>
 
