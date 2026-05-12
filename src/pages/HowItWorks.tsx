@@ -1,4 +1,5 @@
 import { useTheme } from '../contexts/ThemeContext';
+import { FEATURES } from '../config/features';
 import { useNavigate } from '../hooks/useNavigate';
 import { Zap, BookOpen, Trophy, ArrowRight, Shield, DollarSign, BarChart2, AlertCircle } from 'lucide-react';
 
@@ -116,7 +117,7 @@ export const HowItWorks = () => {
             </div>
 
             {/* Elimination */}
-            <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
+            {FEATURES.elimination && <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
               <div className="flex items-center gap-3 mb-3">
                 <Trophy className="text-[#D4A843] shrink-0" size={22} />
                 <h3 className={`font-serif text-xl ${textPrimary}`}>The Elimination Bracket</h3>
@@ -134,7 +135,7 @@ export const HowItWorks = () => {
                 <p className={textMuted}>Round 1 — 80 enter. Read Book A. Need 8/10 to advance. 55 pass. Round 2 — 55 survivors. Read Book B. Need 9/10. 20 pass. Finals — 20 survivors take the Master Quiz. Highest score wins. 2nd & 3rd place earn smaller payouts.</p>
               </div>
               <p className={`text-xs mt-3 ${textMuted}`}>Duration: 1–2 weeks across rounds</p>
-            </div>
+            </div>}
 
           </div>
         </div>
@@ -167,8 +168,8 @@ export const HowItWorks = () => {
           <div className="space-y-3">
             {[
               { label: 'Sprint', desc: 'Live leaderboard updates every ~60 seconds during the active competition window.' },
-              { label: 'Read-A-Thon', desc: 'Live bingo leaderboard shows who has scored Bingos and how many squares each player has completed. Updates every ~60 seconds.' },
-              { label: 'Elimination Bracket', desc: 'Live "Survived / Eliminated" status per round. Rankings shown in the final round only.' },
+              ...(FEATURES.readathon ? [{ label: 'Read-A-Thon', desc: 'Live bingo leaderboard shows who has scored Bingos and how many squares each player has completed. Updates every ~60 seconds.' }] : []),
+              ...(FEATURES.elimination ? [{ label: 'Elimination Bracket', desc: 'Live "Survived / Eliminated" status per round. Rankings shown in the final round only.' }] : []),
               { label: 'After Competition Closes', desc: 'Leaderboard freezes and stays visible for 7–14 days. Then archived in the Winners Archive.' },
             ].map(({ label, desc }) => (
               <div key={label} className={`rounded-xl border p-5 transition-colors ${cardBg}`}>
