@@ -117,12 +117,12 @@ if (route.startsWith('/competition/')) {
   return <CompetitionDetail competitionId={competitionId} />;
 }
 
-if (route.startsWith('/tournament/')) {
+if (FEATURES.tournaments && route.startsWith('/tournament/')) {
   const tournamentId = route.replace('/tournament/', '');
   return <TournamentDetail tournamentId={tournamentId} />;
 }
 
-if (route === '/tournaments/create') return <Tournaments />;
+if (FEATURES.tournaments && route === '/tournaments/create') return <Tournaments />;
 
 if (route === '/admin/fraud-dashboard') return <AdminRoute><AdminFraudDashboard /></AdminRoute>;  
 
@@ -152,7 +152,7 @@ const KNOWN_ROUTES = [
   '/time-boosts',
   '/leaderboard',
   '/account-settings',
-  '/tournaments/create',
+  ...(FEATURES.tournaments ? ['/tournaments/create'] : []),
   '/ama-request',
   '/author-dashboard',
   '/sprints',
@@ -168,7 +168,7 @@ const isKnownRoute =
   route.startsWith('/quiz/') ||
   route.startsWith('/book/') ||
   route.startsWith('/competition/') ||
-  route.startsWith('/tournament/');
+  (FEATURES.tournaments && route.startsWith('/tournament/'));
 
 return (
   <>
