@@ -63,7 +63,7 @@ Author-sponsored competitions: Authors pay a sponsorship fee to make their book 
 
 Entry fees are charged within a 48-hour pre-registration window before a competition launches. Failure to complete payment within this window forfeits your registration spot. Entry fees are non-refundable once a competition has launched.
 
-User-created tournaments require a minimum of 10 participants for prize pool payouts. The platform retains 25% of user-created tournament entry fees.`,
+${FEATURES.tournaments ? 'User-created tournaments require a minimum of 10 participants for prize pool payouts. The platform retains 25% of user-created tournament entry fees.' : ''}`,
     },
     {
       title: '7. Quick Tasks, Surveys, Beta Reading & Sensitivity Reading',
@@ -96,7 +96,7 @@ Referral earnings obtained through fraudulent means (e.g., self-referral, fake a
 
 Listing fees are non-refundable once a listing is approved and published. A listing grants the book a permanent page on the Platform, quiz eligibility, competition eligibility, and community visibility. ReadToEarn reserves the right to remove any listing that violates our content policies. Authors are responsible for ensuring they hold all rights to any content they submit.
 
-By submitting a listing, authors acknowledge that their books may be included in platform-run competitions and user-created tournaments as permitted by these Terms.`,
+By submitting a listing, authors acknowledge that their books may be included in platform-run competitions${FEATURES.tournaments ? ' and user-created tournaments' : ''} as permitted by these Terms.`,
     },
     {
       title: '11. Bulletin Board & Author AMAs',
