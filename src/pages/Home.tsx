@@ -252,7 +252,6 @@ export const Home = () => {
                 {
                   emoji: '⚡',
                   title: 'The Sprint',
-                  duration: '24–72 hours',
                   body: 'One book. One quiz. The clock is running. Score the most, finish fastest.',
                 },
                 ...(FEATURES.readathon ? [{
