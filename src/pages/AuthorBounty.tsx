@@ -116,6 +116,16 @@ export const AuthorBounty = () => {
           </p>
         </div>
 
+        {/* Overlap warning */}
+        <div className={`rounded-xl border p-4 mb-6 flex items-start gap-3 ${
+          isDark ? 'bg-amber-900/20 border-amber-500/40' : 'bg-amber-50 border-amber-400/60'
+        }`}>
+          <span className="text-lg flex-shrink-0 mt-0.5">⚠️</span>
+          <p className={`text-sm leading-relaxed ${isDark ? 'text-amber-200' : 'text-amber-900'}`}>
+            <strong>Bounties and sponsored competitions cannot run at the same time on the same book.</strong> Once a reader takes a quiz for your book — whether through a bounty or a competition — they cannot earn from it again. To maximize reach, leave a gap between your bounty and any competition so a fresh pool of readers can engage with each.
+          </p>
+        </div>
+
         {/* How it works */}
         <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
           <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>How Bounties Work</h2>
