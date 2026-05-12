@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { FEATURES } from '../config/features';
 import { useAuth } from '../contexts/AuthContext';
 import { NotificationBell } from './NotificationBell';
 import {
@@ -28,8 +29,8 @@ const NAV_GROUPS: NavGroup[] = [
     { label: 'Ways to Earn', path: '/earn', icon: <DollarSign size={15} /> },
     { label: 'Library', path: '/library', icon: <BookOpen size={15} /> },
     { label: 'Sprints', path: '/sprints', icon: <Zap size={15} /> },
-    { label: 'Readathon', path: '/readathon', icon: <BookOpen size={15} /> },
-    { label: 'Elimination', path: '/elimination', icon: <Trophy size={15} /> },
+    ...(FEATURES.readathon ? [{ label: 'Readathon', path: '/readathon', icon: <BookOpen size={15} /> }] : []),
+    ...(FEATURES.elimination ? [{ label: 'Elimination', path: '/elimination', icon: <Trophy size={15} /> }] : []),
     { label: 'Leaderboard', path: '/leaderboard', icon: <BarChart2 size={15} /> },
     { label: 'Time Boosts', path: '/time-boosts', icon: <Zap size={15} /> },
     { label: 'Quick Tasks', path: '/quick-tasks', icon: <Users size={15} /> },
