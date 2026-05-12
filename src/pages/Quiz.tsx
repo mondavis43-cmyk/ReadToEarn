@@ -51,8 +51,12 @@ const REPORT_REASONS = [
 
 const seededShuffle = <T,>(arr: T[], seed: string): T[] => {
   const result = [...arr];
-  let s = seed.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const rand = () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0x100000000; };
+  let s = 5381;
+  for (let i = 0; i < seed.length; i++) {
+    s = (((s << 5) + s) ^ seed.charCodeAt(i)) >>> 0;
+  }
+  if (s === 0) s = 1;
+  const rand = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0x100000000; };
   for (let i = result.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
     [result[i], result[j]] = [result[j], result[i]];
@@ -84,6 +88,7 @@ const isFinalRound = isCompetitionQuiz && competitionRound === 3;
 const [book, setBook] = useState<Book | null>(null);
 const [questions, setQuestions] = useState<Question[]>([]);
 const [shuffledOptions, setShuffledOptions] = useState<Record<string, string[]>>({});
+const sessionSaltRef = useRef(Math.random().toString(36).slice(2));
 const [answers, setAnswers] = useState<Record<string, string>>({});
 const [submitted, setSubmitted] = useState(false);
 const [score, setScore] = useState(0);
@@ -328,7 +333,7 @@ const loadQuiz = async () => {
     setQuestions(questionPool);
 
     const opts: Record<string, string[]> = {};
-    const userSeed = user?.id ?? '';
+    const userSeed = (user?.id ?? '') + sessionSaltRef.current;
     questionPool.forEach((q, idx) => {
       opts[q.id] = seededShuffle(
         [q.correct_answer, q.wrong_answer_1, q.wrong_answer_2, q.wrong_answer_3],
