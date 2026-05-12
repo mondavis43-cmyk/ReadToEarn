@@ -59,7 +59,7 @@ export const AuthorSubmit = () => {
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [selectedTropes, setSelectedTropes] = useState<string[]>([]);
   const [questions, setQuestions] = useState<Question[]>(
-    Array.from({ length: 10 }, emptyQuestion)
+    Array.from({ length: 11 }, emptyQuestion)
   );
 
   const [existingCredits, setExistingCredits] = useState<number | null>(null);
@@ -92,6 +92,13 @@ export const AuthorSubmit = () => {
     setQuestions(updated);
   };
 
+  const addQuestion = () => setQuestions([...questions, emptyQuestion()]);
+
+  const removeQuestion = (index: number) => {
+    if (questions.length <= 11) return;
+    setQuestions(questions.filter((_, i) => i !== index));
+  };
+
   const isFormValid = () => {
     if (!title || !author || !email || !pageCount || !description || !coverUrl) return false;
     return questions.every(
@@ -101,7 +108,7 @@ export const AuthorSubmit = () => {
 
   const handleCheckout = async () => {
     if (!isFormValid()) {
-      setError('Please fill out all required fields including all 10 questions.');
+      setError(`Please fill out all required fields including all ${questions.length} questions.`);
       return;
     }
     setLoading(true);
@@ -216,7 +223,7 @@ export const AuthorSubmit = () => {
                 setTitle(''); setAuthor(''); setPageCount('');
                 setDescription(''); setCoverUrl(''); setAffiliateLink('');
                 setSelectedGenres([]); setSelectedTropes([]);
-                setQuestions(Array.from({ length: 10 }, emptyQuestion));
+                setQuestions(Array.from({ length: 11 }, emptyQuestion));
                 setExistingCredits(null);
               }}
               className="bg-white text-black font-medium px-6 py-3 rounded-lg hover:bg-gray-200 transition"
@@ -451,13 +458,25 @@ export const AuthorSubmit = () => {
         {/* Questions */}
         <div className="mb-10">
           <h2 className="font-serif text-2xl text-white mb-2">Quiz Questions</h2>
-          <p className="text-gray-500 text-sm mb-6">
-            Write 10 questions about your book. Readers must answer 8 correctly to earn their reward.
+          <p className="text-gray-500 text-sm mb-1">
+            A minimum of 11 questions is required. Each reader gets 10 randomly selected from your pool — the more questions you add, the more unique each reader's quiz will be, making it harder to share answers.
           </p>
+          <p className="text-gray-600 text-xs mb-6">Readers must answer 8 out of 10 correctly to earn their reward.</p>
           <div className="space-y-6">
             {questions.map((q, i) => (
               <div key={i} className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800">
-                <p className="text-white font-medium mb-4">Question {i + 1}</p>
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-white font-medium">Question {i + 1}{i >= 10 ? <span className="text-gray-500 text-xs font-normal ml-2">(bonus)</span> : ''}</p>
+                  {i >= 10 && (
+                    <button
+                      type="button"
+                      onClick={() => removeQuestion(i)}
+                      className="text-gray-600 hover:text-red-400 text-xs transition"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
                 <div className="space-y-3">
                   <input
                     type="text"
@@ -487,6 +506,14 @@ export const AuthorSubmit = () => {
               </div>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={addQuestion}
+            className="mt-6 w-full py-3 rounded-lg border border-dashed border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200 text-sm transition"
+          >
+            + Add Another Question
+          </button>
+          <p className="text-gray-600 text-xs text-center mt-2">{questions.length} question{questions.length !== 1 ? 's' : ''} added &mdash; minimum 11 required</p>
         </div>
 
         {/* Order Summary */}
