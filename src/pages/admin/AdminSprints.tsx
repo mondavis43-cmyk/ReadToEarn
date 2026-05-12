@@ -183,8 +183,11 @@ export function AdminSprints() {
   };
 
   const handleDelete = async (id: string, title: string) => {
-    if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return;
-    await supabase.from('sprints').delete().eq('id', id);
+    if (!window.confirm(`Delete "${title}"? This cannot be undone. Winners keep any earnings already paid out.`)) return;
+    const { error: entriesError } = await supabase.from('sprint_entries').delete().eq('sprint_id', id);
+    if (entriesError) { setError(`Delete failed (entries): ${entriesError.message}`); return; }
+    const { error: deleteError } = await supabase.from('sprints').delete().eq('id', id);
+    if (deleteError) { setError(`Delete failed: ${deleteError.message}`); return; }
     load();
   };
 
