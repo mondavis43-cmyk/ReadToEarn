@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { FEATURES } from '../config/features';
 import { supabase } from '../lib/supabase';
 
 const REDIRECT_MAP: Record<string, string> = {
@@ -11,10 +12,10 @@ const REDIRECT_MAP: Record<string, string> = {
   sensitivity_reader:    '/author-dashboard',
   subscription:          '/profile',
   time_boost:            '/profile',
-  competition_entry:     '/elimination',
-  tournament_entry:      '/elimination',
+  competition_entry:     FEATURES.elimination ? '/elimination' : '/sprints',
+  tournament_entry:      FEATURES.elimination ? '/elimination' : '/sprints',
   sprint_entry:          '/sprints',
-  readathon_entry:       '/readathon',
+  readathon_entry:       FEATURES.readathon  ? '/readathon'  : '/profile',
 };
 
 const goTo = (path: string) => {
