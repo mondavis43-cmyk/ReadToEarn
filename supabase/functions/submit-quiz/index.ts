@@ -410,29 +410,27 @@ serve(async (req) => {
   }
   // ── END COMPETITION PATH ────────────────────────────────────────────────────
   // ── STANDARD LIBRARY PATH ──────────────────────────────────────────────────
-  const { data: existing } = await adminClient
-    .from("completed_books")
+  // One attempt per book across all formats (bounty or sprint)
+  const { data: priorAttempt } = await adminClient
+    .from("quiz_attempts")
     .select("id")
     .eq("user_id", user.id)
     .eq("book_id", book_id)
     .maybeSingle();
-  const alreadyCompletedLibrary = !!existing;
 
-  if (!alreadyCompletedLibrary) {
-    await adminClient.from("completed_books").upsert({
-      user_id: user.id,
-      book_id,
-      passed,
-      completed_at: new Date().toISOString(),
-    });
-  }
-
-  if (alreadyCompletedLibrary) {
+  if (priorAttempt) {
     return new Response(
       JSON.stringify({ passed, score: correct, total, earned_amount: 0, already_completed: true }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
+
+  await adminClient.from("completed_books").upsert({
+    user_id: user.id,
+    book_id,
+    passed,
+    completed_at: new Date().toISOString(),
+  });
 
   if (!passed) {
     return new Response(
