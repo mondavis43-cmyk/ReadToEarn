@@ -252,7 +252,7 @@ export const Home = () => {
                 {
                   emoji: '⚡',
                   title: 'The Sprint',
-                  body: 'One book. One quiz. The clock is running. Score the most, finish fastest.',
+                  body: 'One book. One quiz. The clock is running. Score the most, finish fastest. Top 3 split the prize pool: 50/30/20%.',
                 },
                 ...(FEATURES.readathon ? [{
                   emoji: '📚',
