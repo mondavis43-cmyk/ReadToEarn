@@ -509,7 +509,7 @@ return (
                         Prize pool: <span className="text-[#D4A843] font-semibold">${selectedComp.prize_pool.toFixed(2)}</span>
                       </span>
                       {selectedComp.format === 'sprint' && (
-                        <span className={`text-xs ${textMuted}`}>Winner takes all</span>
+                        <span className={`text-xs ${textMuted}`}>Top 3 split 50/30/20</span>
                       )}
                       {(selectedComp.format === 'readathon' || selectedComp.format === 'elimination') && (
                         <span className={`text-xs ${textMuted}`}>Top 3 split 50/30/20</span>
