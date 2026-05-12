@@ -469,14 +469,23 @@ export const CompetitionDetail = () => {
           <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Prize Breakdown</h2>
           {competition.type === 'sprint' ? (
             <>
-              <div className="flex justify-between text-sm mb-3">
-                <span className={textMuted}>🥇 Winner takes all</span>
-                <span className={`font-semibold ${textPrimary}`}>
-                  ${competition.prize_pool.toFixed(2)} <span className={`font-normal ${textMuted}`}>(100%)</span>
-                </span>
+              <div className="space-y-2 mb-3">
+                {[
+                  { place: '🥇 1st Place', pct: 0.5 },
+                  { place: '🥈 2nd Place', pct: 0.3 },
+                  { place: '🥉 3rd Place', pct: 0.2 },
+                ].map((row) => (
+                  <div key={row.place} className="flex justify-between text-sm">
+                    <span className={textMuted}>{row.place}</span>
+                    <span className={`font-semibold ${textPrimary}`}>
+                      ${(competition.prize_pool * row.pct).toFixed(2)}{' '}
+                      <span className={`font-normal ${textMuted}`}>({Math.round(row.pct * 100)}%)</span>
+                    </span>
+                  </div>
+                ))}
               </div>
               <p className={`text-xs ${textMuted}`}>
-                Sprint competitions have one winner. In the event of a tie, the prize pool is split equally among tied participants.
+                Top 3 finishers share the prize pool. Tied scores are broken by submission speed.
               </p>
             </>
           ) : (
