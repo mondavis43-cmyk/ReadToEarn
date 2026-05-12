@@ -52,7 +52,7 @@ const sections: FAQSection[] = [
           <span>
             There {FEATURES.readathon || FEATURES.elimination ? 'are three formats' : 'is one format'}:
             <br /><br />
-            <strong>Sprint</strong> — One book. One quiz. The clock is running. Score the most, finish fastest.
+            <strong>Sprint</strong> — One book. One quiz. The clock is running. Score the most, finish fastest. Top 3 finishers split the prize pool: 50% / 30% / 20%. Tied scores are broken by submission speed.
             {FEATURES.readathon && <><br /><br /><strong>Read-A-Thon</strong> — A 4x4 bingo card of books organized by genre. Pass a quiz on each book to complete that square. Complete all 4 books in a row to score a Bingo. First 3 players to bingo win prizes — 50% / 30% / 20% of the pool. Ties broken by who completed faster.</>}
             {FEATURES.elimination && <><br /><br /><strong>Elimination Bracket</strong> — Multi-round tournament. Readers advance by not only passsing each round's quiz, but by scoring high enough to survive. 1st place takes the top prize. 2nd &amp; 3rd place prizes are also rewarded.</>}
           </span>
@@ -76,7 +76,7 @@ const sections: FAQSection[] = [
       },
       {
         q: 'What if a book has an active bounty and is also in a competition?',
-        a: "You can earn from both. If you pass a book's quiz as part of a competition and that book also has an active bounty, your single quiz submission counts toward both. One attempt. One quiz. Both payouts apply if you pass.",
+        a: "A bounty and a competition cannot run on the same book at the same time. Additionally, each reader only gets one quiz attempt per book — if you already took the quiz during a bounty window, you cannot earn from that book in a competition, and vice versa.",
       },
       {
         q: 'What happens if there\'s a tie?',
@@ -113,7 +113,7 @@ const sections: FAQSection[] = [
       },
       {
         q: 'Can I retake a quiz and still earn?',
-        a: `No. Each reader gets one attempt per book per competition entry or bounty window.${FEATURES.readathon || FEATURES.elimination ? ' If the same book appears in multiple competition formats, your entry into each format gives you one attempt for that format — they are tracked separately.' : ''} This keeps competition fair and results meaningful.`,
+        a: 'No. Each reader gets one attempt per book — across bounties and competitions combined. If you took a quiz during a bounty, you cannot earn from that same book in a competition, and vice versa.',
       },
     ],
   },
