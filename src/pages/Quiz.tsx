@@ -664,7 +664,7 @@ const renderResult = () => {
               Library
             </button>
             <button
-              onClick={() => navigateTo('/sprints')}
+              onClick={() => navigateTo('/leaderboard')}
               className="flex-1 py-2 rounded-xl bg-[#D4A843] text-white font-semibold hover:bg-[#c49a3a] transition-colors text-sm"
             >
               Leaderboard
@@ -832,7 +832,7 @@ return (
       {isSpeeding && (
         <div className={`${cardBg} border border-amber-400/20 rounded-xl p-4 flex items-start gap-3`}>
           <AlertCircle size={18} className="text-amber-400 mt-0.5 shrink-0" />
-          <p className="text-sm text-amber-400">Please take your time reading the questions carefully.</p>
+          <p className="text-sm text-amber-400">You're going too fast! Please take your time reading the questions carefully.</p>
         </div>
       )}
 
