@@ -1,4 +1,5 @@
 import { useTheme } from '../contexts/ThemeContext';
+import { FEATURES } from '../config/features';
 
 export const TermsOfService = () => {
   const { isDark } = useTheme();
@@ -35,7 +36,7 @@ You are responsible for maintaining the security of your account credentials. Re
 
 Earnings are subject to the following rules:
 • Minimum cashout threshold: $10
-• Payment methods: PayPal (US residents, 18+), Wise (international, 18+), Giftogram gift cards (all ages including minors)
+• Payment methods: PayPal and Venmo (US residents, 18+), Wise (international, 18+), Giftogram gift cards (all ages including minors)
 • Earnings are credited only after verification and approval
 • We reserve the right to withhold or reverse earnings obtained through fraudulent activity, cheating, or abuse of the Platform
 
@@ -54,7 +55,7 @@ The minimum bounty pool is $25. Authors set the pool size and the per-pass payou
     },
     {
       title: '6. Competitions',
-      body: `ReadToEarn hosts reader competitions in three formats: Sprint, Read-A-Thon, and Elimination Bracket. Competitions may be platform-run (funded by reader entry fees) or author-sponsored.
+      body: `ReadToEarn hosts reader competitions${FEATURES.readathon || FEATURES.elimination ? ' in three formats: Sprint, Read-A-Thon, and Elimination Bracket' : ' in one format: Sprint'}. Competitions may be platform-run (funded by reader entry fees) or author-sponsored.
 
 Platform-run competitions: 75% of entry fees go to the winner(s); 25% is retained by the platform.
 
