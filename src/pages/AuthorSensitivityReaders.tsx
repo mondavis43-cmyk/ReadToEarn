@@ -209,6 +209,9 @@ export const AuthorSensitivityReaders = () => {
           <p className={`text-sm leading-relaxed ${textMuted}`}>
             Get feedback from readers who share lived experience with the identities in your story. You write the questions. We match the right readers.
           </p>
+          <p className={`text-xs mt-2 leading-relaxed ${textMuted}`}>
+            Readers can optionally indicate if they're interested in reading your full manuscript as a sensitivity reader (paid or unpaid). Those contacts will be visible to you in the Author Hub so you can follow up directly.
+          </p>
         </div>
 
         {/* Package selection */}
