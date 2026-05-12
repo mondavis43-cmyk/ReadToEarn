@@ -117,7 +117,7 @@ export const Cashout = () => {
       setError(
         rpcError.message.includes('Insufficient balance')
           ? 'Your balance has changed. Please refresh and try again.'
-          : 'Something went wrong. Please try again.'
+          : rpcError.message
       );
       setSubmitting(false);
       return;
