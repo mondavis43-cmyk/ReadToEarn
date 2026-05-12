@@ -170,7 +170,7 @@ export const CompetitionDetail = () => {
 
     const now = new Date();
     const starts = new Date(competition.start_date);
-    const isLate = now > starts && !preReg;
+    const isLate = now > new Date(starts.getTime() + 24 * 60 * 60 * 1000) && !preReg;
     const baseFee = competition.entry_fee;
     const actualFee = isLate ? baseFee * LATE_FEE_MULTIPLIER : baseFee;
 
@@ -307,7 +307,7 @@ export const CompetitionDetail = () => {
   const now      = new Date();
   const starts   = new Date(competition.start_date);
   const ends     = new Date(competition.end_date);
-  const isLateEntry = isActive && now > starts;
+  const isLateEntry = isActive && now > new Date(starts.getTime() + 24 * 60 * 60 * 1000);
 
   const lateFee   = competition.entry_fee * LATE_FEE_MULTIPLIER;
   const timeLabel = isActive
