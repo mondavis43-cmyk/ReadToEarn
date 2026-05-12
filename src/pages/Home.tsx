@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { FEATURES } from '../config/features';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../contexts/ThemeContext';
 import {
@@ -189,7 +190,7 @@ export const Home = () => {
               icon: <DollarSign className="w-5 h-5" style={{ color: gold }} />,
               step: '03',
               title: 'Collect Your Winnings',
-              body: 'Top performers split the prize pool. Funds go to PayPal, Wise, or a gift card — your choice.',
+              body: 'Top performers split the prize pool. Funds go to PayPal, Venmo, Wise, or a gift card — your choice.',
             },
           ].map(({ icon, step, title, body }) => (
             <div
@@ -244,22 +245,22 @@ export const Home = () => {
             {[
               {
                 emoji: '⚡',
-                title: 'Sprint',
+                title: 'The Sprint',
                 duration: '24–72 hours',
                 body: 'One book. One quiz. The clock is running. Score the most, finish fastest.',
               },
-              {
+              ...(FEATURES.readathon ? [{
                 emoji: '📚',
-                title: 'Read-A-Thon',
+                title: 'The Read-A-Thon',
                 duration: 'A weekend to a week',
-                body: 'A 4×4 bingo card of books by genre. Pass quizzes to complete squares. Complete a full row to score a Bingo.',
-              },
-              {
+                body: 'A 4×4 bingo card of books by genre. Pass quizzes to complete squares. Complete a full row to score a Bingo. First 3 bingos claim 50/30/20 of the prize pool.',
+              }] : []),
+              ...(FEATURES.elimination ? [{
                 emoji: '🏆',
-                title: 'Elimination Bracket',
+                title: 'The Elimination Bracket',
                 duration: '1–2 weeks',
                 body: 'Round by round. Score high enough to survive. One person takes the top prize.',
-              },
+              }] : []),
             ].map(({ emoji, title, duration, body }) => (
               <div
                 key={title}
@@ -369,9 +370,9 @@ export const Home = () => {
             {[
               { days: 'Days 1–3',   label: 'Flash Sprint',        detail: '$5 entry',                              color: gold },
               { days: 'Days 4–7',   label: 'Break',               detail: 'Bounties · Surveys · Quick Tasks · Author AMA', color: textMuted },
-              { days: 'Days 8–15',  label: 'Read-A-Thon',         detail: '$7 entry',                              color: '#60a5fa' },
-              { days: 'Days 16–18', label: 'Break',               detail: 'Bounties · Surveys · Quick Tasks · Author AMA', color: textMuted },
-              { days: 'Days 19–31', label: 'Elimination Bracket', detail: '$10 entry · multi-round',               color: '#a78bfa' },
+              ...(FEATURES.readathon ? [{ days: 'Days 8–15',  label: 'Read-A-Thon',         detail: '$7 entry',                              color: '#60a5fa' }] : []),
+              ...(FEATURES.readathon ? [{ days: 'Days 16–18', label: 'Break',               detail: 'Bounties · Surveys · Quick Tasks · Author AMA', color: textMuted }] : []),
+              ...(FEATURES.elimination ? [{ days: 'Days 19–31', label: 'Elimination Bracket', detail: '$10 entry · multi-round',               color: '#a78bfa' }] : []),
             ].map(({ days, label, detail, color }, i, arr) => (
               <div
                 key={days}
