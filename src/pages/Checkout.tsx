@@ -182,26 +182,7 @@ async function handlePostPayment(
         await supabase.from("user_boosts").insert({ user_id: userId, balance: boostCount });
       }
     } else if (item.type === "sprint_entry") {
-      await supabase.from("sprint_entries").insert({
-        sprint_id: pending.sprint_id,
-        user_id:   userId,
-        paid_at:   new Date().toISOString(),
-        status:    "active",
-      });
-
-      const entryFee    = item.amount / 100;
-      const readerShare = entryFee - entryFee * 0.25;
-      const { data: sprintData } = await supabase
-        .from("sprints")
-        .select("prize_pool")
-        .eq("id", pending.sprint_id)
-        .single();
-      if (sprintData) {
-        await supabase
-          .from("sprints")
-          .update({ prize_pool: (sprintData.prize_pool ?? 0) + readerShare })
-          .eq("id", pending.sprint_id);
-      }
+      // Sprint entry and prize pool update are handled in CheckoutSuccess.tsx
 
     } else if (item.type === "readathon_entry") {
       await supabase.from("readathon_entries").insert({
