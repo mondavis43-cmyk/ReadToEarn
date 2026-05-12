@@ -259,7 +259,7 @@ export const Readathon = () => {
   };
 
   const isWithin48HrWindow = (r: Readathon) =>
-    Date.now() <= new Date(r.start_date).getTime() + 48 * 60 * 60 * 1000;
+    Date.now() <= new Date(r.start_date).getTime() + 24 * 60 * 60 * 1000;
 
   const tabClass = (t: string) =>
     `px-4 py-2 rounded-full text-sm font-medium transition-colors ${
@@ -385,7 +385,7 @@ export const Readathon = () => {
               >
                 Enter Late — ${readathon.entry_fee * 2}
               </button>
-              <p className={`text-xs text-center ${textMuted}`}>48hr window passed · late fee applies</p>
+              <p className={`text-xs text-center ${textMuted}`}>24hr window passed · late fee applies</p>
             </div>
           )
         )}
