@@ -158,6 +158,9 @@ export const AuthorBetaReaders = () => {
           <p className={`text-sm leading-relaxed ${textMuted}`}>
             Get real readers to review your first chapter and answer your custom questions. You write the questions. We handle the rest.
           </p>
+          <p className={`text-xs mt-2 leading-relaxed ${textMuted}`}>
+            Readers can optionally indicate if they're interested in reading your full manuscript as a beta reader (paid or unpaid). Those contacts will be visible to you in the Author Hub so you can follow up directly.
+          </p>
         </div>
 
         {/* Package selection */}
