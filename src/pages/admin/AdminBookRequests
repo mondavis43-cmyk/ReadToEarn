@@ -14,7 +14,6 @@ interface BookRequest {
   status: Status;
   created_at: string;
   admin_note?: string;
-  profiles?: { email?: string; display_name?: string } | null;
 }
 
 const STATUS_OPTIONS: (Status | 'all')[] = ['all', 'pending', 'approved', 'rejected'];
@@ -40,11 +39,11 @@ export function AdminBookRequests() {
     setLoading(true);
     let query = supabase
       .from('book_requests')
-      .select('*, profiles(email, display_name)')
+      .select('*')
       .order('created_at', { ascending: false });
     if (statusFilter !== 'all') query = query.eq('status', statusFilter);
     const { data } = await query;
-    setRequests(data || []);
+    setRequests((data || []).map((r: any) => ({ ...r, status: r.status ?? 'pending' })));
     setLoading(false);
   }
 
@@ -52,17 +51,19 @@ export function AdminBookRequests() {
     const { count } = await supabase
       .from('book_requests')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending');
+      .eq('status', 'pending')
+      .then(res => res);
     setPendingCount(count || 0);
   }
 
   async function updateStatus(id: string, status: Status) {
-    await supabase.from('book_requests').update({ status }).eq('id', id);
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status } : r));
-    if (statusFilter !== 'all') {
-      setRequests(prev => prev.filter(r => r.id !== id));
-    }
-    setPendingCount(prev => Math.max(0, prev - 1));
+    const { error } = await supabase.from('book_requests').update({ status }).eq('id', id);
+    if (error) { console.error('update status error:', error); return; }
+    setRequests((prev: BookRequest[]) => {
+      const updated = prev.map((r: BookRequest) => r.id === id ? { ...r, status } : r);
+      return statusFilter !== 'all' ? updated.filter((r: BookRequest) => r.status === statusFilter) : updated;
+    });
+    if (status !== 'pending') setPendingCount((prev: number) => Math.max(0, prev - 1));
   }
 
   const StatusBadge = ({ status }: { status: Status }) => {
@@ -135,7 +136,6 @@ export function AdminBookRequests() {
         <div className="space-y-3">
           {requests.map(req => {
             const isExpanded = expandedId === req.id;
-            const user = req.profiles;
             return (
               <div key={req.id} className={`rounded-xl border overflow-hidden ${cardBg}`}>
 
@@ -149,7 +149,7 @@ export function AdminBookRequests() {
                       </p>
                       <p className={`text-xs truncate ${textMuted}`}>
                         by {req.author_name}
-                        {user?.email ? ` · ${user.display_name || user.email}` : ''}
+                        {req.user_id ? ` · ${req.user_id.slice(0, 8)}…` : ''}
                       </p>
                     </div>
                   </div>
