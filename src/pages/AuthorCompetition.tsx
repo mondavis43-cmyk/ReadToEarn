@@ -1,376 +1,598 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
-import { Trophy, Info } from 'lucide-react';
-import { BookSearchInput } from '../components/BookSearchInput';
+import { ArrowLeft, Check, ExternalLink, Trophy, Zap, Bell, BellOff } from 'lucide-react';
 
-const COMPETITION_TIERS = [
-  {
-    label: 'Spark',
-    price: 60,
-    cents: 6000,
-    platformFee: 15,
-    prizePool: 45,
-    platformPct: 25,
-    description: 'Great for a single-book push or debut launch.',
-  },
-  {
-    label: 'Boost',
-    price: 120,
-    cents: 12000,
-    platformFee: 30,
-    prizePool: 90,
-    platformPct: 25,
-    description: 'Mid-size competition with solid prize incentive.',
-  },
-  {
-    label: 'Spotlight',
-    price: 250,
-    cents: 25000,
-    platformFee: 50,
-    prizePool: 200,
-    platformPct: 20,
-    description: 'High-visibility event with a meaningful prize pool.',
-  },
-  {
-    label: 'Grand',
-    price: 500,
-    cents: 50000,
-    platformFee: 75,
-    prizePool: 425,
-    platformPct: 15,
-    description: 'Maximum reach. Best for series launches or imprints.',
-  },
-];
+interface Book {
+  id: string;
+  title: string;
+  author: string;
+  cover_url: string | null;
+  page_count: number;
+  book_type: 'platform' | 'sponsored';
+  description: string | null;
+  genre: string | null;
+  geniuslink_url: string | null;
+}
 
-const COMPETITION_TYPES = ['Sprint', 'Read-A-Thon', 'Elimination Bracket'];
+interface Trope {
+  id: string;
+  name: string;
+}
 
-export const AuthorCompetition = () => {
-  const { navigateTo }  = useNavigate();
-  const { isDark }      = useTheme();
+interface BookTrope {
+  id: string;
+  trope_id: string;
+  tropes: { name: string };
+}
 
-  const [error, setError]           = useState('');
-  const [authorName, setAuthorName] = useState('');
-  const [email, setEmail]           = useState('');
-  const [notes, setNotes]           = useState('');
-  const [selectedTier, setSelectedTier] = useState(COMPETITION_TIERS[0]);
-  const [selectedType, setSelectedType] = useState(COMPETITION_TYPES[0]);
+interface TropeSuggestion {
+  id: string;
+  suggested_name: string;
+  status: string;
+}
 
-  // Single-select (Sprint + Read-A-Thon)
-  const [bookTitle, setBookTitle] = useState('');
-  const [bookId, setBookId]       = useState('');
+interface Competition {
+  id: string;
+  title: string;
+  format: string;
+  entry_fee: number;
+  prize_pool: number;
+  status: string;
+  ends_at: string | null;
+}
 
-  // Multi-select (Elimination Bracket)
-  const [bookTitles, setBookTitles] = useState<string[]>([]);
-  const [bookIds, setBookIds]       = useState<string[]>([]);
+interface Bounty {
+  id: string;
+  pool_size: number;
+  per_pass_amount: number;
+  status: string;
+}
 
-  const isElimination = selectedType === 'Elimination Bracket';
-  const isReadAThon   = selectedType === 'Read-A-Thon';
+export const BookPage = () => {
+  const { user } = useAuth();
+  const { navigateTo } = useNavigate();
+  const { isDark } = useTheme();
 
-  const bookValid = isElimination
-    ? bookTitles.length > 0
-    : bookTitle.trim() !== '';
+  const [book, setBook] = useState<Book | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const isFormValid = () =>
-    authorName.trim() && email.trim() && bookValid;
+  const [bookTropes, setBookTropes] = useState<BookTrope[]>([]);
+  const [allTropes, setAllTropes] = useState<Trope[]>([]);
+  const [selectedTropeId, setSelectedTropeId] = useState('');
+  const [customTrope, setCustomTrope] = useState('');
+  const [userSuggestions, setUserSuggestions] = useState<TropeSuggestion[]>([]);
+  const [tropeMessage, setTropeMessage] = useState('');
 
-  // theme tokens
-  const textPrimary = isDark ? 'text-[#F5F0E8]'    : 'text-[#1B2A4A]';
-  const textMuted   = isDark ? 'text-[#F5F0E8]/70' : 'text-[#1B2A4A]/70';
-  const cardBg      = isDark
+  const [activeBounty, setActiveBounty] = useState<Bounty | null>(null);
+  const [activeCompetitions, setActiveCompetitions] = useState<Competition[]>([]);
+  const [pastCompetitions, setPastCompetitions] = useState<Competition[]>([]);
+  const [isNotified, setIsNotified] = useState(false);
+  const [notifyLoading, setNotifyLoading] = useState(false);
+
+  const bookId = window.location.pathname.split('/').pop();
+  const isAdmin = user?.email === 'mondavis43@gmail.com';
+
+  // Quiz is unlocked only when there's an active bounty or active competition
+  const quizUnlocked = !!activeBounty || activeCompetitions.length > 0;
+
+  // Theme helpers
+  const bg = isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]';
+  const textPrimary = isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]';
+  const textMuted = isDark ? 'text-[#F5F0E8]/60' : 'text-[#1B2A4A]/60';
+  const textFaint = isDark ? 'text-[#F5F0E8]/40' : 'text-[#1B2A4A]/40';
+  const borderFaint = isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10';
+  const cardBg = isDark
     ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20'
     : 'bg-white border-[#D4A843]/30';
-  const inputClass  = `w-full px-4 py-3 rounded-lg border text-sm transition focus:outline-none ${
+  const inputCls = `flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#D4A843] transition ${
     isDark
-      ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20 text-[#F5F0E8] focus:border-[#D4A843]/60 placeholder:text-[#F5F0E8]/30'
-      : 'bg-white border-[#1B2A4A]/20 text-[#1B2A4A] focus:border-[#D4A843] placeholder:text-[#1B2A4A]/30'
+      ? 'bg-[#F5F0E8]/5 border-[#F5F0E8]/15 text-[#F5F0E8] placeholder-[#F5F0E8]/30'
+      : 'bg-white border-[#1B2A4A]/15 text-[#1B2A4A] placeholder-[#1B2A4A]/30'
   }`;
-  const divider = isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10';
-  const bg      = isDark ? 'bg-[#0f1623]'        : 'bg-[#F5F0E8]';
-  const calloutBg = isDark
-    ? 'bg-[#D4A843]/10 border-[#D4A843]/30 text-[#D4A843]'
-    : 'bg-[#D4A843]/10 border-[#D4A843]/40 text-[#92700a]';
 
-  const handleCheckout = () => {
-    if (!isFormValid()) {
-      setError('Please fill in all required fields and select a book from the dropdown.');
-      return;
+  useEffect(() => {
+    loadBook();
+  }, [user]);
+
+  useEffect(() => {
+    if (book) {
+      loadTropes();
+      loadEarningEvents();
+      loadNotifyStatus();
     }
-    setError('');
+  }, [book, user]);
 
-    const titlesForSubmission = isElimination
-      ? bookTitles.join(', ')
-      : bookTitle;
+  const loadBook = async () => {
+    if (!user || !bookId) return;
 
-    sessionStorage.setItem('checkoutItem', JSON.stringify({
-      type:   'competition',
-      label:  `${selectedTier.label} ${selectedType} — "${isElimination ? bookTitles[0] : bookTitle}${bookTitles.length > 1 ? ` +${bookTitles.length - 1} more` : ''}"`,
-      amount: selectedTier.cents,
-      metadata: {
-        tier:             selectedTier.label,
-        competition_type: selectedType,
-        prize_pool:       selectedTier.prizePool,
-      },
-    }));
-
-    sessionStorage.setItem('pendingSubmission', JSON.stringify({
-      table: 'author_competition_submissions',
-      data: {
-        author_name:      authorName.trim(),
-        email:            email.trim(),
-        book_titles:      titlesForSubmission,
-        book_ids:         isElimination ? bookIds.join(',') : bookId,
-        tier_label:       selectedTier.label,
-        price:            selectedTier.price,
-        platform_fee:     selectedTier.platformFee,
-        prize_pool:       selectedTier.prizePool,
-        competition_type: selectedType,
-        notes:            notes.trim(),
-        status:           'pending',
-      },
-    }));
-
-    window.history.pushState({}, '', '/checkout');
-    window.dispatchEvent(new PopStateEvent('popstate'));
+    const { data: bookData } = await supabase.from('books').select('*').eq('id', bookId).maybeSingle();
+    if (bookData) setBook(bookData);
+    setLoading(false);
   };
 
+  const loadTropes = async () => {
+    if (!book) return;
+
+    const [bookTropesResult, allTropesResult, suggestionsResult] = await Promise.all([
+      supabase.from('book_tropes').select('id, trope_id, tropes(name)').eq('book_id', book.id),
+      supabase.from('tropes').select('*').order('name'),
+      user
+        ? supabase
+            .from('trope_suggestions')
+            .select('id, suggested_name, status')
+            .eq('book_id', book.id)
+            .eq('user_id', user.id)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    if (bookTropesResult.data) setBookTropes(bookTropesResult.data as BookTrope[]);
+    if (allTropesResult.data) setAllTropes(allTropesResult.data);
+    if (suggestionsResult.data) setUserSuggestions(suggestionsResult.data);
+  };
+
+  const loadEarningEvents = async () => {
+    if (!book) return;
+
+    const [bountyResult, activeCompResult, pastCompResult] = await Promise.all([
+      supabase
+        .from('bounties')
+        .select('id, pool_size, per_pass_amount, status')
+        .eq('book_id', book.id)
+        .eq('status', 'active')
+        .maybeSingle(),
+      supabase
+        .from('competitions')
+        .select('id, title, format, entry_fee, prize_pool, status, ends_at')
+        .contains('book_ids', [book.id])
+        .eq('status', 'active'),
+      supabase
+        .from('competitions')
+        .select('id, title, format, entry_fee, prize_pool, status, ends_at')
+        .contains('book_ids', [book.id])
+        .eq('status', 'completed')
+        .order('ends_at', { ascending: false })
+        .limit(3),
+    ]);
+
+    if (bountyResult.data) setActiveBounty(bountyResult.data);
+    if (activeCompResult.data) setActiveCompetitions(activeCompResult.data);
+    if (pastCompResult.data) setPastCompetitions(pastCompResult.data);
+  };
+
+  const loadNotifyStatus = async () => {
+    if (!user || !book) return;
+    const { data } = await supabase
+      .from('book_notifications')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('book_id', book.id)
+      .maybeSingle();
+    setIsNotified(!!data);
+  };
+
+  const handleToggleNotify = async () => {
+    if (!user || !book) return;
+    setNotifyLoading(true);
+
+    if (isNotified) {
+      await supabase
+        .from('book_notifications')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('book_id', book.id);
+      setIsNotified(false);
+    } else {
+      await supabase.from('book_notifications').insert({
+        user_id: user.id,
+        book_id: book.id,
+      });
+      setIsNotified(true);
+    }
+
+    setNotifyLoading(false);
+  };
+
+  const handleAddTrope = async () => {
+    if (!book || !selectedTropeId) return;
+    setTropeMessage('');
+
+    const { error } = await supabase.from('book_tropes').insert({
+      book_id: book.id,
+      trope_id: selectedTropeId,
+      added_by: user?.id,
+      added_by_role: 'admin',
+    });
+
+    if (error) {
+      setTropeMessage(error.message);
+    } else {
+      setSelectedTropeId('');
+      loadTropes();
+    }
+  };
+
+  const handleRemoveTrope = async (bookTropeId: string) => {
+    await supabase.from('book_tropes').delete().eq('id', bookTropeId);
+    loadTropes();
+  };
+
+  const handleSuggestTrope = async () => {
+    if (!book || !customTrope.trim() || !user) return;
+    setTropeMessage('');
+
+    const { error } = await supabase.from('trope_suggestions').insert({
+      book_id: book.id,
+      user_id: user.id,
+      suggested_name: customTrope.trim(),
+    });
+
+    if (error) {
+      setTropeMessage(error.message);
+    } else {
+      setCustomTrope('');
+      setTropeMessage('Suggestion submitted for review!');
+      loadTropes();
+    }
+  };
+
+  const formatCompFormat = (format: string) => {
+    if (format === 'sprint') return 'Sprint';
+    if (format === 'readathon') return 'Read-A-Thon';
+    if (format === 'elimination') return 'Elimination Bracket';
+    return format;
+  };
+
+  const formatTimeLeft = (endsAt: string | null) => {
+    if (!endsAt) return null;
+    const diff = new Date(endsAt).getTime() - Date.now();
+    if (diff <= 0) return 'Ending soon';
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(hours / 24);
+    if (days > 0) return `${days}d left`;
+    return `${hours}h left`;
+  };
+
+  if (loading) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${bg}`}>
+        <div className={textPrimary}>Loading...</div>
+      </div>
+    );
+  }
+
+  if (!book) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${bg}`}>
+        <p className="text-red-400">Book not found.</p>
+      </div>
+    );
+  }
+
   return (
-    <div className={`min-h-screen ${bg} transition-colors duration-300`}>
+    <div className={`min-h-screen transition-colors duration-300 ${bg}`}>
 
       {/* Header */}
-      <div className={`border-b ${divider} px-4 py-4`}>
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <button
-            onClick={() => navigateTo('/author-submit')}
-            className={`font-serif text-lg font-bold ${isDark ? 'text-[#D4A843]' : 'text-[#1B2A4A]'}`}
-          >
-            ← Back
-          </button>
+      <header className={`border-b ${borderFaint}`}>
+        <div className="max-w-5xl mx-auto px-4 py-6 flex items-center gap-4">
+<button
+  onClick={() => window.history.back()}
+  className={`transition ${textFaint} hover:${textPrimary}`}
+>
+  <ArrowLeft className="w-5 h-5" />
+</button>
+          <h1 className={`font-serif text-3xl ${textPrimary}`}>Book Details</h1>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-2xl mx-auto px-4 py-12">
+      {/* Main */}
+      <main className="max-w-5xl mx-auto px-4 py-12">
+        <div className="flex flex-col md:flex-row gap-10">
 
-        {/* Title */}
-        <div className="mb-10">
-          <div className="flex items-center gap-3 mb-3">
-            <Trophy className="text-[#D4A843] w-6 h-6" />
-            <h1 className={`font-serif text-4xl ${textPrimary}`}>Sponsor a Competition</h1>
-          </div>
-          <p className={`text-sm leading-relaxed ${textMuted}`}>
-            Put your book in front of motivated readers. Choose a format, pick a tier, and we'll run the event.
-          </p>
-        </div>
-
-        {/* How it works */}
-        <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
-          <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>How It Works</h2>
-          <ol className="space-y-3">
-            {[
-              'Choose a competition format — Sprint, Read-A-Thon, or Elimination Bracket.',
-              'Select a tier — this sets your platform fee and the reader prize pool.',
-              'We schedule and run the event. Readers compete for the prize pool.',
-              'You get visibility, quiz engagement, and real reader data.',
-            ].map((step, i) => (
-              <li key={i} className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#D4A843]/20 text-[#D4A843] text-xs font-bold flex items-center justify-center mt-0.5">
-                  {i + 1}
-                </span>
-                <p className={`text-sm ${textMuted}`}>{step}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-
-        {/* Competition format */}
-        <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
-          <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Competition Format</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-            {COMPETITION_TYPES.map(type => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => {
-                  setSelectedType(type);
-                  setBookTitle(''); setBookId('');
-                  setBookTitles([]); setBookIds([]);
-                }}
-                className={`p-4 rounded-xl border text-left transition-colors ${
-                  selectedType === type
-                    ? 'border-[#D4A843] bg-[#D4A843]/10'
-                    : isDark
-                      ? 'border-[#F5F0E8]/10 hover:border-[#D4A843]/40'
-                      : 'border-[#1B2A4A]/10 hover:border-[#D4A843]/40'
-                }`}
-              >
-                <p className={`font-semibold text-sm ${textPrimary}`}>{type}</p>
-                <p className={`text-xs mt-1 ${textMuted}`}>
-                  {type === 'Sprint'
-                    ? 'Readers quiz only on your book within a set time window.'
-                    : type === 'Read-A-Thon'
-                      ? 'A 4×4 bingo card of books by genre. Your book is guaranteed a square. Readers pass quizzes to complete rows and score Bingos.'
-                      : 'A three round bracket. If you have one listing, your book will be the featured book in one of the rounds. If you have at least three listings, the entire competition can revolve around those three books.'}
-                </p>
-              </button>
-            ))}
-          </div>
-
-          {/* Read-A-Thon callout */}
-          {isReadAThon && (
-            <div className={`flex items-start gap-3 rounded-xl border p-4 text-sm ${calloutBg}`}>
-              <Info size={16} className="flex-shrink-0 mt-0.5" />
-              <p className="leading-relaxed">
-                <strong>Read-A-Thon uses a Book Bingo format.</strong> A 4×4 card is built around books grouped by genre. Your book is <strong>guaranteed a square</strong> on the card. Readers pass quizzes to complete squares and score Bingos. The first 3 players to complete a full row win 50/30/20 of the prize pool. You’re buying a guaranteed spot on the card, not exclusivity.
-              </p>
+          {/* Cover */}
+          <div className="flex-shrink-0">
+            <div className={`w-48 rounded-lg overflow-hidden border ${borderFaint}`}>
+              {book.cover_url ? (
+                <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
+              ) : (
+                <div className={`w-full aspect-[2/3] ${isDark ? 'bg-[#F5F0E8]/5' : 'bg-[#1B2A4A]/5'}`} />
+              )}
             </div>
-          )}
-        </div>
-
-        {/* Tier picker */}
-        <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
-          <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Select a Tier</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {COMPETITION_TIERS.map(tier => (
-              <button
-                key={tier.label}
-                type="button"
-                onClick={() => setSelectedTier(tier)}
-                className={`p-4 rounded-xl border text-left transition-colors ${
-                  selectedTier.label === tier.label
-                    ? 'border-[#D4A843] bg-[#D4A843]/10'
-                    : isDark
-                      ? 'border-[#F5F0E8]/10 hover:border-[#D4A843]/40'
-                      : 'border-[#1B2A4A]/10 hover:border-[#D4A843]/40'
+            {book.geniuslink_url && (
+              <a
+                href={book.geniuslink_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`mt-3 w-48 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border text-sm transition ${
+                  isDark
+                    ? 'bg-[#F5F0E8]/5 border-[#F5F0E8]/15 hover:border-[#F5F0E8]/30 text-[#F5F0E8]'
+                    : 'bg-[#1B2A4A]/5 border-[#1B2A4A]/15 hover:border-[#1B2A4A]/30 text-[#1B2A4A]'
                 }`}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <p className={`font-bold ${textPrimary}`}>{tier.label}</p>
-                  <p className="text-[#D4A843] font-bold">${tier.price}</p>
-                </div>
-                <p className={`text-xs ${textMuted}`}>{tier.description}</p>
-                <div className="flex gap-4 mt-2">
-                  <span className={`text-xs ${textMuted}`}>Prize pool: <strong className={textPrimary}>${tier.prizePool}</strong></span>
-                  <span className={`text-xs ${textMuted}`}>Platform: <strong className={textPrimary}>${tier.platformFee}</strong></span>
-                </div>
-              </button>
-            ))}
+                <ExternalLink className="w-4 h-4" />
+                Buy This Book
+              </a>
+            )}
           </div>
-        </div>
 
-        {/* Competition summary */}
-        <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
-          <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Competition Summary</h2>
-          <div className="space-y-2">
-            {[
-              ['Tier',          selectedTier.label],
-              ['Format',        isReadAThon
-                ? 'Book Bingo — your book is guaranteed to be a featured square on the 4×4 card'
-                : selectedType],
-              ['Price',         `$${selectedTier.price}`],
-              ['Platform Fee',  `$${selectedTier.platformFee}`],
-              ['Prize Pool',    `$${selectedTier.prizePool}`],
-            ].map(([label, val]) => (
-              <div key={label} className="flex justify-between items-start gap-4">
-                <span className={`text-sm flex-shrink-0 ${textMuted}`}>{label}</span>
-                <span className={`text-sm font-semibold text-right ${textPrimary}`}>{val}</span>
+          {/* Details */}
+          <div className="flex-1">
+            <h2 className={`font-serif text-4xl mb-2 ${textPrimary}`}>{book.title}</h2>
+            <p className={`text-lg mb-1 ${textMuted}`}>{book.author}</p>
+            <div className={`flex items-center gap-3 text-sm mb-6 ${textFaint}`}>
+              <span>{book.page_count} pages</span>
+              {book.genre && (
+                <>
+                  <span>·</span>
+                  <span>{book.genre}</span>
+                </>
+              )}
+            </div>
+
+            {/* Earning Events */}
+            <div className="space-y-3 mb-8">
+
+              {/* Active Bounty */}
+              {activeBounty && (
+                <div className={`rounded-xl border p-4 ${cardBg}`}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Zap className="w-4 h-4 text-[#D4A843]" />
+                        <span className="text-xs font-semibold uppercase tracking-wide text-[#D4A843]">
+                          Active Bounty
+                        </span>
+                      </div>
+                      <p className="text-2xl font-bold text-[#D4A843]">
+                        ${activeBounty.per_pass_amount.toFixed(2)}{' '}
+                        <span className={`text-sm font-normal ${textMuted}`}>per quiz pass</span>
+                      </p>
+                      <p className={`text-sm mt-1 ${textMuted}`}>
+                        ${activeBounty.pool_size.toFixed(0)} pool
+                      </p>
+                    </div>
+                    <span className="text-xs bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-1 rounded-full font-medium shrink-0">
+                      Live
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Active Competitions */}
+              {activeCompetitions.length > 0 && (
+                <div className={`rounded-xl border p-4 ${cardBg}`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Trophy className="w-4 h-4 text-[#D4A843]" />
+                    <span className="text-xs font-semibold uppercase tracking-wide text-[#D4A843]">
+                      Featured in {activeCompetitions.length === 1 ? 'a Competition' : `${activeCompetitions.length} Competitions`}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {activeCompetitions.map((comp) => (
+                      <div key={comp.id} className="flex items-center justify-between text-sm">
+                        <div>
+                          <span className={`font-medium ${textPrimary}`}>{comp.title}</span>
+                          <span className={`ml-2 text-xs ${textFaint}`}>{formatCompFormat(comp.format)}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-[#D4A843] font-semibold">
+                            ${comp.prize_pool.toFixed(0)} pool
+                          </span>
+                          {comp.ends_at && (
+                            <span className={`text-xs ${textFaint}`}>{formatTimeLeft(comp.ends_at)}</span>
+                          )}
+                          <button
+                            onClick={() => navigateTo(`/competition/${comp.id}`)}
+                            className={`text-xs px-3 py-1 rounded-full border transition ${
+                              isDark
+                                ? 'border-[#D4A843]/30 text-[#D4A843] hover:bg-[#D4A843]/10'
+                                : 'border-[#D4A843]/50 text-[#D4A843] hover:bg-[#D4A843]/10'
+                            }`}
+                          >
+                            Enter
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Quiz unlocked — Take Quiz button */}
+              {quizUnlocked && (
+                <button
+                  onClick={() => navigateTo(`/quiz/${book.id}`)}
+                  className="w-full py-3 rounded-xl bg-[#D4A843] hover:bg-[#D4A843]/90 text-[#1B2A4A] font-semibold text-sm transition"
+                >
+                  Take Quiz
+                </button>
+              )}
+
+              {/* Quiz locked state */}
+              {!quizUnlocked && (
+                <div className={`rounded-xl border p-5 ${isDark ? 'bg-[#1B2A4A]/30 border-[#F5F0E8]/10' : 'bg-[#1B2A4A]/5 border-[#1B2A4A]/10'}`}>
+                  <p className={`text-sm font-medium mb-1 ${textPrimary}`}>
+                    Quiz unlocks when this book enters a competition or bounty.
+                  </p>
+                  <p className={`text-xs mb-4 ${textFaint}`}>
+                    Get notified the moment this book goes live for earning.
+                  </p>
+                  <button
+                    onClick={handleToggleNotify}
+                    disabled={notifyLoading}
+                    className={`flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border transition disabled:opacity-50 ${
+                      isNotified
+                        ? isDark
+                          ? 'bg-[#D4A843]/10 border-[#D4A843]/30 text-[#D4A843]'
+                          : 'bg-[#D4A843]/15 border-[#D4A843]/40 text-[#D4A843]'
+                        : isDark
+                        ? 'bg-[#F5F0E8]/5 border-[#F5F0E8]/15 text-[#F5F0E8] hover:border-[#D4A843]/40'
+                        : 'bg-white border-[#1B2A4A]/15 text-[#1B2A4A] hover:border-[#D4A843]'
+                    }`}
+                  >
+                    {isNotified ? (
+                      <>
+                        <BellOff className="w-4 h-4" />
+                        Notifications On — tap to remove
+                      </>
+                    ) : (
+                      <>
+                        <Bell className="w-4 h-4" />
+                        Notify Me
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Description */}
+            {book.description && (
+              <div className="mb-8">
+                <h3 className={`font-medium mb-2 ${textPrimary}`}>About this book</h3>
+                <p className={`leading-relaxed ${textMuted}`}>{book.description}</p>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Author info */}
-        <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
-          <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Your Information</h2>
-          <div className="space-y-4">
-
-            <div>
-              <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>
-                Author Name <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="text"
-                value={authorName}
-                onChange={e => setAuthorName(e.target.value)}
-                placeholder="Author or publisher name"
-                className={inputClass}
-              />
-            </div>
-
-            <div>
-              <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>
-                Email <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="Payment confirmation sent here"
-                className={inputClass}
-              />
-            </div>
-
-            {isElimination ? (
-              <BookSearchInput
-                label="Books (select all that apply)"
-                required
-                multi
-                multiValue={bookTitles}
-                onMultiChange={(titles, ids) => { setBookTitles(titles); setBookIds(ids); }}
-                placeholder="Search and add books..."
-              />
-            ) : (
-              <BookSearchInput
-                label={isReadAThon ? 'Your Featured Book' : 'Book Title'}
-                required
-                value={bookTitle}
-                onChange={(title, id) => { setBookTitle(title); setBookId(id); }}
-                placeholder="Search your book title..."
-              />
             )}
 
-            {isReadAThon && bookTitle && (
-              <p className={`text-xs ${textMuted}`}>
-                <Info size={11} className="inline mr-1 mb-0.5" />
-                <strong>{bookTitle}</strong> will be placed as a square on the bingo card. Readers must pass its quiz to complete that square on their way to hitting bingo.
-              </p>
+            {/* Past Competitions */}
+            {pastCompetitions.length > 0 && (
+              <div className={`mb-8 pt-6 border-t ${borderFaint}`}>
+                <h3 className={`font-medium mb-3 ${textPrimary}`}>Past Competitions</h3>
+                <div className="space-y-2">
+                  {pastCompetitions.map((comp) => (
+                    <div key={comp.id} className={`flex items-center justify-between text-sm ${textMuted}`}>
+                      <span>{comp.title}</span>
+                      <span className={`text-xs ${textFaint}`}>{formatCompFormat(comp.format)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
-            <div>
-              <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>
-                Notes <span className={`font-normal ${textMuted}`}>(optional)</span>
-              </label>
-              <textarea
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                placeholder="Preferred dates, special requests, anything else..."
-                rows={3}
-                className={`${inputClass} resize-none`}
-              />
+            {/* Tropes */}
+            <div className={`mb-8 pt-6 border-t ${borderFaint}`}>
+              <h3 className={`font-medium mb-3 ${textPrimary}`}>Tropes</h3>
+
+              {bookTropes.length > 0 ? (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {bookTropes.map((bt) => (
+                    <div
+                      key={bt.id}
+                      className={`flex items-center gap-1 text-sm px-3 py-1.5 rounded-full border transition ${
+                        isDark
+                          ? 'bg-[#F5F0E8]/10 border-[#F5F0E8]/20 text-[#F5F0E8]'
+                          : 'bg-[#1B2A4A]/10 border-[#1B2A4A]/20 text-[#1B2A4A]'
+                      }`}
+                    >
+                      <span>{bt.tropes.name}</span>
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleRemoveTrope(bt.id)}
+                          className={`ml-1 text-xs transition hover:text-red-400 ${textFaint}`}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className={`text-sm mb-4 ${textFaint}`}>No tropes added yet.</p>
+              )}
+
+              {isAdmin && (
+                <div className="flex gap-2 mb-4">
+                  <select
+                    value={selectedTropeId}
+                    onChange={(e) => setSelectedTropeId(e.target.value)}
+                    className={inputCls}
+                  >
+                    <option value="">Select a trope to add...</option>
+                    {allTropes
+                      .filter((t) => !bookTropes.some((bt) => bt.trope_id === t.id))
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                  </select>
+                  <button
+                    onClick={handleAddTrope}
+                    disabled={!selectedTropeId}
+                    className="bg-[#1B2A4A] text-[#F5F0E8] text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#142038] transition disabled:opacity-40"
+                  >
+                    Add
+                  </button>
+                </div>
+              )}
+
+              {user && (
+                <div>
+                  <p className={`text-xs mb-2 ${textFaint}`}>
+                    {isAdmin
+                      ? 'Or add a new trope to the master list:'
+                      : "Don't see the right trope? Suggest one for review:"}
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={customTrope}
+                      onChange={(e) => setCustomTrope(e.target.value)}
+                      placeholder="e.g. Morally Grey Protagonist"
+                      className={inputCls}
+                    />
+                    <button
+                      onClick={handleSuggestTrope}
+                      disabled={!customTrope.trim()}
+                      className="bg-[#D4A843] text-[#1B2A4A] text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#bf9538] transition disabled:opacity-40"
+                    >
+                      {isAdmin ? 'Add New' : 'Suggest'}
+                    </button>
+                  </div>
+
+                  {!isAdmin && userSuggestions.filter((s) => s.status === 'pending').length > 0 && (
+                    <div className="mt-3">
+                      <p className={`text-xs mb-1 ${textFaint}`}>Your pending suggestions:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {userSuggestions
+                          .filter((s) => s.status === 'pending')
+                          .map((s) => (
+                            <span
+                              key={s.id}
+                              className="text-xs bg-[#D4A843]/10 border border-[#D4A843]/30 text-[#D4A843] px-3 py-1 rounded-full"
+                            >
+                              {s.suggested_name} (pending)
+                            </span>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {tropeMessage && (
+                    <p className="text-sm text-[#D4A843] mt-2">{tropeMessage}</p>
+                  )}
+                </div>
+              )}
             </div>
 
+            {/* Completed badge — removed */}
+            {false && (
+              <div
+                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg border ${
+                  isDark
+                    ? 'bg-[#D4A843]/10 border-[#D4A843]/30 text-[#D4A843]'
+                    : 'bg-[#D4A843]/15 border-[#D4A843]/40 text-[#D4A843]'
+                }`}
+              >
+                <Check className="w-4 h-4" />
+                Completed
+              </div>
+            )}
           </div>
         </div>
-
-        {/* Error */}
-        {error && (
-          <div className="mb-4 p-3 bg-red-900/20 border border-red-900/50 rounded-lg text-red-400 text-sm">
-            {error}
-          </div>
-        )}
-
-        {/* Submit */}
-        <button
-          onClick={handleCheckout}
-          disabled={!isFormValid()}
-          className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-4 rounded-xl hover:bg-[#c49a3a] transition text-lg disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          Continue to Checkout — ${selectedTier.price}
-        </button>
-        <p className={`text-xs text-center mt-3 ${textMuted}`}>
-          Secure checkout. Your competition will be scheduled after payment is confirmed.
-        </p>
-
-      </div>
+      </main>
     </div>
   );
 };
