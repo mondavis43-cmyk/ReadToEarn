@@ -147,7 +147,6 @@ export const CompetitionLeaderboard = ({ competitionId, format, status }: Props)
 
   const getPrize = (rank: number): string => {
     if (prizePool <= 0) return '';
-    if (format === 'sprint') return rank === 0 ? `$${prizePool.toFixed(2)}` : '';
     const splits: Record<number, number> = { 0: 0.5, 1: 0.3, 2: 0.2 };
     const pct = splits[rank];
     return pct ? `$${(prizePool * pct).toFixed(2)}` : '';
