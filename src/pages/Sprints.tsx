@@ -161,14 +161,13 @@ export const Sprints = () => {
     if (sprint.is_sponsored) {
       supabase.from('sprint_entries').insert({
         sprint_id: sprint.id,
-        entry_fee_paid: 0,
         paid_at: new Date().toISOString(),
         status: 'active',
       }).then(() => navigateTo('/sprints'));
       return;
     }
     // Check if within 48hr window (active status = window is open)
-    // Late fee applies if notified_at + 48hrs has passed -- handled server-side
+    // Late fee applies if notified_at + 24hrs has passed -- handled server-side
     // For now, pass entry_fee; Edge Function determines if late fee applies
     sessionStorage.setItem('pendingSubmission', JSON.stringify({
       type: 'sprint_entry',
@@ -188,7 +187,6 @@ export const Sprints = () => {
     if (sprint.is_sponsored) {
       supabase.from('sprint_entries').insert({
         sprint_id: sprint.id,
-        entry_fee_paid: 0,
         paid_at: new Date().toISOString(),
         status: 'active',
       }).then(() => navigateTo('/sprints'));
