@@ -47,18 +47,6 @@ const sections: FAQSection[] = [
         a: 'A book is announced. A quiz window opens. You take a 10-question quiz in 8 minutes or less. Your score and speed determine your rank. Top performer(s) earn from the prize pool.',
       },
       {
-        q: 'What are the different competition formats?',
-        a: (
-          <span>
-            There {FEATURES.readathon || FEATURES.elimination ? 'are three formats' : 'is one format'}:
-            <br /><br />
-            <strong>Sprint</strong> — One book. One quiz. The clock is running. Score the most, finish fastest. Top 3 finishers split the prize pool: 50% / 30% / 20%. Tied scores are broken by submission speed.
-            {FEATURES.readathon && <><br /><br /><strong>Read-A-Thon</strong> — A 4x4 bingo card of books organized by genre. Pass a quiz on each book to complete that square. Complete all 4 books in a row to score a Bingo. First 3 players to bingo win prizes — 50% / 30% / 20% of the pool. Ties broken by who completed faster.</>}
-            {FEATURES.elimination && <><br /><br /><strong>Elimination Bracket</strong> — Multi-round tournament. Readers advance by not only passsing each round's quiz, but by scoring high enough to survive. 1st place takes the top prize. 2nd &amp; 3rd place prizes are also rewarded.</>}
-          </span>
-        ),
-      },
-      {
         q: 'Do I have to read the book during the competition?',
         a: 'No. Whether you read it last year or last week doesn\'t matter. The quiz is the only thing that counts. Prior knowledge is your advantage.',
       },
