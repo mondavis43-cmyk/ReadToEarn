@@ -39,6 +39,7 @@ export const Sprints = () => {
   const [selected, setSelected] = useState<Sprint | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isEntered, setIsEntered] = useState(false);
+  const [hasQuizzed, setHasQuizzed] = useState(false);
   const [preRegged, setPreRegged] = useState<Set<string>>(new Set());
   const [preRegCounts, setPreRegCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -116,13 +117,12 @@ export const Sprints = () => {
 
   const checkEntry = async () => {
     if (!selected || !userId) return;
-    const { data } = await supabase
-      .from('sprint_entries')
-      .select('id')
-      .eq('sprint_id', selected.id)
-      .eq('user_id', userId)
-      .maybeSingle();
-    setIsEntered(!!data);
+    const [{ data: entry }, { data: attempt }] = await Promise.all([
+      supabase.from('sprint_entries').select('id').eq('sprint_id', selected.id).eq('user_id', userId).maybeSingle(),
+      supabase.from('sprint_entries').select('score').eq('sprint_id', selected.id).eq('user_id', userId).not('score', 'is', null).maybeSingle(),
+    ]);
+    setIsEntered(!!entry);
+    setHasQuizzed(!!attempt && attempt.score !== null);
   };
 
   const loadLeaderboard = async () => {
@@ -377,12 +377,21 @@ export const Sprints = () => {
                     </div>
                   )}
 
-                  {tab === 'active' && isEntered && (
+                  {tab === 'active' && isEntered && !hasQuizzed && (
                     <button
                       onClick={(e) => { e.stopPropagation(); navigateTo(`/quiz/${sprint.book_id}?sprint=${sprint.id}`); }}
                       className="w-full py-2 rounded-lg text-sm font-semibold bg-green-500 text-white hover:bg-green-600"
                     >
                       Take Quiz
+                    </button>
+                  )}
+
+                  {tab === 'active' && isEntered && hasQuizzed && (
+                    <button
+                      disabled
+                      className="w-full py-2 rounded-lg text-sm font-semibold bg-red-500/20 text-red-400 border border-red-500/30 cursor-not-allowed"
+                    >
+                      ✓ Quiz Already Taken
                     </button>
                   )}
                 </div>
