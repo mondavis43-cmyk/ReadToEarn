@@ -109,7 +109,7 @@ const REDIRECT_MAP: Record<string, string> = {
   subscription: "/profile",
   time_boost: "/profile",
   competition_entry: FEATURES.elimination ? "/elimination" : "/sprints",
-  tournament_entry:  FEATURES.elimination ? "/elimination" : "/sprints",
+  tournament_entry:  FEATURES.tournaments ? (FEATURES.elimination ? "/elimination" : "/sprints") : "/profile",
   sprint_entry:      "/sprints",
   readathon_entry:   FEATURES.readathon  ? "/readathon"  : "/profile",
 };
