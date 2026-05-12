@@ -64,6 +64,7 @@ export default function SensitivityReaderPanel() {
   const [selectedIdentities, setSelectedIdentities] = useState<string[]>([]);
   const [otherIdentity, setOtherIdentity] = useState('');
   const [readerEmail, setReaderEmail] = useState('');
+  const [manuscriptInterest, setManuscriptInterest] = useState<'unpaid' | 'paid' | 'none' | ''>('');
   const [submitting, setSubmitting] = useState(false);
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
   const [success, setSuccess] = useState(false);
@@ -109,6 +110,7 @@ export default function SensitivityReaderPanel() {
     setSelectedIdentities([]);
     setOtherIdentity('');
     setReaderEmail('');
+    setManuscriptInterest('');
     setSelected(panel);
     setStep('read');
     setSuccess(false);
@@ -160,6 +162,7 @@ export default function SensitivityReaderPanel() {
       selected_identities: finalIdentities,
       responses: responsePayload,
       reader_email: readerEmail || null,
+      manuscript_interest: manuscriptInterest || null,
       earned: 10.00,
     });
 
@@ -406,22 +409,42 @@ export default function SensitivityReaderPanel() {
           ))}
         </div>
 
-        {/* Optional email */}
+        {/* Manuscript interest */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-8">
           <p className="text-sm font-semibold text-white mb-1">
             Interested in reading the full manuscript?
           </p>
-          <p className="text-xs text-gray-500 mb-3">
-            Leave your email and the author may reach out to invite you as a sensitivity reader.
-            Completely optional -- you earn $10.00 either way.
+          <p className="text-xs text-gray-500 mb-4">
+            The author may reach out through the Author Hub if you're open to it. Completely optional — you earn $10.00 either way.
           </p>
-          <input
-            type="email"
-            value={readerEmail}
-            onChange={(e) => setReaderEmail(e.target.value)}
-            placeholder="your@email.com"
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-yellow-400"
-          />
+          <div className="space-y-2 mb-4">
+            {([
+              { value: 'unpaid', label: 'Yes — interested as an unpaid sensitivity reader' },
+              { value: 'paid',   label: 'Yes — interested as a paid sensitivity reader' },
+              { value: 'none',   label: 'Not interested' },
+            ] as const).map(opt => (
+              <label key={opt.value} className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="manuscript_interest"
+                  value={opt.value}
+                  checked={manuscriptInterest === opt.value}
+                  onChange={() => setManuscriptInterest(opt.value)}
+                  className="accent-yellow-400"
+                />
+                <span className="text-sm text-gray-200">{opt.label}</span>
+              </label>
+            ))}
+          </div>
+          {(manuscriptInterest === 'unpaid' || manuscriptInterest === 'paid') && (
+            <input
+              type="email"
+              value={readerEmail}
+              onChange={(e) => setReaderEmail(e.target.value)}
+              placeholder="your@email.com (optional)"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-yellow-400"
+            />
+          )}
         </div>
 
         <button
