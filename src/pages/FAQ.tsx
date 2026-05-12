@@ -52,15 +52,11 @@ const sections: FAQSection[] = [
       },
       {
         q: 'What if not enough people sign up?',
-        a: 'Competitions have a pre-registration window (up to 4 weeks before launch). If demand is too low, the competition is canceled before anyone pays. If the minimum is met, the competition runs as planned and the prize pool is based on actual participants. No refunds are needed if it\'s canceled — pre-registration is always free.',
+        a: 'Competitions have a pre-registration window. If demand is too low, the competition is canceled before anyone pays. If the minimum is met, the competition runs as planned and the prize pool is based on actual participants. No refunds are needed if it\'s canceled — pre-registration is always free.',
       },
       {
         q: 'What is pre-registration?',
-        a: 'A free way to lock in your interest before a competition goes live. Pre-registrants and paid subscribers get notified first when a competition formally opens so they can pay the entry fee.',
-      },
-      {
-        q: 'Can the same book appear in multiple competitions?',
-        a: `The same book cannot appear in the same format within 90 days of its last use${FEATURES.readathon ? ', but it can appear across different formats simultaneously (e.g., a Sprint and a Read-A-Thon running at the same time). If you enter both, you get a separate quiz attempt for each — your entry fee covers each competition independently' : ''}.`,
+        a: 'A free way to lock in your interest before a competition goes live. Pre-registrants and paid subscribers get notified first when they can enter the competition and pay their entry fee before it becomes a late fee (doubles the entry fee).',
       },
       {
         q: 'What if a book has an active bounty and is also in a competition?',
