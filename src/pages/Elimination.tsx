@@ -195,7 +195,7 @@ export const Elimination = () => {
   const isWithin48HrWindow = (competition: Competition) => {
     const start = new Date(competition.start_date).getTime();
     const now = Date.now();
-    return now <= start + 48 * 60 * 60 * 1000;
+    return now <= start + 24 * 60 * 60 * 1000;
   };
 
   const tabClass = (t: Tab) =>
@@ -340,7 +340,7 @@ export const Elimination = () => {
                   Enter Late — ${competition.entry_fee * 2}
                 </button>
                 <p className={`text-xs text-center ${textMuted}`}>
-                  48hr window passed · late fee applies
+                  24hr window passed · late fee applies
                 </p>
               </div>
             )}
