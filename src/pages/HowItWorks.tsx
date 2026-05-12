@@ -56,7 +56,7 @@ export const HowItWorks = () => {
             {[
               'A book (or books) is announced for an upcoming competition.',
               'A registration window opens. Pre-register for free to express your interest and get notified when it goes live.',
-              'When the competition opens, you have 48 hours to pay your entry fee before it launches.',
+              'Pre-registration is free and open for several days before each sprint. When the quiz goes live, you can still enter — but after the first 24 hours, a late entry fee (2×) applies.',
               'You take the 10-question quiz during the competition window. You have 8 minutes. Auto-submits when time is up.',
               'Scores are ranked. Top performer(s) earn from the prize pool.',
               'Winners are reviewed within 24–48 hours, then prizes are released.',
@@ -83,17 +83,21 @@ export const HowItWorks = () => {
                   <span className={`text-xs ${textMuted} italic`}>— "A Race to the Finish Line"</span>
                 </div>
                 <p className={`text-sm mb-4 ${textMuted}`}>
-                  One book. One quiz. Score + speed decide the winner. One question answered wrong can knock you down the leaderboard. If it's a tie on score, whoever submitted faster wins.
+                  One book. One quiz. Score + speed decide the winner. One question answered wrong can knock you down the leaderboard. If it's a tie on score, whoever submitted faster wins. There are 4 sprints every month — each with a different book. All four books are announced at the start of the month so you can plan ahead.
                 </p>
                 <div className={`text-xs rounded-lg p-3 mb-4 ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#D4A843]/10'}`}>
                   <p className="text-[#D4A843] font-semibold mb-1">Scoring</p>
-                  <p className={textMuted}>Accuracy first. Speed second. Same score + same time = prize split.</p>
+                  <p className={textMuted}>Top 3 split the prize pool: 1st gets 50%, 2nd gets 30%, 3rd gets 20%. Accuracy first, speed second. Tied scores are broken by who submitted fastest.</p>
+                </div>
+                <div className={`text-xs rounded-lg p-3 mb-4 ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#D4A843]/10'}`}>
+                  <p className="text-[#D4A843] font-semibold mb-1">Entry &amp; Late Fee</p>
+                  <p className={textMuted}>Pre-register free before the quiz goes live. Once live, enter at the standard fee for the first 24 hours. After that, a late fee (2×) applies until the sprint closes.</p>
                 </div>
                 <div className={`text-xs rounded-lg p-3 border-l-2 border-[#D4A843] ${isDark ? 'bg-[#1B2A4A]/60' : 'bg-[#F5F0E8]'}`}>
                   <p className={`font-semibold mb-1 ${textPrimary}`}>Example</p>
-                  <p className={textMuted}>"October Thriller Sprint — Gone Girl. Opens Friday, October 4th at 7:00 PM. Entry fee: $5." You get 10/10 in 4:12. Your opponent gets 10/10 in 3:55. They place ahead of you. That's the game.</p>
+                  <p className={textMuted}>Sprint 1 goes live on Day 6. Entry fee: $5. After Day 7, late fee kicks in at $10. Sprint closes Day 8 — payouts same day. You score 10/10 in 4:12, your opponent scores 10/10 in 3:55. They take 1st (50%), you take 2nd (30%). That's the game.</p>
                 </div>
-                <p className={`text-xs mt-3 ${textMuted}`}>Duration: 24–72 hours</p>
+                <p className={`text-xs mt-3 ${textMuted}`}>Each sprint runs ~2 days. Four sprints per month.</p>
               </div>
             ) : (
               <div className={`rounded-xl border p-8 transition-colors ${cardBg}`}>
@@ -103,11 +107,15 @@ export const HowItWorks = () => {
                   <span className={`text-xs ${textMuted} italic`}>— "A Race to the Finish Line"</span>
                 </div>
                 <p className={`text-base mb-6 leading-relaxed ${textMuted}`}>
-                  One book. One quiz. Score + speed decide the winner. One question answered wrong can knock you down the leaderboard. If it's a tie on score, whoever submitted faster wins. The quiz auto-submits when the 8-minute window closes — no extensions.
+                  One book. One quiz. Score + speed decide the winner. One question answered wrong can knock you down the leaderboard. If it's a tie on score, whoever submitted faster wins. There are 4 sprints every month — all four books are announced at the start of the month so you can plan ahead. The quiz auto-submits when the 8-minute window closes — no extensions.
                 </p>
+                <div className={`text-sm rounded-lg p-4 mb-4 ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#D4A843]/10'}`}>
+                  <p className={`font-semibold mb-2 ${textPrimary}`}>Entry &amp; Late Fee</p>
+                  <p className={textMuted}>Pre-register free before the quiz goes live. Once live, enter at the standard fee for the first 24 hours. After that, a late fee (2×) applies until the sprint closes.</p>
+                </div>
                 <div className={`text-sm rounded-lg p-4 border-l-2 border-[#D4A843] ${isDark ? 'bg-[#1B2A4A]/60' : 'bg-[#F5F0E8]'}`}>
                   <p className={`font-semibold mb-2 ${textPrimary}`}>Example</p>
-                  <p className={textMuted}>"October Thriller Sprint — Gone Girl. Opens Friday, October 4th at 7:00 PM. Entry fee: $5." You get 10/10 in 4:12. Your opponent gets 10/10 in 3:55. They place ahead of you. That's the game.</p>
+                  <p className={textMuted}>Sprint 1 goes live on Day 6. Entry fee: $5. After Day 7, late fee kicks in at $10. Sprint closes Day 8 — payouts same day. You score 10/10 in 4:12, your opponent scores 10/10 in 3:55. They take 1st (50%), you take 2nd (30%). Top 3 split the prize pool: 50% / 30% / 20%.</p>
                 </div>
               </div>
             )}
