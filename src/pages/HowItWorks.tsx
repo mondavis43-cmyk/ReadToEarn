@@ -56,9 +56,9 @@ export const HowItWorks = () => {
             {[
               'A book (or books) is announced for an upcoming competition.',
               'A registration window opens. Pre-register for free to express your interest and get notified when it goes live.',
-              'Pre-registration is free and open for several days before each sprint. When the quiz goes live, you can still enter — but after the first 24 hours, a late entry fee (2×) applies.',
+              'When the quiz goes live, you can still enter, but after the first 24 hours, a late entry fee (2×) applies.',
               'You take the 10-question quiz during the competition window. You have 8 minutes. Auto-submits when time is up.',
-              'Scores are ranked. Top performer(s) earn from the prize pool.',
+              'Scores are ranked. Top performers earn from the prize pool.',
               'Winners are reviewed within 24–48 hours, then prizes are released.',
             ].map((step, i) => (
               <div key={i} className={`rounded-xl border p-5 flex items-start gap-4 transition-colors ${cardBg}`}>
