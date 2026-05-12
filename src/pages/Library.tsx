@@ -54,6 +54,7 @@ export const Library = () => {
   const [books, setBooks] = useState<Book[]>([]);
   const [activeBounties, setActiveBounties] = useState<ActiveBounty[]>([]);
   const [activeCompetitionBookIds, setActiveCompetitionBookIds] = useState<Set<string>>(new Set());
+  const [completedBookIds, setCompletedBookIds] = useState<Set<string>>(new Set());
   const [allTropes, setAllTropes] = useState<Trope[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -109,6 +110,9 @@ export const Library = () => {
         .select('book_ids')
         .eq('status', 'active'),
       supabase.from('tropes').select('*').order('name'),
+      user
+        ? supabase.from('quiz_attempts').select('book_id').eq('user_id', user.id)
+        : Promise.resolve({ data: [] }),
     ];
 
     const [
@@ -116,11 +120,13 @@ export const Library = () => {
       { data: bountiesData },
       { data: compsData },
       { data: tropesData },
+      { data: attemptsData },
     ] = await Promise.all(queries);
 
     setBooks(booksData || []);
     setActiveBounties(bountiesData || []);
     setAllTropes(tropesData || []);
+    setCompletedBookIds(new Set((attemptsData ?? []).map((a: { book_id: string }) => a.book_id)));
 
     // Flatten competition book_ids into a set
     const compBookIds = new Set<string>();
@@ -395,8 +401,15 @@ export const Library = () => {
                       </div>
                     )}
 
+                    {/* Done badge */}
+                    {completedBookIds.has(book.id) && (
+                      <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-green-600 text-white text-xs font-semibold px-2 py-1 rounded-full shadow">
+                        <Check size={10} /> Done
+                      </div>
+                    )}
+
                     {/* Locked overlay */}
-                    {!unlocked && (
+                    {!unlocked && !completedBookIds.has(book.id) && (
                       <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
                         <Lock size={10} /> Quiz locked
                       </div>
