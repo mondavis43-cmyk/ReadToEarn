@@ -341,7 +341,7 @@ export default function BetaReaderPanel() {
           disabled={!isValid() || submitting}
           className="w-full bg-yellow-400 text-black font-bold py-3 rounded-xl hover:bg-yellow-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {submitting ? 'Submitting...' : 'Submit Feedback & Earn $1.50'}
+          {submitting ? 'Submitting...' : 'Submit Feedback & Earn'}
         </button>
       </div>
     );
