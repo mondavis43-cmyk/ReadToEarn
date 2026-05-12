@@ -72,7 +72,7 @@ export const Sprints = () => {
       checkEntry();
       if (tab === 'active') loadLeaderboard();
     }
-  }, [selected]);
+  }, [selected, userId]);
 
   const fetchSprints = async () => {
     setLoading(true);
@@ -219,10 +219,10 @@ export const Sprints = () => {
   const rankLabel = (i: number) => ['🥇', '🥈', '🥉'][i] ?? `#${i + 1}`;
 
   const isWithin48HrWindow = (sprint: Sprint) => {
-    // Active sprint within 48hrs of start_date = normal entry fee
+    // Active sprint within 24hrs of start_date = normal entry fee
     const start = new Date(sprint.start_date).getTime();
     const now = Date.now();
-    return now <= start + 48 * 60 * 60 * 1000;
+    return now <= start + 24 * 60 * 60 * 1000;
   };
 
   const tabClass = (t: string) =>
@@ -370,7 +370,7 @@ export const Sprints = () => {
                             Enter Late — ${sprint.entry_fee * 2}
                           </button>
                           <p className={`text-xs text-center ${textMuted}`}>
-                            48hr window passed · late fee applies
+                            24hr window passed · late fee applies
                           </p>
                         </div>
                       )}
