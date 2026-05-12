@@ -107,7 +107,7 @@ export const HowItWorks = () => {
                   <span className={`text-xs ${textMuted} italic`}>— "A Race to the Finish Line"</span>
                 </div>
                 <p className={`text-base mb-6 leading-relaxed ${textMuted}`}>
-                  One book. One quiz. Score + speed decide the winner. One question answered wrong can knock you down the leaderboard. If it's a tie on score, whoever submitted faster wins. There are 4 sprints every month — all four books are announced at the start of the month so you can plan ahead. The quiz auto-submits when the 8-minute window closes — no extensions.
+                  One book. One quiz. Score + speed decide the winner. One question answered wrong can knock you down the leaderboard. If it's a tie on score, whoever submitted faster wins. There are 4 sprints every month. All four books are announced at the start of the month so you can plan ahead.
                 </p>
                 <div className={`text-sm rounded-lg p-4 mb-4 ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#D4A843]/10'}`}>
                   <p className={`font-semibold mb-2 ${textPrimary}`}>Entry &amp; Late Fee</p>
@@ -115,7 +115,7 @@ export const HowItWorks = () => {
                 </div>
                 <div className={`text-sm rounded-lg p-4 border-l-2 border-[#D4A843] ${isDark ? 'bg-[#1B2A4A]/60' : 'bg-[#F5F0E8]'}`}>
                   <p className={`font-semibold mb-2 ${textPrimary}`}>Example</p>
-                  <p className={textMuted}>Sprint 1 goes live on Day 6. Entry fee: $5. After Day 7, late fee kicks in at $10. Sprint closes Day 8 — payouts same day. You score 10/10 in 4:12, your opponent scores 10/10 in 3:55. They take 1st (50%), you take 2nd (30%). Top 3 split the prize pool: 50% / 30% / 20%.</p>
+                  <p className={textMuted}>"Gone Girl — Sprint. Entry fee: $5." You get 10/10 in 4:12. Your opponent gets 10/10 in 3:55. They take 1st (50%), you take 2nd (30%), third place takes 20%. That's the game.</p>
                 </div>
               </div>
             )}
