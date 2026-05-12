@@ -84,13 +84,10 @@ if (username) return `@${username}`;
 return displayName || 'Reader';
 };
 
-const prizeForRank = (rank: number, format: Format, pool: number): number | null => {
-if (format === 'sprint') return rank === 1 ? pool : null;
-if (format === 'readathon' || format === 'elimination') {
-  if (rank === 1) return pool * 0.5;
-  if (rank === 2) return pool * 0.3;
-  if (rank === 3) return pool * 0.2;
-}
+const prizeForRank = (rank: number, _format: Format, pool: number): number | null => {
+if (rank === 1) return pool * 0.5;
+if (rank === 2) return pool * 0.3;
+if (rank === 3) return pool * 0.2;
 return null;
 };
 
