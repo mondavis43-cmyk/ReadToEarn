@@ -110,7 +110,6 @@ export const Cashout = () => {
       p_payout_type:       payoutType,
       p_payout_details:    payoutType === 'gift_card' ? selectedCard.name : payoutDetails,
       p_gift_card_brand:   payoutType === 'gift_card' ? selectedCard.name : null,
-      p_reloadly_product_id: payoutType === 'gift_card' ? selectedCard.id : null,
     });
 
     if (rpcError) {
