@@ -71,32 +71,49 @@ export const HowItWorks = () => {
 
         {/* Three Formats */}
         <div className="mb-16">
-          <h2 className={`font-serif text-3xl mb-8 ${textPrimary}`}>The Three Formats</h2>
+          <h2 className={`font-serif text-3xl mb-8 ${textPrimary}`}>{FEATURES.readathon || FEATURES.elimination ? 'The Three Formats' : 'The Format'}</h2>
           <div className="space-y-6">
 
             {/* Sprint */}
-            <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
-              <div className="flex items-center gap-3 mb-3">
-                <Zap className="text-[#D4A843] shrink-0" size={22} />
-                <h3 className={`font-serif text-xl ${textPrimary}`}>The Sprint</h3>
-                <span className={`text-xs ${textMuted} italic`}>— "A Race to the Finish Line"</span>
+            {FEATURES.readathon || FEATURES.elimination ? (
+              <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
+                <div className="flex items-center gap-3 mb-3">
+                  <Zap className="text-[#D4A843] shrink-0" size={22} />
+                  <h3 className={`font-serif text-xl ${textPrimary}`}>The Sprint</h3>
+                  <span className={`text-xs ${textMuted} italic`}>— "A Race to the Finish Line"</span>
+                </div>
+                <p className={`text-sm mb-4 ${textMuted}`}>
+                  One book. One quiz. Score + speed decide the winner. One question answered wrong can knock you down the leaderboard. If it's a tie on score, whoever submitted faster wins.
+                </p>
+                <div className={`text-xs rounded-lg p-3 mb-4 ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#D4A843]/10'}`}>
+                  <p className="text-[#D4A843] font-semibold mb-1">Scoring</p>
+                  <p className={textMuted}>Accuracy first. Speed second. Same score + same time = prize split.</p>
+                </div>
+                <div className={`text-xs rounded-lg p-3 border-l-2 border-[#D4A843] ${isDark ? 'bg-[#1B2A4A]/60' : 'bg-[#F5F0E8]'}`}>
+                  <p className={`font-semibold mb-1 ${textPrimary}`}>Example</p>
+                  <p className={textMuted}>"October Thriller Sprint — Gone Girl. Opens Friday, October 4th at 7:00 PM. Entry fee: $5." You get 10/10 in 4:12. Your opponent gets 10/10 in 3:55. They place ahead of you. That's the game.</p>
+                </div>
+                <p className={`text-xs mt-3 ${textMuted}`}>Duration: 24–72 hours</p>
               </div>
-              <p className={`text-sm mb-4 ${textMuted}`}>
-                One book. One quiz. Score + speed decide the winner. One question answered wrong can knock you down the leaderboard. If it's a tie on score, whoever submitted faster wins.
-              </p>
-              <div className={`text-xs rounded-lg p-3 mb-4 ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#D4A843]/10'}`}>
-                <p className="text-[#D4A843] font-semibold mb-1">Scoring</p>
-                <p className={textMuted}>Accuracy first. Speed second. Same score + same time = prize split.</p>
+            ) : (
+              <div className={`rounded-xl border p-8 transition-colors ${cardBg}`}>
+                <div className="flex items-center gap-3 mb-4">
+                  <Zap className="text-[#D4A843] shrink-0" size={26} />
+                  <h3 className={`font-serif text-2xl ${textPrimary}`}>The Sprint</h3>
+                  <span className={`text-xs ${textMuted} italic`}>— "A Race to the Finish Line"</span>
+                </div>
+                <p className={`text-base mb-6 leading-relaxed ${textMuted}`}>
+                  One book. One quiz. Score + speed decide the winner. One question answered wrong can knock you down the leaderboard. If it's a tie on score, whoever submitted faster wins. The quiz auto-submits when the 8-minute window closes — no extensions.
+                </p>
+                <div className={`text-sm rounded-lg p-4 border-l-2 border-[#D4A843] ${isDark ? 'bg-[#1B2A4A]/60' : 'bg-[#F5F0E8]'}`}>
+                  <p className={`font-semibold mb-2 ${textPrimary}`}>Example</p>
+                  <p className={textMuted}>"October Thriller Sprint — Gone Girl. Opens Friday, October 4th at 7:00 PM. Entry fee: $5." You get 10/10 in 4:12. Your opponent gets 10/10 in 3:55. They place ahead of you. That's the game.</p>
+                </div>
               </div>
-              <div className={`text-xs rounded-lg p-3 border-l-2 border-[#D4A843] ${isDark ? 'bg-[#1B2A4A]/60' : 'bg-[#F5F0E8]'}`}>
-                <p className={`font-semibold mb-1 ${textPrimary}`}>Example</p>
-                <p className={textMuted}>"October Thriller Sprint — Gone Girl. Opens Friday, October 4th at 7:00 PM. Entry fee: $5." You get 10/10 in 4:12. Your opponent gets 10/10 in 3:55. They place ahead of you. That's the game.</p>
-              </div>
-              <p className={`text-xs mt-3 ${textMuted}`}>Duration: 24–72 hours</p>
-            </div>
+            )}
 
             {/* Read-A-Thon */}
-            <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
+            {FEATURES.readathon && <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
               <div className="flex items-center gap-3 mb-3">
                 <BookOpen className="text-[#D4A843] shrink-0" size={22} />
                 <h3 className={`font-serif text-xl ${textPrimary}`}>The Read-A-Thon</h3>
@@ -114,7 +131,7 @@ export const HowItWorks = () => {
                 <p className={textMuted}>"October Book Bingo" — 4×4 card. Row 1: Fantasy. Row 2: Mystery. Row 3: Thriller. Row 4: Romance. Entry fee: $7. You focus on the Mystery row — pass all four quizzes before anyone else completes a full row. You score the 1st Bingo and take 50% of the prize pool.</p>
               </div>
               <p className={`text-xs mt-3 ${textMuted}`}>Duration: A weekend to a full week</p>
-            </div>
+            </div>}
 
             {/* Elimination */}
             {FEATURES.elimination && <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
@@ -186,7 +203,7 @@ export const HowItWorks = () => {
           <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
             <BarChart2 className="text-[#D4A843] mb-4" size={22} />
             <div className="space-y-3">
-              <p className={`text-sm ${textMuted}`}>Get paid via <span className={textPrimary}>PayPal, Venmo, Wise (international)</span>, or gift cards via <span className={textPrimary}>Giftogram</span>.</p>
+              <p className={`text-sm ${textMuted}`}>Get paid via <span className={textPrimary}>PayPal, Wise (international)</span>, or gift cards via <span className={textPrimary}>Giftogram</span>.</p>
               <p className={`text-sm ${textMuted}`}>Minimum cashout: <span className={textPrimary}>$10</span>.</p>
               <p className={`text-sm ${textMuted}`}>If you earn <span className={textPrimary}>$599+ in a year</span>, we'll ask for tax info before releasing further payouts. You'll get notified at $500 and $550.</p>
               <p className={`text-sm ${textMuted}`}>Ages 13–17: <span className={textPrimary}>gift cards only</span>.</p>
