@@ -72,7 +72,7 @@ const sections: FAQSection[] = [
       },
       {
         q: 'Can the same book appear in multiple competitions?',
-        a: 'The same book cannot appear in the same format within 90 days of its last use, but it can appear across different formats simultaneously (e.g., a Sprint and a Read-A-Thon running at the same time). If you enter both, you get a separate quiz attempt for each — your entry fee covers each competition independently.',
+        a: `The same book cannot appear in the same format within 90 days of its last use${FEATURES.readathon ? ', but it can appear across different formats simultaneously (e.g., a Sprint and a Read-A-Thon running at the same time). If you enter both, you get a separate quiz attempt for each — your entry fee covers each competition independently' : ''}.`,
       },
       {
         q: 'What if a book has an active bounty and is also in a competition?',
@@ -113,7 +113,7 @@ const sections: FAQSection[] = [
       },
       {
         q: 'Can I retake a quiz and still earn?',
-        a: 'No. Each reader gets one attempt per book per competition entry or bounty window. If the same book appears in multiple competition formats (e.g., a Sprint and a Read-A-Thon), your entry into each format gives you one attempt for that format — they are tracked separately. This keeps competition fair and results meaningful.',
+        a: `No. Each reader gets one attempt per book per competition entry or bounty window.${FEATURES.readathon || FEATURES.elimination ? ' If the same book appears in multiple competition formats, your entry into each format gives you one attempt for that format — they are tracked separately.' : ''} This keeps competition fair and results meaningful.`,
       },
     ],
   },
@@ -200,7 +200,7 @@ const sections: FAQSection[] = [
       },
     ],
   },
-  {
+  ...(FEATURES.tournaments ? [{
     label: 'User-Created Tournaments',
     items: [
       {
@@ -208,7 +208,7 @@ const sections: FAQSection[] = [
         a: 'Yes. Any reader can create a public or private tournament. Set the book, format, and entry fee. Invite your community. Platform keeps 25%. Minimum 10 participants before a user-created tournament pays out.',
       },
     ],
-  },
+  }] : []),
   {
     label: 'Account',
     items: [
