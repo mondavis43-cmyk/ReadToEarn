@@ -23,11 +23,11 @@ type Competition = {
 // ── Ticker data ────────────────────────────────────────────────────────────
 const TICKER_ITEMS = [
   '🏅 October Sprint Winner: @readfast_jenna',
-  '📚 October Read-A-Thon Winner: @pages4days',
-  '🔥 October Elimination Bracket Winner: @bookslayer99',
-  '🔐 Subscriber Giveaway Winner: @quietreader_k',
+  '⚡ October Sprint Winner: @pages4days',
   '🏅 November Sprint Winner: @inkandpages',
-  '📚 November Read-A-Thon Winner: @nightowlreads',
+  '🔐 Subscriber Giveaway Winner: @quietreader_k',
+  '⚡ November Sprint Winner: @bookslayer99',
+  '🏅 December Sprint Winner: @nightowlreads',
 ];
 
 const COMPETITION_TYPE_LABELS: Record<string, string> = {
@@ -157,7 +157,7 @@ export const Home = () => {
         </div>
 
         <p className="text-xs" style={{ color: textMuted }}>
-          Payouts via PayPal, Venmo, Wise & Gift Cards. Cash out at $10.
+          Payouts via PayPal, Wise & Gift Cards. Cash out at $10.
         </p>
       </section>
 
@@ -178,19 +178,19 @@ export const Home = () => {
               icon: <BookOpen className="w-5 h-5" style={{ color: gold }} />,
               step: '01',
               title: 'Pick a Competition',
-              body: 'Browse our monthly lineup of Sprints, Read-A-Thons, and Elimination Brackets. Pay your entry fee. Read, quiz, and compete for your share of the prize pool.',
+              body: 'Browse our monthly lineup of Sprints. Pay your entry fee. Read, quiz, and compete for your share of the prize pool.',
             },
             {
               icon: <Zap className="w-5 h-5" style={{ color: gold }} />,
               step: '02',
               title: 'Pass the Quiz',
-              body: 'Every competition comes down to a 10-question quiz. You have 8 minutes. Score high. Finish fast. Your rank is determined by accuracy first, speed second.',
+              body: 'Every sprint comes down to a 10-question quiz. You have 8 minutes. Score high. Finish fast. Your rank is determined by accuracy first, speed second.',
             },
             {
               icon: <DollarSign className="w-5 h-5" style={{ color: gold }} />,
               step: '03',
               title: 'Collect Your Winnings',
-              body: 'Top performers split the prize pool. Funds go to PayPal, Venmo, Wise, or a gift card — your choice.',
+              body: 'Top performers split the prize pool (50% / 30% / 20%). Funds go to PayPal, Wise, or a gift card — your choice.',
             },
           ].map(({ icon, step, title, body }) => (
             <div
@@ -237,50 +237,84 @@ export const Home = () => {
         <div className="max-w-4xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="font-serif text-4xl mb-3" style={{ color: textPrimary }}>
-              Three Ways to Compete
+              {FEATURES.readathon || FEATURES.elimination ? 'Multiple Ways to Compete' : 'The Sprint'}
             </h2>
+            {!FEATURES.readathon && !FEATURES.elimination && (
+              <p className="text-lg max-w-xl mx-auto" style={{ color: textMuted }}>
+                Fast, focused, and competitive. One book. One quiz. Real money.
+              </p>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            {[
-              {
-                emoji: '⚡',
-                title: 'The Sprint',
-                duration: '24–72 hours',
-                body: 'One book. One quiz. The clock is running. Score the most, finish fastest.',
-              },
-              ...(FEATURES.readathon ? [{
-                emoji: '📚',
-                title: 'The Read-A-Thon',
-                duration: 'A weekend to a week',
-                body: 'A 4×4 bingo card of books by genre. Pass quizzes to complete squares. Complete a full row to score a Bingo. First 3 bingos claim 50/30/20 of the prize pool.',
-              }] : []),
-              ...(FEATURES.elimination ? [{
-                emoji: '🏆',
-                title: 'The Elimination Bracket',
-                duration: '1–2 weeks',
-                body: 'Round by round. Score high enough to survive. One person takes the top prize.',
-              }] : []),
-            ].map(({ emoji, title, duration, body }) => (
-              <div
-                key={title}
-                className="rounded-lg border p-6"
-                style={{ backgroundColor: cardBg, borderColor: cardBorder }}
-              >
-                <div className="text-3xl mb-4">{emoji}</div>
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold" style={{ color: textPrimary }}>{title}</h3>
-                  <span
-                    className="text-xs px-2 py-0.5 rounded-full ml-2 flex-shrink-0"
-                    style={pillStyle(gold)}
-                  >
-                    {duration}
-                  </span>
+          {FEATURES.readathon || FEATURES.elimination ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+              {[
+                {
+                  emoji: '⚡',
+                  title: 'The Sprint',
+                  duration: '24–72 hours',
+                  body: 'One book. One quiz. The clock is running. Score the most, finish fastest.',
+                },
+                ...(FEATURES.readathon ? [{
+                  emoji: '📚',
+                  title: 'The Read-A-Thon',
+                  duration: 'A weekend to a week',
+                  body: 'A 4×4 bingo card of books by genre. Pass quizzes to complete squares. Complete a full row to score a Bingo. First 3 bingos claim 50/30/20 of the prize pool.',
+                }] : []),
+                ...(FEATURES.elimination ? [{
+                  emoji: '🏆',
+                  title: 'The Elimination Bracket',
+                  duration: '1–2 weeks',
+                  body: 'Round by round. Score high enough to survive. One person takes the top prize.',
+                }] : []),
+              ].map(({ emoji, title, duration, body }) => (
+                <div
+                  key={title}
+                  className="rounded-lg border p-6"
+                  style={{ backgroundColor: cardBg, borderColor: cardBorder }}
+                >
+                  <div className="text-3xl mb-4">{emoji}</div>
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-semibold" style={{ color: textPrimary }}>{title}</h3>
+                    <span
+                      className="text-xs px-2 py-0.5 rounded-full ml-2 flex-shrink-0"
+                      style={pillStyle(gold)}
+                    >
+                      {duration}
+                    </span>
+                  </div>
+                  <p className="text-sm leading-relaxed" style={{ color: textMuted }}>{body}</p>
                 </div>
-                <p className="text-sm leading-relaxed" style={{ color: textMuted }}>{body}</p>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border p-8 mb-10" style={{ backgroundColor: cardBg, borderColor: cardBorder }}>
+              <div className="flex flex-col md:flex-row gap-8 items-start">
+                <div className="text-5xl">⚡</div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <h3 className="font-serif text-2xl" style={{ color: textPrimary }}>The Sprint</h3>
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={pillStyle(gold)}>24–72 hours</span>
+                  </div>
+                  <p className="text-base leading-relaxed mb-6" style={{ color: textMuted }}>
+                    A time-limited reading competition. One book is chosen for the sprint window. Read it, take the 10-question quiz, and score as high as you can as fast as you can. The top 3 readers split the prize pool — 50%, 30%, and 20%.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {[
+                      { label: 'Entry Fee', value: '$3–$5' },
+                      { label: 'Prize Split', value: '50 / 30 / 20%' },
+                      { label: 'Quiz Window', value: '8 minutes' },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="rounded-lg p-4 text-center" style={{ backgroundColor: isDark ? '#0f172a' : '#EDE8DF' }}>
+                        <p className="text-xs uppercase tracking-wide mb-1" style={{ color: textMuted }}>{label}</p>
+                        <p className="font-bold text-lg" style={{ color: gold }}>{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
 
           <div className="text-center">
             <button
@@ -294,7 +328,7 @@ export const Home = () => {
         </div>
       </section>
 
-      {/* ── EARN BEYOND TOURNAMENTS ───────────────────────────────────────── */}
+      {/* ── EARN BEYOND SPRINTS ───────────────────────────────────────── */}
       <section className="max-w-4xl mx-auto px-4 py-20">
         <div className="text-center mb-12">
           <h2 className="font-serif text-4xl mb-3" style={{ color: textPrimary }}>
@@ -347,53 +381,6 @@ export const Home = () => {
               </div>
             </div>
           ))}
-        </div>
-      </section>
-
-      {/* ── MONTHLY SCHEDULE ──────────────────────────────────────────────── */}
-      <section
-        className="py-20 border-y"
-        style={{ borderColor: cardBorder, backgroundColor: isDark ? '#0d1829' : '#EDE8DF' }}
-      >
-        <div className="max-w-3xl mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="font-serif text-4xl mb-3" style={{ color: textPrimary }}>
-              Something Is Always Happening
-            </h2>
-            <p style={{ color: textMuted }}>Every month follows the same structure.</p>
-          </div>
-
-          <div
-            className="rounded-lg border overflow-hidden"
-            style={{ backgroundColor: cardBg, borderColor: cardBorder }}
-          >
-            {[
-              { days: 'Days 1–3',   label: 'Flash Sprint',        detail: '$5 entry',                              color: gold },
-              { days: 'Days 4–7',   label: 'Break',               detail: 'Bounties · Surveys · Quick Tasks · Author AMA', color: textMuted },
-              ...(FEATURES.readathon ? [{ days: 'Days 8–15',  label: 'Read-A-Thon',         detail: '$7 entry',                              color: '#60a5fa' }] : []),
-              ...(FEATURES.readathon ? [{ days: 'Days 16–18', label: 'Break',               detail: 'Bounties · Surveys · Quick Tasks · Author AMA', color: textMuted }] : []),
-              ...(FEATURES.elimination ? [{ days: 'Days 19–31', label: 'Elimination Bracket', detail: '$10 entry · multi-round',               color: '#a78bfa' }] : []),
-            ].map(({ days, label, detail, color }, i, arr) => (
-              <div
-                key={days}
-                className="flex items-center gap-4 px-6 py-4"
-                style={{
-                  borderBottom: i < arr.length - 1 ? `1px solid ${cardBorder}` : 'none',
-                }}
-              >
-                <span className="text-xs font-mono w-20 flex-shrink-0" style={{ color: textMuted }}>
-                  {days}
-                </span>
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                <span className="font-medium text-sm flex-1" style={{ color: textPrimary }}>{label}</span>
-                <span className="text-xs" style={{ color: textMuted }}>{detail}</span>
-              </div>
-            ))}
-          </div>
-
-          <p className="text-center text-sm mt-6" style={{ color: textMuted }}>
-            Plus: subscriber-only giveaways every month with guaranteed prize pools.
-          </p>
         </div>
       </section>
 
