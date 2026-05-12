@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FEATURES } from '../config/features';
 import type { ReactNode } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -49,13 +50,11 @@ const sections: FAQSection[] = [
         q: 'What are the different competition formats?',
         a: (
           <span>
-            There are three formats:
+            There {FEATURES.readathon || FEATURES.elimination ? 'are three formats' : 'is one format'}:
             <br /><br />
             <strong>Sprint</strong> — One book. One quiz. The clock is running. Score the most, finish fastest.
-            <br /><br />
-            <strong>Read-A-Thon</strong> — A 4x4 bingo card of books organized by genre. Pass a quiz on each book to complete that square. Complete all 4 books in a row to score a Bingo. First 3 players to bingo win prizes — 50% / 30% / 20% of the pool. Ties broken by who completed faster.
-            <br /><br />
-            <strong>Elimination Bracket</strong> — Multi-round tournament. Readers advance by not only passsing each round's quiz, but by scoring high enough to survive. 1st place takes the top prize. 2nd & 3rd place prizes are also rewarded.
+            {FEATURES.readathon && <><br /><br /><strong>Read-A-Thon</strong> — A 4x4 bingo card of books organized by genre. Pass a quiz on each book to complete that square. Complete all 4 books in a row to score a Bingo. First 3 players to bingo win prizes — 50% / 30% / 20% of the pool. Ties broken by who completed faster.</>}
+            {FEATURES.elimination && <><br /><br /><strong>Elimination Bracket</strong> — Multi-round tournament. Readers advance by not only passsing each round's quiz, but by scoring high enough to survive. 1st place takes the top prize. 2nd &amp; 3rd place prizes are also rewarded.</>}
           </span>
         ),
       },
@@ -81,7 +80,7 @@ const sections: FAQSection[] = [
       },
       {
         q: 'What happens if there\'s a tie?',
-        a: 'Sprint: same score + same time → prize split equally. Read-A-Thon: same page count → that place\'s prize is split. Elimination finals: same Master Quiz score → first place is split.',
+        a: `Sprint: same score + same time → prize split equally.${FEATURES.readathon ? ' Read-A-Thon: same page count → that place\'s prize is split.' : ''}${FEATURES.elimination ? ' Elimination finals: same Master Quiz score → first place is split.' : ''}`,
       },
       {
         q: 'When do I get paid?',
