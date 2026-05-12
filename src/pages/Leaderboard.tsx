@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { Trophy, Zap, BookOpen, Crown, ArrowRight, Clock } from 'lucide-react';
+import { FEATURES } from '../config/features';
 import { supabase } from '../lib/supabase';
 
 type Format = 'sprint' | 'readathon' | 'elimination';
@@ -161,6 +162,7 @@ useEffect(() => {
 
     // Fetch competitions, sprints, and readathons in parallel
     const [compResult, sprintResult, readathonResult] = await Promise.all([
+      // readathon fetch only runs when flag is on
       supabase
         .from('competitions')
         .select('id, title, format, book_title, prize_pool, status, start_date, end_date')
@@ -207,7 +209,11 @@ useEffect(() => {
       isReadathon: true,
     }));
 
-    const merged = [...sprintList, ...readathonList, ...compList];
+    const merged = [
+      ...sprintList,
+      ...(FEATURES.readathon ? readathonList : []),
+      ...(FEATURES.elimination ? compList : compList.filter((c: CompetitionItem) => c.format === 'sprint')),
+    ];
     setCompetitions(merged);
     if (merged.length > 0) setSelectedId(merged[0].id);
     setLoadingComps(false);
