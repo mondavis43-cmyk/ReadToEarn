@@ -9,6 +9,7 @@ import { Profile } from '../pages/Profile';
 import { Cashout } from '../pages/Cashout';
 import { Admin } from '../pages/Admin';
 import { AdminSubmissions } from '../pages/admin/AdminSubmissions';
+import { AdminBookListings } from '../pages/admin/AdminBookListings';
 import { BookPage } from '../pages/BookPage';
 import { Waitlist } from '../pages/Waitlist';
 import { ResetPassword } from '../pages/ResetPassword';
@@ -74,6 +75,7 @@ useEffect(() => {
     route !== '/signup' &&
     route !== '/admin' &&
     route !== '/admin/submissions' &&
+    route !== '/admin/book-listings' &&
     route !== '/reset-password'
   ) {
     if (!WAITLIST_MODE) {
@@ -94,6 +96,7 @@ if (loading) {
 // Public routes — no NavBar, no auth required
 if (route === '/admin') return <AdminRoute><Admin /></AdminRoute>;
 if (route === '/admin/submissions') return <AdminRoute><AdminSubmissions /></AdminRoute>;
+if (route === '/admin/book-listings') return <AdminRoute><AdminBookListings /></AdminRoute>;
 if (route === '/reset-password') return <ResetPassword />;
 if (route === '/terms') return <TermsOfService />;
 if (route === '/privacy') return <PrivacyPolicy />;
@@ -124,7 +127,8 @@ if (FEATURES.tournaments && route.startsWith('/tournament/')) {
 
 if (FEATURES.tournaments && route === '/tournaments/create') return <Tournaments />;
 
-if (route === '/admin/fraud-dashboard') return <AdminRoute><AdminFraudDashboard /></AdminRoute>;  
+if (route === '/admin/fraud-dashboard') return <AdminRoute><AdminFraudDashboard /></AdminRoute>;
+if (route === '/admin/book-listings') return <AdminRoute><AdminBookListings /></AdminRoute>;  
 
 const KNOWN_ROUTES = [
   '/',
