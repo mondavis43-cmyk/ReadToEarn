@@ -3,8 +3,8 @@ import { supabase } from '../../lib/supabase';
 import { useTheme } from '../../contexts/ThemeContext';
 import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
 
-type SubmissionStatus = 'pending' | 'approved' | 'rejected';
-type FilterStatus = 'pending' | 'approved' | 'rejected';
+type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'paid';
+type FilterStatus = 'pending' | 'approved' | 'rejected' | 'paid';
 
 interface BookListing {
   id: string;
@@ -36,7 +36,7 @@ export const AdminBookListings = () => {
   const { isDark } = useTheme();
 
   const [listings, setListings] = useState<BookListing[]>([]);
-  const [filter, setFilter] = useState<FilterStatus>('pending');
+  const [filter, setFilter] = useState<FilterStatus>('paid');
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -167,10 +167,11 @@ export const AdminBookListings = () => {
   };
 
   const StatusBadge = ({ status }: { status: SubmissionStatus }) => {
-    const map = {
+    const map: Record<SubmissionStatus, { icon: React.ReactNode; cls: string }> = {
       pending: { icon: <Clock size={12} />, cls: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
       approved: { icon: <CheckCircle size={12} />, cls: 'bg-green-500/20 text-green-400 border-green-500/30' },
       rejected: { icon: <XCircle size={12} />, cls: 'bg-red-500/20 text-red-400 border-red-500/30' },
+      paid: { icon: <CheckCircle size={12} />, cls: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
     };
     const { icon, cls } = map[status];
     return (
@@ -233,7 +234,7 @@ export const AdminBookListings = () => {
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Status filter */}
         <div className="flex gap-2 mb-6">
-          {(['pending', 'approved', 'rejected'] as FilterStatus[]).map((opt) => (
+          {(['paid', 'pending', 'approved', 'rejected'] as FilterStatus[]).map((opt) => (
             <button
               key={opt}
               onClick={() => setFilter(opt)}
