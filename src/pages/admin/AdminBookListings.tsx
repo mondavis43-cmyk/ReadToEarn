@@ -82,7 +82,55 @@ export const AdminBookListings = () => {
   };
 
   const updateStatus = async (id: string, status: SubmissionStatus) => {
-    await supabase.from('author_submissions').update({ status }).eq('id', id);
+    const { error } = await supabase.from('author_submissions').update({ status }).eq('id', id);
+    if (error) {
+      console.error('Failed to update status:', error);
+      alert('Failed to update status: ' + error.message);
+      return;
+    }
+
+    // If approving, also insert into books table so it appears in Library
+    if (status === 'approved') {
+      const listing = listings.find((l) => l.id === id);
+      if (listing) {
+        // Insert book
+        const { data: bookData, error: bookErr } = await supabase
+          .from('books')
+          .insert({
+            title: listing.title,
+            author: listing.author,
+            cover_url: listing.cover_url,
+            page_count: listing.page_count,
+            book_type: 'read_to_earn',
+            genres: listing.genres || [],
+            is_listed: true,
+          })
+          .select()
+          .single();
+
+        if (bookErr || !bookData) {
+          console.error('Failed to insert book:', bookErr);
+          alert('Status updated but failed to add book to Library: ' + (bookErr?.message || 'Unknown error'));
+        } else {
+          // Insert questions if any
+          if (listing.questions && listing.questions.length > 0) {
+            const questionsToInsert = listing.questions.map((q) => ({
+              book_id: bookData.id,
+              question_text: q.question,
+              correct_answer: q.correct,
+              wrong_answer_1: q.wrong1,
+              wrong_answer_2: q.wrong2,
+              wrong_answer_3: q.wrong3,
+            }));
+            const { error: qErr } = await supabase.from('questions').insert(questionsToInsert);
+            if (qErr) {
+              console.error('Failed to insert questions:', qErr);
+            }
+          }
+        }
+      }
+    }
+
     setListings((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
     if (status !== 'pending') {
       setPendingCount((p) => Math.max(0, p - 1));
