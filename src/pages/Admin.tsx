@@ -21,6 +21,7 @@ import { AdminFraudDashboard }  from './admin/AdminFraudDashboard';
 import { AdminReadathon }       from './admin/AdminReadathon';
 import { AdminSprints }         from './admin/AdminSprints';
 import { AdminBookRequests }    from './admin/AdminBookRequests';
+import { AdminBookListings }    from './admin/AdminBookListings';
 
 export const GENRES = [
 'Action & Adventure', 'Biography & Memoir', 'Business', "Children's", 'Chick Lit',
@@ -51,7 +52,8 @@ type Tab =
 | 'readathon'
 | 'sprints'
 | 'fraud'
-| 'book_requests';
+| 'book_requests'
+| 'book_listings';
 
 const TABS: { key: Tab; label: string }[] = [
 { key: 'books',          label: 'Books & Questions' },
@@ -71,6 +73,7 @@ const TABS: { key: Tab; label: string }[] = [
 { key: 'ama',            label: 'AMA'               },
 { key: 'fraud',          label: '🚨 Fraud'          },
 { key: 'book_requests',  label: 'Book Requests'     },
+{ key: 'book_listings',  label: 'Book Listings'     },
 ];
 
 export function Admin() {
@@ -148,6 +151,7 @@ return (
       {activeTab === 'giveaway'       && <AdminGiveaway />}
       {activeTab === 'fraud'          && <AdminFraudDashboard />}
       {activeTab === 'book_requests'  && <AdminBookRequests />}
+      {activeTab === 'book_listings'  && <AdminBookListings />}
 
     </div>
   </div>
