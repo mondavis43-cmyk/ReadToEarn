@@ -34,7 +34,6 @@ export default function QuickTasks() {
       .from('author_quick_task_submissions')
       .select('*')
       .in('status', ['active', 'approved'])
-      .filter('completions_count', 'lt', supabase.rpc)
       .order('created_at', { ascending: false });
 
     // Filter out full tasks client-side
