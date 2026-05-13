@@ -38,17 +38,30 @@ export function AdminPayouts() {
 
   async function handleApprove(id: string) {
     setError('');
-    const { data, error: fnErr } = await supabase.functions.invoke('process-cashout', {
-      body: { cashout_id: id },
-    });
+    try {
+      const { data, error: fnErr } = await supabase.functions.invoke('process-cashout', {
+        body: { cashout_id: id },
+      });
 
-    if (fnErr || data?.error) {
-      setError(`Payout failed: ${data?.error ?? fnErr?.message}`);
-      return;
+      if (fnErr) {
+        // Try to get the actual error body from the context
+        const detail = (fnErr as any).context
+          ? await (fnErr as any).context.json().then((j: any) => j.error).catch(() => fnErr.message)
+          : fnErr.message;
+        setError(`Payout failed: ${detail}`);
+        return;
+      }
+
+      if (data?.error) {
+        setError(`Payout failed: ${data.error}`);
+        return;
+      }
+
+      setSuccess(data?.manual ? 'Approved — send payment manually then mark paid.' : 'Payment sent successfully!');
+      loadData();
+    } catch (e: any) {
+      setError(`Payout failed: ${e.message}`);
     }
-
-    setSuccess(data?.manual ? 'Approved — send payment manually then mark paid.' : 'Payment sent successfully!');
-    loadData();
   }
 
   async function handleUpdateStatus(
