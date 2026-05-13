@@ -139,6 +139,7 @@ async function handlePostPayment(
   paymentRef: string // stripe paymentIntent.id or paypal order_id
 ) {
   const pending = JSON.parse(sessionStorage.getItem("pendingSubmission") ?? "null");
+  console.log('[Checkout] handlePostPayment called:', { itemType: item.type, pending, userId });
 
   if (pending) {
     if (item.type === "listing") {
@@ -231,10 +232,16 @@ async function handlePostPayment(
 
     } else if (item.type === "beta_reader" || item.type === "sensitivity_reader") {
       // Insert with active status so it appears on public panels and admin
-      await supabase.from(pending.table).insert({
+      console.log('[Checkout] Inserting beta/sensitivity reader:', { table: pending?.table, data: pending?.data });
+      const { error } = await supabase.from(pending.table).insert({
         ...pending.data,
         status: "active",
       });
+      if (error) {
+        console.error('[Checkout] Insert error:', error);
+      } else {
+        console.log('[Checkout] Inserted successfully');
+      }
 
     } else if (item.type === "readathon_entry") {
       await supabase.from("readathon_entries").insert({
