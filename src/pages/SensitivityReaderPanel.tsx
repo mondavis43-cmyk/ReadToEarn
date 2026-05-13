@@ -79,7 +79,7 @@ export default function SensitivityReaderPanel() {
     const { data } = await supabase
       .from('author_sensitivity_submissions')
       .select('*')
-      .eq('status', 'active')
+      .in('status', ['active', 'approved'])
       .order('created_at', { ascending: false });
 
     const open = (data ?? []).filter(
