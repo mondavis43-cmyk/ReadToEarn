@@ -33,7 +33,7 @@ export default function QuickTasks() {
     const { data: taskData } = await supabase
       .from('author_quick_task_submissions')
       .select('*')
-      .eq('status', 'active')
+      .in('status', ['active', 'approved'])
       .filter('completions_count', 'lt', supabase.rpc)
       .order('created_at', { ascending: false });
 
