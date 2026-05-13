@@ -12,7 +12,7 @@ interface CashoutRequest {
   status: 'pending' | 'approved' | 'paid' | 'rejected';
   requires_tax_review: boolean;
   created_at: string;
-  profiles: { email: string; display_name: string | null; available_balance: number } | null;
+  profiles: { email: string; username: string | null; available_balance: number } | null;
 }
 
 type FilterStatus = 'all' | 'pending' | 'approved' | 'paid' | 'rejected' | 'tax_review';
@@ -30,7 +30,7 @@ export function AdminPayouts() {
     setLoading(true);
     const { data } = await supabase
       .from('cashout_requests')
-      .select('*, profiles(email, display_name, available_balance)')
+      .select('*, profiles(email, username, available_balance)')
       .order('created_at', { ascending: false });
     setRequests(data || []);
     setLoading(false);
@@ -207,7 +207,7 @@ export function AdminPayouts() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <p className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8]">
-                    {req.profiles?.display_name ?? 'Unknown User'}
+                    {req.profiles?.username ?? 'Unknown User'}
                   </p>
                   <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-0.5">
                     {req.profiles?.email ?? req.user_id}
