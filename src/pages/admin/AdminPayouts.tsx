@@ -6,11 +6,13 @@ interface CashoutRequest {
   id: string;
   user_id: string;
   amount: number;
-  method: string;
+  payout_type: string;
+  payout_details: string;
+  gift_card_brand: string | null;
   status: 'pending' | 'approved' | 'paid' | 'rejected';
   requires_tax_review: boolean;
   created_at: string;
-  profiles: { email: string; full_name: string | null; site_credit: number } | null;
+  profiles: { email: string; display_name: string | null; available_balance: number } | null;
 }
 
 type FilterStatus = 'all' | 'pending' | 'approved' | 'paid' | 'rejected' | 'tax_review';
@@ -28,15 +30,30 @@ export function AdminPayouts() {
     setLoading(true);
     const { data } = await supabase
       .from('cashout_requests')
-      .select('*, profiles(email, full_name, site_credit)')
+      .select('*, profiles(email, display_name, available_balance)')
       .order('created_at', { ascending: false });
     setRequests(data || []);
     setLoading(false);
   }
 
+  async function handleApprove(id: string) {
+    setError('');
+    const { data, error: fnErr } = await supabase.functions.invoke('process-cashout', {
+      body: { cashout_id: id },
+    });
+
+    if (fnErr || data?.error) {
+      setError(`Payout failed: ${data?.error ?? fnErr?.message}`);
+      return;
+    }
+
+    setSuccess(data?.manual ? 'Approved — send payment manually then mark paid.' : 'Payment sent successfully!');
+    loadData();
+  }
+
   async function handleUpdateStatus(
     id: string,
-    status: 'approved' | 'paid' | 'rejected'
+    status: 'paid' | 'rejected'
   ) {
     const { data: req, error: fetchErr } = await supabase
       .from('cashout_requests')
@@ -190,7 +207,7 @@ export function AdminPayouts() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <p className="font-medium text-[#1B2A4A] dark:text-[#F5F0E8]">
-                    {req.profiles?.full_name ?? 'Unknown User'}
+                    {req.profiles?.display_name ?? 'Unknown User'}
                   </p>
                   <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-0.5">
                     {req.profiles?.email ?? req.user_id}
@@ -200,10 +217,13 @@ export function AdminPayouts() {
                       ${req.amount.toFixed(2)}
                     </span>
                     <span className="text-[#6B7280] dark:text-gray-400 capitalize">
-                      via {req.method}
+                      via {req.payout_type === 'gift_card' ? `Gift Card (${req.gift_card_brand ?? 'Unknown'})` : req.payout_type}
                     </span>
+                    {req.payout_type !== 'gift_card' && req.payout_details && (
+                      <span className="text-[#6B7280] dark:text-gray-400">{req.payout_details}</span>
+                    )}
                     <span className="text-[#6B7280] dark:text-gray-400">
-                      Current balance: ${req.profiles?.site_credit?.toFixed(2) ?? '—'}
+                      Balance: ${req.profiles?.available_balance?.toFixed(2) ?? '—'}
                     </span>
                     <span className="text-[#6B7280] dark:text-gray-400">
                       {new Date(req.created_at).toLocaleDateString()}
@@ -219,10 +239,10 @@ export function AdminPayouts() {
                 {req.status === 'pending' && (
                   <>
                     <button
-                      onClick={() => handleUpdateStatus(req.id, 'approved')}
+                      onClick={() => handleApprove(req.id)}
                       className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg border border-blue-400 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
                     >
-                      <CheckCircle size={12} /> Approve
+                      <CheckCircle size={12} /> Approve & Send
                     </button>
                     <button
                       onClick={() => handleUpdateStatus(req.id, 'rejected')}
