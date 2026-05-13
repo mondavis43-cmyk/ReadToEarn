@@ -198,6 +198,12 @@ export const CheckoutSuccess = () => {
             await supabase.from('user_boosts').insert({ user_id: user.id, balance: boostCount });
           }
 
+        } else if (item.type === 'beta_reader' || item.type === 'sensitivity_reader') {
+          // Insert with active status so it appears on public panels
+          await supabase.from(pending.table).insert({
+            ...pending.data,
+            status: 'active',
+          });
         } else if (pending.table) {
           await supabase.from(pending.table).insert(pending.data);
         }
