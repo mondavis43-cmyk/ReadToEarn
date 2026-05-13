@@ -104,6 +104,7 @@ export const AdminBookListings = () => {
             book_type: 'read_to_earn',
             genres: listing.genres || [],
             is_listed: true,
+            bounty_amount: 0,
           })
           .select()
           .single();
