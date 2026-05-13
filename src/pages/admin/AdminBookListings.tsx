@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useTheme } from '../../contexts/ThemeContext';
 import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
- 
+
 type SubmissionStatus = 'pending' | 'approved' | 'rejected';
-type FilterStatus = 'all' | 'pending' | 'approved' | 'rejected';
- 
+type FilterStatus = 'pending' | 'approved' | 'rejected';
+
 interface BookListing {
   id: string;
   email: string;
@@ -23,7 +23,7 @@ interface BookListing {
   status: SubmissionStatus;
   created_at: string;
 }
- 
+
 interface QuizQuestion {
   question: string;
   correct: string;
@@ -31,10 +31,10 @@ interface QuizQuestion {
   wrong2: string;
   wrong3: string;
 }
- 
+
 export const AdminBookListings = () => {
   const { isDark } = useTheme();
- 
+
   const [listings, setListings] = useState<BookListing[]>([]);
   const [filter, setFilter] = useState<FilterStatus>('pending');
   const [loading, setLoading] = useState(false);
@@ -42,7 +42,7 @@ export const AdminBookListings = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<Partial<BookListing>>({});
   const [pendingCount, setPendingCount] = useState(0);
- 
+
   // Theme tokens
   const pageBg = isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]';
   const textPrimary = isDark ? 'text-[#F5F0E8]' : 'text-[#1B2A4A]';
@@ -56,21 +56,23 @@ export const AdminBookListings = () => {
       ? 'bg-[#0f1623] border-[#F5F0E8]/10 text-[#F5F0E8] focus:border-[#D4A843]/60'
       : 'bg-white border-[#1B2A4A]/20 text-[#1B2A4A] focus:border-[#D4A843]/60'
   }`;
- 
+
   useEffect(() => {
     loadListings();
     loadPendingCount();
   }, [filter]);
- 
+
   const loadListings = async () => {
     setLoading(true);
-    let query = supabase.from('author_submissions').select('*').order('created_at', { ascending: false });
-    if (filter !== 'all') query = query.eq('status', filter);
-    const { data } = await query;
+    const { data } = await supabase
+      .from('author_submissions')
+      .select('*')
+      .eq('status', filter)
+      .order('created_at', { ascending: false });
     setListings((data as BookListing[]) || []);
     setLoading(false);
   };
- 
+
   const loadPendingCount = async () => {
     const { count } = await supabase
       .from('author_submissions')
@@ -78,7 +80,7 @@ export const AdminBookListings = () => {
       .eq('status', 'pending');
     setPendingCount(count || 0);
   };
- 
+
   const updateStatus = async (id: string, status: SubmissionStatus) => {
     await supabase.from('author_submissions').update({ status }).eq('id', id);
     setListings((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
@@ -86,7 +88,7 @@ export const AdminBookListings = () => {
       setPendingCount((p) => Math.max(0, p - 1));
     }
   };
- 
+
   const startEdit = (listing: BookListing) => {
     setEditDraft({
       title: listing.title,
@@ -98,24 +100,24 @@ export const AdminBookListings = () => {
     });
     setEditingId(listing.id);
   };
- 
+
   const cancelEdit = () => {
     setEditingId(null);
     setEditDraft({});
   };
- 
+
   const saveEdit = async (id: string) => {
     await supabase.from('author_submissions').update(editDraft).eq('id', id);
     setListings((prev) => prev.map((l) => (l.id === id ? { ...l, ...editDraft } : l)));
     setEditingId(null);
     setEditDraft({});
   };
- 
+
   const saveAndApprove = async (id: string) => {
     await saveEdit(id);
     await updateStatus(id, 'approved');
   };
- 
+
   const StatusBadge = ({ status }: { status: SubmissionStatus }) => {
     const map = {
       pending: { icon: <Clock size={12} />, cls: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
@@ -130,7 +132,7 @@ export const AdminBookListings = () => {
       </span>
     );
   };
- 
+
   const QuizList = ({ questions }: { questions: QuizQuestion[] }) => {
     if (!questions || questions.length === 0) {
       return <p className={`text-xs italic ${textMuted}`}>No quiz questions submitted.</p>;
@@ -167,7 +169,7 @@ export const AdminBookListings = () => {
       </ol>
     );
   };
- 
+
   return (
     <div className={`min-h-screen ${pageBg} transition-colors duration-300`}>
       {/* Header */}
@@ -179,11 +181,11 @@ export const AdminBookListings = () => {
           </p>
         </div>
       </div>
- 
+
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Status filter */}
         <div className="flex gap-2 mb-6">
-          {(['all', 'pending', 'approved', 'rejected'] as FilterStatus[]).map((opt) => (
+          {(['pending', 'approved', 'rejected'] as FilterStatus[]).map((opt) => (
             <button
               key={opt}
               onClick={() => setFilter(opt)}
@@ -206,20 +208,20 @@ export const AdminBookListings = () => {
             </button>
           ))}
         </div>
- 
+
         {/* Listings list */}
         {loading ? (
           <div className={`text-center py-16 ${textMuted}`}>Loading...</div>
         ) : listings.length === 0 ? (
           <div className={`text-center py-16 ${textMuted}`}>
-            No {filter === 'all' ? '' : filter} book listings found.
+            No {filter} book listings found.
           </div>
         ) : (
           <div className="space-y-3">
             {listings.map((listing) => {
               const isExpanded = expandedId === listing.id;
               const isEditing = editingId === listing.id;
- 
+
               return (
                 <div key={listing.id} className={`rounded-xl border ${cardBg} overflow-hidden`}>
                   {/* Row header */}
@@ -259,7 +261,7 @@ export const AdminBookListings = () => {
                       </button>
                     </div>
                   </div>
- 
+
                   {/* Expanded detail */}
                   {isExpanded && (
                     <div className={`border-t ${divider} px-5 py-5`}>
@@ -381,7 +383,7 @@ export const AdminBookListings = () => {
                           </div>
                         )}
                       </div>
- 
+
                       {/* Quiz questions */}
                       <div className="mb-6">
                         <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${textMuted}`}>
@@ -389,7 +391,7 @@ export const AdminBookListings = () => {
                         </p>
                         <QuizList questions={listing.questions || []} />
                       </div>
- 
+
                       {/* Edit mode */}
                       {isEditing ? (
                         <div>
@@ -482,7 +484,7 @@ export const AdminBookListings = () => {
                               />
                             </div>
                           </div>
- 
+
                           <div className="flex gap-2 flex-wrap">
                             <button
                               onClick={cancelEdit}
