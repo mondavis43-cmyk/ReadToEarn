@@ -46,7 +46,7 @@ export default function BetaReaderPanel() {
     const { data } = await supabase
       .from('author_beta_reader_submissions')
       .select('*')
-      .eq('status', 'active')
+      .in('status', ['active', 'approved'])
       .order('created_at', { ascending: false });
 
     const open = (data ?? []).filter(
@@ -341,7 +341,7 @@ export default function BetaReaderPanel() {
           disabled={!isValid() || submitting}
           className="w-full bg-yellow-400 text-black font-bold py-3 rounded-xl hover:bg-yellow-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {submitting ? 'Submitting...' : 'Submit Feedback & Earn'}
+          {submitting ? 'Submitting...' : 'Submit Feedback & Earn $1.50'}
         </button>
       </div>
     );
