@@ -230,7 +230,7 @@ async function handlePostPayment(
           .eq("id", pending.sprint_id);
       }
 
-    } else if (item.type === "beta_reader" || item.type === "sensitivity_reader") {
+    } else if (item.type === "beta_readers" || item.type === "sensitivity_readers") {
       // Insert with active status so it appears on public panels and admin
       console.log('[Checkout] Inserting beta/sensitivity reader:', { table: pending?.table, data: pending?.data });
       const { error } = await supabase.from(pending.table).insert({
