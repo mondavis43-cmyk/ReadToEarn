@@ -86,6 +86,34 @@ export const CheckoutSuccess = () => {
         if (item.type === 'listing') {
           await supabase.from('author_submissions').insert(pending);
 
+          // Track credits for bundle purchases
+          const bundleSize = pending.bundle_size || 1;
+          const email = pending.email;
+          if (email) {
+            const { data: creditRow } = await supabase
+              .from('author_credits')
+              .select('credits_total, credits_used')
+              .eq('email', email)
+              .maybeSingle();
+
+            if (creditRow) {
+              // Update existing credits - add bundle size to total
+              await supabase
+                .from('author_credits')
+                .update({ credits_total: creditRow.credits_total + bundleSize })
+                .eq('email', email);
+            } else {
+              // Create new credits record - bundle size total, 1 used for this submission
+              await supabase
+                .from('author_credits')
+                .insert({
+                  email: email,
+                  credits_total: bundleSize,
+                  credits_used: 1,
+                });
+            }
+          }
+
         } else if (item.type === 'readathon_entry') {
           await supabase.from('readathon_entries').insert({
             readathon_id:   pending.readathon_id,
