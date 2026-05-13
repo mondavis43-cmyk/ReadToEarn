@@ -200,12 +200,20 @@ export const CheckoutSuccess = () => {
 
         } else if (item.type === 'beta_reader' || item.type === 'sensitivity_reader') {
           // Insert with active status so it appears on public panels
-          await supabase.from(pending.table).insert({
+          console.log('[CheckoutSuccess] Inserting beta/sensitivity reader:', { table: pending.table, data: pending.data });
+          const { error: insertError } = await supabase.from(pending.table).insert({
             ...pending.data,
             status: 'active',
           });
+          if (insertError) {
+            console.error('[CheckoutSuccess] Insert error:', insertError);
+            throw new Error('Failed to insert submission: ' + insertError.message);
+          }
+          console.log('[CheckoutSuccess] Inserted successfully');
         } else if (pending.table) {
           await supabase.from(pending.table).insert(pending.data);
+        } else {
+          console.warn('[CheckoutSuccess] No pending submission found for item.type:', item.type);
         }
 
         sessionStorage.removeItem('pendingSubmission');
