@@ -4,7 +4,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
 
 type SubmissionStatus = 'pending' | 'approved' | 'rejected';
-type Tab = 'bounties' | 'competitions' | 'quick_tasks' | 'surveys' | 'beta' | 'sensitivity';
+type Tab = 'bounties' | 'competitions' | 'quick_tasks' | 'surveys' | 'beta' | 'sensitivity' | 'book_listings';
 
 interface Question {
   id: string;
@@ -19,6 +19,7 @@ const TAB_LABELS: Record<Tab, string> = {
   surveys:      'Surveys',
   beta:         'Beta Readers',
   sensitivity:  'Sensitivity Readers',
+  book_listings: 'Book Listings',
 };
 
 const TAB_TABLES: Record<Tab, string> = {
@@ -28,12 +29,25 @@ const TAB_TABLES: Record<Tab, string> = {
   surveys:      'author_survey_submissions',
   beta:         'author_beta_reader_submissions',
   sensitivity:  'author_sensitivity_submissions',
+  book_listings: 'author_submissions',
 };
 
 const STATUS_FILTER_OPTIONS: (SubmissionStatus | 'all')[] = ['all', 'pending', 'approved', 'rejected'];
 
 // Fields shown in expanded detail view (non-question fields)
 const DETAIL_FIELDS: Record<Tab, { key: string; label: string }[]> = {
+  book_listings: [
+    { key: 'title', label: 'Book Title' },
+    { key: 'author', label: 'Author' },
+    { key: 'email', label: 'Author Email' },
+    { key: 'page_count', label: 'Page Count' },
+    { key: 'amount_paid', label: 'Amount Paid ($)' },
+    { key: 'bundle_size', label: 'Bundle Size' },
+    { key: 'description', label: 'Description' },
+    { key: 'affiliate_link', label: 'Affiliate Link' },
+    { key: 'genres', label: 'Genres' },
+    { key: 'tropes', label: 'Tropes' },
+  ],
   bounties: [
     { key: 'book_title',        label: 'Book Title' },
     { key: 'pool_size',         label: 'Pool Size ($)' },
@@ -91,6 +105,14 @@ const DETAIL_FIELDS: Record<Tab, { key: string; label: string }[]> = {
 
 // Fields editable inline
 const EDITABLE_FIELDS: Record<Tab, { key: string; label: string; type: 'input' | 'textarea' }[]> = {
+  book_listings: [
+    { key: 'title', label: 'Book Title', type: 'input' },
+    { key: 'author', label: 'Author', type: 'input' },
+    { key: 'page_count', label: 'Page Count', type: 'input' },
+    { key: 'amount_paid', label: 'Amount Paid ($)', type: 'input' },
+    { key: 'description', label: 'Description', type: 'textarea' },
+    { key: 'affiliate_link', label: 'Affiliate Link', type: 'input' },
+  ],
   bounties: [
     { key: 'pool_size',         label: 'Pool Size ($)',    type: 'input'    },
     { key: 'platform_fee',      label: 'Platform Fee ($)', type: 'input'    },
@@ -130,7 +152,7 @@ const EDITABLE_FIELDS: Record<Tab, { key: string; label: string; type: 'input' |
 };
 
 // Tabs that have custom_questions to render
-const QUESTION_TABS: Tab[] = ['surveys', 'beta', 'sensitivity'];
+const QUESTION_TABS: Tab[] = ['surveys', 'beta', 'sensitivity', 'book_listings'];
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -172,7 +194,7 @@ export const AdminSubmissions = () => {
   const [editDraft, setEditDraft]       = useState<Record<string, any>>({});
   const [pendingCounts, setPendingCounts] = useState<Record<Tab, number>>({
     bounties: 0, competitions: 0, quick_tasks: 0,
-    surveys: 0, beta: 0, sensitivity: 0,
+    surveys: 0, beta: 0, sensitivity: 0, book_listings: 0,
   });
 
   // ── theme tokens ─────────────────────────────────────────────────────────────
