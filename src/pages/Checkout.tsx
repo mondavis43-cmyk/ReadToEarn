@@ -251,6 +251,12 @@ async function handlePostPayment(
           .eq("id", pending.readathon_id);
       }
 
+    } else if (item.type === "beta_reader" || item.type === "sensitivity_reader") {
+      // Insert with active status so it appears on public panels
+      await supabase.from(pending.table).insert({
+        ...pending.data,
+        status: 'active',
+      });
     } else if (pending.table) {
       await supabase.from(pending.table).insert(pending.data);
     }
