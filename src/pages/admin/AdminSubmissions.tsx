@@ -4,7 +4,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
 
 type SubmissionStatus = 'pending' | 'approved' | 'rejected';
-type Tab = 'bounties' | 'competitions' | 'quick_tasks' | 'surveys' | 'beta' | 'sensitivity' | 'book_listings';
+type Tab = 'bounties' | 'competitions' | 'quick_tasks' | 'surveys' | 'beta' | 'sensitivity';
 
 interface Question {
   id: string;
@@ -19,7 +19,6 @@ const TAB_LABELS: Record<Tab, string> = {
   surveys:      'Surveys',
   beta:         'Beta Readers',
   sensitivity:  'Sensitivity Readers',
-  book_listings: 'Book Listings',
 };
 
 const TAB_TABLES: Record<Tab, string> = {
@@ -29,25 +28,12 @@ const TAB_TABLES: Record<Tab, string> = {
   surveys:      'author_survey_submissions',
   beta:         'author_beta_reader_submissions',
   sensitivity:  'author_sensitivity_submissions',
-  book_listings: 'author_submissions',
 };
 
 const STATUS_FILTER_OPTIONS: (SubmissionStatus | 'all')[] = ['all', 'pending', 'approved', 'rejected'];
 
 // Fields shown in expanded detail view (non-question fields)
 const DETAIL_FIELDS: Record<Tab, { key: string; label: string }[]> = {
-  book_listings: [
-    { key: 'title', label: 'Book Title' },
-    { key: 'author', label: 'Author' },
-    { key: 'email', label: 'Author Email' },
-    { key: 'page_count', label: 'Page Count' },
-    { key: 'amount_paid', label: 'Amount Paid ($)' },
-    { key: 'bundle_size', label: 'Bundle Size' },
-    { key: 'description', label: 'Description' },
-    { key: 'affiliate_link', label: 'Affiliate Link' },
-    { key: 'genres', label: 'Genres' },
-    { key: 'tropes', label: 'Tropes' },
-  ],
   bounties: [
     { key: 'book_title',        label: 'Book Title' },
     { key: 'pool_size',         label: 'Pool Size ($)' },
@@ -105,14 +91,6 @@ const DETAIL_FIELDS: Record<Tab, { key: string; label: string }[]> = {
 
 // Fields editable inline
 const EDITABLE_FIELDS: Record<Tab, { key: string; label: string; type: 'input' | 'textarea' }[]> = {
-  book_listings: [
-    { key: 'title', label: 'Book Title', type: 'input' },
-    { key: 'author', label: 'Author', type: 'input' },
-    { key: 'page_count', label: 'Page Count', type: 'input' },
-    { key: 'amount_paid', label: 'Amount Paid ($)', type: 'input' },
-    { key: 'description', label: 'Description', type: 'textarea' },
-    { key: 'affiliate_link', label: 'Affiliate Link', type: 'input' },
-  ],
   bounties: [
     { key: 'pool_size',         label: 'Pool Size ($)',    type: 'input'    },
     { key: 'platform_fee',      label: 'Platform Fee ($)', type: 'input'    },
@@ -152,7 +130,7 @@ const EDITABLE_FIELDS: Record<Tab, { key: string; label: string; type: 'input' |
 };
 
 // Tabs that have custom_questions to render
-const QUESTION_TABS: Tab[] = ['surveys', 'beta', 'sensitivity', 'book_listings'];
+const QUESTION_TABS: Tab[] = ['surveys', 'beta', 'sensitivity'];
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -194,7 +172,7 @@ export const AdminSubmissions = () => {
   const [editDraft, setEditDraft]       = useState<Record<string, any>>({});
   const [pendingCounts, setPendingCounts] = useState<Record<Tab, number>>({
     bounties: 0, competitions: 0, quick_tasks: 0,
-    surveys: 0, beta: 0, sensitivity: 0, book_listings: 0,
+    surveys: 0, beta: 0, sensitivity: 0,
   });
 
   // ── theme tokens ─────────────────────────────────────────────────────────────
@@ -320,35 +298,7 @@ export const AdminSubmissions = () => {
     );
   };
 
-  // ── book quiz list renderer (shows correct/wrong answers) ──────────────────────
-  const BookQuizList = ({ raw }: { raw: unknown }) => {
-    const questions = Array.isArray(raw) ? raw : [];
-    if (questions.length === 0) return (
-      <p className={`text-xs italic ${textMuted}`}>No quiz questions submitted.</p>
-    );
-    return (
-      <ol className="space-y-3">
-        {questions.map((q: any, idx: number) => (
-          <li key={idx} className={`rounded-lg p-4 border ${isDark ? 'border-[#F5F0E8]/10 bg-[#0f1623]/40' : 'border-[#1B2A4A]/10 bg-[#F5F0E8]/60'}`}>
-            <p className={`text-sm ${textPrimary} mb-3`}>
-              <span className={`font-semibold mr-1.5 ${textMuted}`}>Q{idx + 1}.</span>
-              {q.question}
-            </p>
-            <div className="space-y-1.5 text-sm">
-              <p className="text-green-600 dark:text-green-400">
-                <span className="font-medium">Correct:</span> {q.correct}
-              </p>
-              <p className={textMuted}><span className="font-medium">Wrong 1:</span> {q.wrong1}</p>
-              <p className={textMuted}><span className="font-medium">Wrong 2:</span> {q.wrong2}</p>
-              <p className={textMuted}><span className="font-medium">Wrong 3:</span> {q.wrong3}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
-    );
-  };
-
-  // ── identity pills renderer ───────────────────────────────────────────────────
+  // ── identity pills renderer ─────────────────────────────────────────────────--
   const IdentityPills = ({ raw }: { raw: unknown }) => {
     const identities = parseIdentities(raw);
     if (identities.length === 0) return (
@@ -466,9 +416,6 @@ export const AdminSubmissions = () => {
                       {sub.pool_size && (
                         <span className="text-xs font-semibold text-[#D4A843]">${sub.pool_size}</span>
                       )}
-                      {sub.amount_paid !== undefined && sub.amount_paid !== null && (
-                        <span className="text-xs font-semibold text-[#D4A843]">${sub.amount_paid}</span>
-                      )}
                       <button
                         onClick={() => setExpandedId(isExpanded ? null : sub.id)}
                         className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-[#F5F0E8]/10' : 'hover:bg-[#1B2A4A]/10'}`}
@@ -512,22 +459,12 @@ export const AdminSubmissions = () => {
                       )}
 
                       {/* Custom questions — surveys, beta, sensitivity */}
-                      {(activeTab === 'surveys' || activeTab === 'beta' || activeTab === 'sensitivity') && (
+                      {QUESTION_TABS.includes(activeTab) && (
                         <div className="mb-6">
                           <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${textMuted}`}>
                             Feedback Questions
                           </p>
                           <QuestionList raw={sub.custom_questions} />
-                        </div>
-                      )}
-
-                      {/* Book quiz questions */}
-                      {activeTab === 'book_listings' && sub.questions && (
-                        <div className="mb-6">
-                          <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${textMuted}`}>
-                            Quiz Questions ({sub.questions.length})
-                          </p>
-                          <BookQuizList raw={sub.questions} />
                         </div>
                       )}
 
