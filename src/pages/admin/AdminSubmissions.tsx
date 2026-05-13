@@ -226,12 +226,19 @@ export const AdminSubmissions = () => {
   // ── actions ───────────────────────────────────────────────────────────────────
   const updateStatus = async (id: string, status: SubmissionStatus) => {
     const table = TAB_TABLES[activeTab];
-    await supabase.from(table).update({ status }).eq('id', id);
+    const { error } = await supabase.from(table).update({ status }).eq('id', id);
+    if (error) {
+      console.error('Failed to update status:', error);
+      alert('Failed to update status: ' + error.message);
+      return;
+    }
     setSubmissions(prev => prev.map(s => s.id === id ? { ...s, status } : s));
-    setPendingCounts(prev => ({
-      ...prev,
-      [activeTab]: Math.max(0, prev[activeTab] - 1),
-    }));
+    if (status !== 'pending') {
+      setPendingCounts(prev => ({
+        ...prev,
+        [activeTab]: Math.max(0, prev[activeTab] - 1),
+      }));
+    }
   };
 
   const startEdit = (submission: any) => {
