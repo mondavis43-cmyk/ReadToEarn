@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useTheme } from '../../contexts/ThemeContext';
 import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
 
-type SubmissionStatus = 'pending' | 'approved' | 'rejected';
+type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'paid' | 'active';
 type Tab = 'bounties' | 'competitions' | 'quick_tasks' | 'surveys' | 'beta' | 'sensitivity';
 
 interface Question {
@@ -30,7 +30,7 @@ const TAB_TABLES: Record<Tab, string> = {
   sensitivity:  'author_sensitivity_submissions',
 };
 
-const STATUS_FILTER_OPTIONS: (SubmissionStatus | 'all')[] = ['all', 'pending', 'approved', 'rejected'];
+const STATUS_FILTER_OPTIONS: (SubmissionStatus)[] = ['pending', 'approved', 'rejected', 'paid', 'active'];
 
 // Fields shown in expanded detail view (non-question fields)
 const DETAIL_FIELDS: Record<Tab, { key: string; label: string }[]> = {
@@ -200,9 +200,11 @@ export const AdminSubmissions = () => {
     setExpandedId(null);
     setEditingId(null);
     const table = TAB_TABLES[activeTab];
-    let query = supabase.from(table).select('*').order('created_at', { ascending: false });
-    if (statusFilter !== 'all') query = query.eq('status', statusFilter);
-    const { data } = await query;
+    const { data } = await supabase
+      .from(table)
+      .select('*')
+      .eq('status', statusFilter)
+      .order('created_at', { ascending: false });
     setSubmissions(data || []);
     setLoading(false);
   };
@@ -256,12 +258,14 @@ export const AdminSubmissions = () => {
 
   // ── status badge ──────────────────────────────────────────────────────────────
   const StatusBadge = ({ status }: { status: SubmissionStatus }) => {
-    const map = {
+    const map: Record<SubmissionStatus, { icon: React.ReactNode; cls: string }> = {
       pending:  { icon: <Clock size={12} />,        cls: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
       approved: { icon: <CheckCircle size={12} />,  cls: 'bg-green-500/20 text-green-400 border-green-500/30'   },
       rejected: { icon: <XCircle size={12} />,      cls: 'bg-red-500/20 text-red-400 border-red-500/30'         },
+      paid:     { icon: <CheckCircle size={12} />,  cls: 'bg-blue-500/20 text-blue-400 border-blue-500/30'     },
+      active:   { icon: <Clock size={12} />,        cls: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
     };
-    const { icon, cls } = map[status];
+    const { icon, cls } = map[status] || map['pending'];
     return (
       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border font-medium ${cls}`}>
         {icon}{status}
@@ -382,7 +386,7 @@ export const AdminSubmissions = () => {
           <div className={`text-center py-16 ${textMuted}`}>Loading...</div>
         ) : submissions.length === 0 ? (
           <div className={`text-center py-16 ${textMuted}`}>
-            No {statusFilter === 'all' ? '' : statusFilter} submissions for {TAB_LABELS[activeTab]}.
+            No {statusFilter} submissions for {TAB_LABELS[activeTab]}.
           </div>
         ) : (
           <div className="space-y-3">
