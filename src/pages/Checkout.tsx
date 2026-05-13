@@ -143,6 +143,32 @@ async function handlePostPayment(
   if (pending) {
     if (item.type === "listing") {
       await supabase.from("author_submissions").insert(pending);
+
+      // Track credits for bundle purchases (Stripe)
+      const bundleSize = pending.bundle_size || 1;
+      const email = pending.email;
+      if (email) {
+        const { data: creditRow } = await supabase
+          .from("author_credits")
+          .select("credits_total, credits_used")
+          .eq("email", email)
+          .maybeSingle();
+
+        if (creditRow) {
+          await supabase
+            .from("author_credits")
+            .update({ credits_total: creditRow.credits_total + bundleSize })
+            .eq("email", email);
+        } else {
+          await supabase
+            .from("author_credits")
+            .insert({
+              email: email,
+              credits_total: bundleSize,
+              credits_used: 1,
+            });
+        }
+      }
     } else if (item.type === "competition_entry") {
       await supabase.from("competition_entries").insert({
         competition_id: pending.competition_id,
