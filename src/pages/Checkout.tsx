@@ -229,6 +229,13 @@ async function handlePostPayment(
           .eq("id", pending.sprint_id);
       }
 
+    } else if (item.type === "beta_reader" || item.type === "sensitivity_reader") {
+      // Insert with active status so it appears on public panels and admin
+      await supabase.from(pending.table).insert({
+        ...pending.data,
+        status: "active",
+      });
+
     } else if (item.type === "readathon_entry") {
       await supabase.from("readathon_entries").insert({
         readathon_id:   pending.readathon_id,
