@@ -320,6 +320,34 @@ export const AdminSubmissions = () => {
     );
   };
 
+  // ── book quiz list renderer (shows correct/wrong answers) ──────────────────────
+  const BookQuizList = ({ raw }: { raw: unknown }) => {
+    const questions = Array.isArray(raw) ? raw : [];
+    if (questions.length === 0) return (
+      <p className={`text-xs italic ${textMuted}`}>No quiz questions submitted.</p>
+    );
+    return (
+      <ol className="space-y-3">
+        {questions.map((q: any, idx: number) => (
+          <li key={idx} className={`rounded-lg p-4 border ${isDark ? 'border-[#F5F0E8]/10 bg-[#0f1623]/40' : 'border-[#1B2A4A]/10 bg-[#F5F0E8]/60'}`}>
+            <p className={`text-sm ${textPrimary} mb-3`}>
+              <span className={`font-semibold mr-1.5 ${textMuted}`}>Q{idx + 1}.</span>
+              {q.question}
+            </p>
+            <div className="space-y-1.5 text-sm">
+              <p className="text-green-600 dark:text-green-400">
+                <span className="font-medium">Correct:</span> {q.correct}
+              </p>
+              <p className={textMuted}><span className="font-medium">Wrong 1:</span> {q.wrong1}</p>
+              <p className={textMuted}><span className="font-medium">Wrong 2:</span> {q.wrong2}</p>
+              <p className={textMuted}><span className="font-medium">Wrong 3:</span> {q.wrong3}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    );
+  };
+
   // ── identity pills renderer ───────────────────────────────────────────────────
   const IdentityPills = ({ raw }: { raw: unknown }) => {
     const identities = parseIdentities(raw);
@@ -438,6 +466,9 @@ export const AdminSubmissions = () => {
                       {sub.pool_size && (
                         <span className="text-xs font-semibold text-[#D4A843]">${sub.pool_size}</span>
                       )}
+                      {sub.amount_paid !== undefined && sub.amount_paid !== null && (
+                        <span className="text-xs font-semibold text-[#D4A843]">${sub.amount_paid}</span>
+                      )}
                       <button
                         onClick={() => setExpandedId(isExpanded ? null : sub.id)}
                         className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-[#F5F0E8]/10' : 'hover:bg-[#1B2A4A]/10'}`}
@@ -481,12 +512,22 @@ export const AdminSubmissions = () => {
                       )}
 
                       {/* Custom questions — surveys, beta, sensitivity */}
-                      {QUESTION_TABS.includes(activeTab) && (
+                      {(activeTab === 'surveys' || activeTab === 'beta' || activeTab === 'sensitivity') && (
                         <div className="mb-6">
                           <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${textMuted}`}>
                             Feedback Questions
                           </p>
                           <QuestionList raw={sub.custom_questions} />
+                        </div>
+                      )}
+
+                      {/* Book quiz questions */}
+                      {activeTab === 'book_listings' && sub.questions && (
+                        <div className="mb-6">
+                          <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${textMuted}`}>
+                            Quiz Questions ({sub.questions.length})
+                          </p>
+                          <BookQuizList raw={sub.questions} />
                         </div>
                       )}
 
