@@ -91,7 +91,7 @@ export const AuthorBetaReaders = () => {
   const filledQuestions = questions.filter(q => q.question.trim());
 
   sessionStorage.setItem('checkoutItem', JSON.stringify({
-    type: 'beta_readers',
+    type: 'beta_reader',
     label: `Beta Readers — ${selectedPackage.label} (${selectedPackage.readers} readers) — ${bookTitle}`,
     amount: selectedPackage.cents,
     metadata: {
