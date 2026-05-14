@@ -127,7 +127,7 @@ const handlePay = async (e: React.FormEvent) => {
           blurb:            form.blurb.trim(),
           notes:            form.notes.trim() || null,
           custom_questions: filledQuestions.length > 0 ? JSON.stringify(filledQuestions) : null,
-          status:           "pending",
+          status:           "active",
         });
 
       if (subErr) {
