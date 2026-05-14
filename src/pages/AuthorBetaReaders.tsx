@@ -23,6 +23,8 @@ const FEEDBACK_TYPES = [
 { value: "Would You Buy?",    desc: "Purchase intent and market appeal"  },
 ];
 
+const MAX_QUESTIONS = 15;
+
 const CARD_STYLE = {
 style: {
   base: {
@@ -49,7 +51,15 @@ notes:        string;
 
 type Pkg = typeof PACKAGES[0];
 
-const StripePaymentForm = ({ form, pkg }: { form: FormState; pkg: Pkg }) => {
+const StripePaymentForm = ({
+form,
+pkg,
+questions,
+}: {
+form: FormState;
+pkg: Pkg;
+questions: string[];
+}) => {
 const stripe   = useStripe();
 const elements = useElements();
 const [loading, setLoading] = useState(false);
@@ -100,21 +110,24 @@ const handlePay = async (e: React.FormEvent) => {
       });
       if (payErr) console.error("[BetaReaders] payment log error:", payErr);
 
+      const filledQuestions = questions.filter((q) => q.trim() !== "");
+
       const { error: subErr } = await supabase
         .from("author_beta_reader_submissions")
         .insert({
-          author_name:   form.authorName.trim(),
-          email:         form.email.trim(),
-          book_title:    form.bookTitle.trim(),
-          genre:         form.genre.trim(),
-          feedback_type: form.feedbackType,
-          package_label: pkg.label,
-          readers:       pkg.readers,
-          price:         pkg.price,
-          excerpt:       form.excerpt.trim(),
-          blurb:         form.blurb.trim(),
-          notes:         form.notes.trim() || null,
-          status:        "pending",
+          author_name:      form.authorName.trim(),
+          email:            form.email.trim(),
+          book_title:       form.bookTitle.trim(),
+          genre:            form.genre.trim(),
+          feedback_type:    form.feedbackType,
+          package_label:    pkg.label,
+          readers:          pkg.readers,
+          price:            pkg.price,
+          excerpt:          form.excerpt.trim(),
+          blurb:            form.blurb.trim(),
+          notes:            form.notes.trim() || null,
+          custom_questions: filledQuestions.length > 0 ? JSON.stringify(filledQuestions) : null,
+          status:           "pending",
         });
 
       if (subErr) {
@@ -172,10 +185,29 @@ const [form, setForm] = useState<FormState>({
 });
 const [selectedPkg,  setSelectedPkg]  = useState<Pkg | null>(null);
 const [showPayment,  setShowPayment]  = useState(false);
+const [questions,    setQuestions]    = useState<string[]>([""]);
 
 const set = (field: keyof FormState) =>
   (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
+
+const setQuestion = (index: number, value: string) => {
+  setQuestions((prev) => {
+    const updated = [...prev];
+    updated[index] = value;
+    return updated;
+  });
+};
+
+const addQuestion = () => {
+  if (questions.length < MAX_QUESTIONS) {
+    setQuestions((prev) => [...prev, ""]);
+  }
+};
+
+const removeQuestion = (index: number) => {
+  setQuestions((prev) => prev.filter((_, i) => i !== index));
+};
 
 const isValid =
   form.authorName.trim() &&
@@ -205,6 +237,7 @@ return (
       </div>
 
       <div className="space-y-8">
+        {/* Book Info */}
         <section className="bg-[#141414] rounded-xl p-6 border border-gray-800 space-y-4">
           <h2 className="text-white font-semibold text-lg">Book Information</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -227,6 +260,7 @@ return (
           </div>
         </section>
 
+        {/* Feedback Type */}
         <section className="bg-[#141414] rounded-xl p-6 border border-gray-800 space-y-4">
           <h2 className="text-white font-semibold text-lg">Feedback Focus *</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -248,6 +282,7 @@ return (
           </div>
         </section>
 
+        {/* Package */}
         <section className="bg-[#141414] rounded-xl p-6 border border-gray-800 space-y-4">
           <h2 className="text-white font-semibold text-lg">Select Package *</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -270,6 +305,7 @@ return (
           </div>
         </section>
 
+        {/* Content */}
         <section className="bg-[#141414] rounded-xl p-6 border border-gray-800 space-y-4">
           <h2 className="text-white font-semibold text-lg">Your Content</h2>
           <div>
@@ -286,6 +322,54 @@ return (
           </div>
         </section>
 
+        {/* Custom Questions */}
+        <section className="bg-[#141414] rounded-xl p-6 border border-gray-800 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-white font-semibold text-lg">Custom Questions <span className="text-gray-500 font-normal text-sm">(optional)</span></h2>
+              <p className="text-gray-400 text-xs mt-1">Readers will answer these in free text. Up to {MAX_QUESTIONS} questions.</p>
+            </div>
+            <span className="text-gray-500 text-xs">{questions.filter(q => q.trim()).length}/{MAX_QUESTIONS}</span>
+          </div>
+
+          <div className="space-y-3">
+            {questions.map((q, i) => (
+              <div key={i} className="flex gap-2 items-start">
+                <div className="flex-1">
+                  <input
+                    className={inputCls}
+                    placeholder={`Question ${i + 1}...`}
+                    value={q}
+                    onChange={(e) => setQuestion(i, e.target.value)}
+                    maxLength={300}
+                  />
+                </div>
+                {questions.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeQuestion(i)}
+                    className="mt-0.5 text-gray-500 hover:text-red-400 transition text-lg leading-none px-1"
+                    title="Remove question"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {questions.length < MAX_QUESTIONS && (
+            <button
+              type="button"
+              onClick={addQuestion}
+              className="text-sm text-gray-400 hover:text-white transition flex items-center gap-1"
+            >
+              + Add question
+            </button>
+          )}
+        </section>
+
+        {/* Payment */}
         {!showPayment ? (
           <button
             type="button"
@@ -314,13 +398,19 @@ return (
                 <span className="text-gray-400">Feedback</span>
                 <span className="text-white">{form.feedbackType}</span>
               </div>
+              {questions.filter(q => q.trim()).length > 0 && (
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-gray-400">Custom Questions</span>
+                  <span className="text-white">{questions.filter(q => q.trim()).length}</span>
+                </div>
+              )}
               <div className="border-t border-gray-700 mt-3 pt-3 flex justify-between">
                 <span className="text-white font-medium">Total</span>
                 <span className="text-white font-bold">${selectedPkg!.price.toFixed(2)}</span>
               </div>
             </div>
             <Elements stripe={stripePromise}>
-              <StripePaymentForm form={form} pkg={selectedPkg!} />
+              <StripePaymentForm form={form} pkg={selectedPkg!} questions={questions} />
             </Elements>
           </section>
         )}
