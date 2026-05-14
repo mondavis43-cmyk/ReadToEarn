@@ -12,18 +12,13 @@ completions: number;
 completions_count: number;
 notes: string;
 package_label: string;
+payout_per_response: number;
 }
 
 const taskTypeLabel: Record<string, string> = {
 cover_vote: 'Cover Vote',
 title_test: 'Title Test',
 blurb_test: 'Blurb Test',
-};
-
-const earnMap: Record<string, number> = {
-Sample: 0.42,
-Standard: 0.38,
-Wide: 0.35,
 };
 
 export default function QuickTasks() {
@@ -81,7 +76,7 @@ async function handleSubmit() {
 
   const { data: current } = await supabase
     .from('author_quick_task_submissions')
-    .select('package_label, completions, completions_count')
+    .select('completions, completions_count, payout_per_response')
     .eq('id', selected.id)
     .single();
 
@@ -91,7 +86,7 @@ async function handleSubmit() {
     return;
   }
 
-  const earned = earnMap[current.package_label] ?? 0.35;
+  const earned = current.payout_per_response ?? 0.35;
 
   const { error } = await supabase.from('quick_task_responses').insert({
     task_id: selected.id,
@@ -178,7 +173,7 @@ return (
           <p className="text-sm font-medium text-gray-200 mb-3">Choose one:</p>
           <div className="space-y-2 mb-4">
             {getOptions(selected).map((opt, idx) => (
-              <label key={idx} className="flex items-center gap-3 cursor-pointer bg-gray-800 hover:bg-gray-750 border border-gray-700 rounded-lg px-4 py-3 transition">
+              <label key={idx} className="flex items-center gap-3 cursor-pointer bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 transition hover:border-yellow-400/50">
                 <input
                   type="radio"
                   name="quick_task_choice"
@@ -210,7 +205,7 @@ return (
             disabled={!choice || submitting}
             className="w-full bg-yellow-400 text-black font-bold py-3 rounded-xl hover:bg-yellow-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {submitting ? 'Submitting...' : `Submit & Earn $${(earnMap[selected.package_label] ?? 0.35).toFixed(2)}`}
+            {submitting ? 'Submitting...' : `Submit & Earn $${(selected.payout_per_response ?? 0.35).toFixed(2)}`}
           </button>
         </div>
       </div>
@@ -226,7 +221,7 @@ return (
         {tasks.map((task) => {
           const done = completedIds.has(task.id);
           const remaining = task.completions - (task.completions_count ?? 0);
-          const payout = earnMap[task.package_label] ?? 0.35;
+          const payout = task.payout_per_response ?? 0.35;
           return (
             <div
               key={task.id}
