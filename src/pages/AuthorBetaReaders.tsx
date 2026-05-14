@@ -1,447 +1,408 @@
-import { useState } from 'react';
-import { useNavigate } from '../hooks/useNavigate';
-import { useTheme } from '../contexts/ThemeContext';
-import { BookOpen, Plus, Trash2, GripVertical, ToggleLeft, ToggleRight } from 'lucide-react';
+import { useState } from "react";
+import { supabase } from "../lib/supabase";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
-const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
+const goTo = (path: string) => {
+window.history.pushState({}, "", path);
+window.dispatchEvent(new PopStateEvent("popstate"));
+};
+
+// ─── Packages ────────────────────────────────────────────────────────────────
 const PACKAGES = [
-{ label: 'Starter',  readers: 10,  price: 28,  cents: 2800  },
-{ label: 'Standard', readers: 25,  price: 60,  cents: 6000  },
-{ label: 'Extended', readers: 50,  price: 110, cents: 11000 },
-{ label: 'Pro',      readers: 100, price: 200, cents: 20000 },
+{ label: "Starter",  readers: 5,  price: 28.00, cents: 2800 },
+{ label: "Standard", readers: 10, price: 60.00, cents: 6000 },
+{ label: "Extended", readers: 20, price: 110.00, cents: 11000 },
+{ label: "Pro",      readers: 40, price: 200.00, cents: 20000 },
 ];
 
-const GENRES = [
-'Romance', 'Fantasy', 'Sci-Fi', 'Thriller', 'Mystery',
-'Horror', 'Literary Fiction', 'Historical Fiction',
-'Young Adult', 'Middle Grade', 'Non-Fiction', 'Other',
-];
-
+// ─── Feedback types ───────────────────────────────────────────────────────────
 const FEEDBACK_TYPES = [
-{ value: 'general',           label: 'General Feedback',         description: 'Overall impressions and readability' },
-{ value: 'detailed_critique', label: 'Detailed Critique',        description: 'In-depth analysis of writing style and content' },
-{ value: 'pacing_structure',  label: 'Pacing & Structure',       description: 'Flow, chapter structure, and story arc' },
-{ value: 'character',         label: 'Character Development',    description: 'Believability and depth of characters' },
-{ value: 'hook',              label: 'Would You Keep Reading?',  description: 'Did the opening hook make them want more?' },
+{ value: "General Read",      label: "General Read",      desc: "Overall impressions and enjoyment" },
+{ value: "Detailed Critique", label: "Detailed Critique", desc: "In-depth feedback on writing craft" },
+{ value: "Would You Buy?",    label: "Would You Buy?",    desc: "Purchase intent and market appeal" },
 ];
 
-const MAX_QUESTIONS = 15;
+// ─── Stripe card style ────────────────────────────────────────────────────────
+const CARD_STYLE = {
+style: {
+  base: {
+    color: "#ffffff",
+    fontFamily: "sans-serif",
+    fontSize: "16px",
+    "::placeholder": { color: "#6b7280" },
+  },
+  invalid: { color: "#ef4444" },
+},
+disableLink: true,
+};
 
-interface Question {
-id: string;
-question: string;
-required: boolean;
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface FormState {
+authorName: string;
+email: string;
+bookTitle: string;
+genre: string;
+feedbackType: string;
+excerpt: string;
+blurb: string;
+notes: string;
 }
 
-export const AuthorBetaReaders = () => {
-const { navigateTo } = useNavigate();
-const { isDark, toggleTheme } = useTheme();
+// ─── Inline Stripe form ───────────────────────────────────────────────────────
+const StripePaymentForm = ({
+form,
+pkg,
+}: {
+form: FormState;
+pkg: typeof PACKAGES[0];
+}) => {
+const stripe = useStripe();
+const elements = useElements();
+const [loading, setLoading] = useState(false);
+const [error, setError] = useState<string | null>(null);
 
-const [authorName, setAuthorName]           = useState('');
-const [email, setEmail]                     = useState('');
-const [bookTitle, setBookTitle]             = useState('');
-const [genre, setGenre]                     = useState(GENRES[0]);
-const [feedbackType, setFeedbackType]       = useState(FEEDBACK_TYPES[0].value);
-const [selectedPackage, setSelectedPackage] = useState(PACKAGES[1]);
-const [excerpt, setExcerpt]                 = useState('');
-const [blurb, setBlurb]                     = useState('');
-const [notes, setNotes]                     = useState('');
-const [questions, setQuestions]             = useState<Question[]>([
-  { id: uid(), question: '', required: true },
-]);
-const [error, setError]                     = useState('');
+const handlePay = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!stripe || !elements) return;
+  setLoading(true);
+  setError(null);
 
-// ── theme tokens ──────────────────────────────────────────
-const textPrimary = isDark ? 'text-[#F5F0E8]'        : 'text-[#1B2A4A]';
-const textMuted   = isDark ? 'text-[#F5F0E8]/70'     : 'text-[#1B2A4A]/70';
-const cardBg      = isDark ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20' : 'bg-white border-[#D4A843]/30';
-const inputBg     = isDark
-  ? 'bg-[#0f1623] border-[#F5F0E8]/10 text-[#F5F0E8] placeholder-[#F5F0E8]/30 focus:border-[#D4A843]/60'
-  : 'bg-white border-[#1B2A4A]/20 text-[#1B2A4A] placeholder-[#1B2A4A]/30 focus:border-[#D4A843]/60';
-const pageBg      = isDark ? 'bg-[#0f1623]'          : 'bg-[#F5F0E8]';
-const divider     = isDark ? 'border-[#F5F0E8]/10'   : 'border-[#1B2A4A]/10';
+  try {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !user) throw new Error("You must be logged in.");
 
-// ── question builder helpers ───────────────────────────────
-const addQuestion = () => {
-  if (questions.length >= MAX_QUESTIONS) return;
-  setQuestions(prev => [...prev, { id: uid(), question: '', required: false }]);
-};
+    // Create payment intent
+    const { data, error: fnError } = await supabase.functions.invoke(
+      "create-payment-intent",
+      {
+        body: {
+          amount: pkg.cents,
+          currency: "usd",
+          metadata: {
+            user_id: user.id,
+            type: "beta_reader",
+            label: `Beta Readers — ${pkg.label} (${pkg.readers} readers) — ${form.bookTitle}`,
+          },
+        },
+      }
+    );
+    if (fnError || !data?.clientSecret)
+      throw new Error(fnError?.message || "Failed to initialize payment.");
 
-const removeQuestion = (id: string) => {
-  setQuestions(prev => prev.filter(q => q.id !== id));
-};
+    const cardElement = elements.getElement(CardElement);
+    if (!cardElement) throw new Error("Card element not found.");
 
-const updateQuestion = (id: string, text: string) => {
-  setQuestions(prev => prev.map(q => q.id === id ? { ...q, question: text } : q));
-};
+    const { error: stripeError, paymentIntent } =
+      await stripe.confirmCardPayment(data.clientSecret, {
+        payment_method: { card: cardElement },
+      });
+    if (stripeError) throw new Error(stripeError.message);
 
-const toggleRequired = (id: string) => {
-  setQuestions(prev => prev.map(q => q.id === id ? { ...q, required: !q.required } : q));
-};
+    if (paymentIntent?.status === "succeeded") {
+      // Log payment
+      const { error: payErr } = await supabase.from("payments").insert({
+        user_id: user.id,
+        stripe_payment_intent_id: paymentIntent.id,
+        amount: pkg.cents,
+        type: "beta_reader",
+        label: `Beta Readers — ${pkg.label} (${pkg.readers} readers) — ${form.bookTitle}`,
+        metadata: { package: pkg.label, readers: pkg.readers },
+        status: "succeeded",
+      });
+      if (payErr) console.error("[BetaReaders] payment log error:", payErr);
 
-// ── validation ─────────────────────────────────────────────
-const isFormValid = () => {
-  if (!authorName.trim() || !email.trim() || !bookTitle.trim()) return false;
-  if (!excerpt.trim() || !blurb.trim()) return false;
-  if (!feedbackType) return false;
-  const filledQuestions = questions.filter(q => q.question.trim());
-  if (filledQuestions.length === 0) return false;
-  return true;
-};
+      // Insert submission
+      const { error: subErr } = await supabase
+        .from("author_beta_reader_submissions")
+        .insert({
+          author_name:   form.authorName.trim(),
+          email:         form.email.trim(),
+          book_title:    form.bookTitle.trim(),
+          genre:         form.genre.trim(),
+          feedback_type: form.feedbackType,
+          package_label: pkg.label,
+          readers:       pkg.readers,
+          price:         pkg.price,
+          excerpt:       form.excerpt.trim(),
+          blurb:         form.blurb.trim(),
+          notes:         form.notes.trim() || null,
+          status:        "pending",
+        });
 
-// ── checkout ───────────────────────────────────────────────
-const handleCheckout = () => {
-  if (!isFormValid()) {
-    setError('Please fill in all required fields and add at least one question.');
-    return;
+      if (subErr) {
+        console.error("[BetaReaders] submission insert error:", subErr);
+        throw new Error("Payment succeeded but submission failed: " + subErr.message);
+      }
+
+      console.log("[BetaReaders] submission inserted successfully");
+      goTo("/author-dashboard");
+    }
+  } catch (err: unknown) {
+    setError(err instanceof Error ? err.message : "Something went wrong.");
+  } finally {
+    setLoading(false);
   }
-  setError('');
-
-  const filledQuestions = questions.filter(q => q.question.trim());
-
-  sessionStorage.setItem('checkoutItem', JSON.stringify({
-    type: 'beta_reader',
-    label: `Beta Readers — ${selectedPackage.label} (${selectedPackage.readers} readers) — ${bookTitle}`,
-    amount: selectedPackage.cents,
-    metadata: {
-      package: selectedPackage.label,
-      readers: selectedPackage.readers,
-    },
-  }));
-
-  sessionStorage.setItem('pendingSubmission', JSON.stringify({
-    table: 'author_beta_reader_submissions',
-    data: {
-      author_name:      authorName.trim(),
-      email:            email.trim(),
-      book_title:       bookTitle.trim(),
-      genre,
-      feedback_type:    feedbackType,
-      package_label:    selectedPackage.label,
-      readers:          selectedPackage.readers,
-      price:            selectedPackage.price,
-      custom_questions: JSON.stringify(filledQuestions),
-      excerpt:          excerpt.trim(),
-      blurb:            blurb.trim(),
-      notes:            notes.trim(),
-      status:           'pending',
-    },
-  }));
-
-  window.history.pushState({}, '', '/checkout');
-  window.dispatchEvent(new PopStateEvent('popstate'));
 };
 
 return (
-  <div className={`min-h-screen ${pageBg} transition-colors duration-300`}>
-
-    {/* Header */}
-    <div className={`border-b ${divider} px-4 py-4`}>
-      <div className="max-w-2xl mx-auto flex items-center justify-between">
-        <button
-          onClick={() => navigateTo('/author-dashboard')}
-          className={`font-serif text-lg font-bold ${isDark ? 'text-[#D4A843]' : 'text-[#1B2A4A]'}`}
-        >
-          ← Dashboard
-        </button>
-        <button
-          onClick={toggleTheme}
-          className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
-            isDark
-              ? 'border-[#D4A843]/40 text-[#D4A843] hover:bg-[#D4A843]/10'
-              : 'border-[#1B2A4A]/30 text-[#1B2A4A] hover:bg-[#1B2A4A]/10'
-          }`}
-        >
-          {isDark ? '☀ Light' : '☾ Dark'}
-        </button>
+  <form onSubmit={handlePay} className="space-y-4">
+    <div>
+      <label className="block text-sm font-medium text-gray-300 mb-2">
+        Card Details
+      </label>
+      <div className="px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-lg">
+        <CardElement options={CARD_STYLE} />
       </div>
     </div>
+    {error && (
+      <div className="p-3 bg-red-900/20 border border-red-900/50 rounded text-red-400 text-sm">
+        {error}
+      </div>
+    )}
+    <button
+      type="submit"
+      disabled={loading || !stripe}
+      className="w-full bg-white text-black font-medium py-4 rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed text-lg"
+    >
+      {loading ? "Processing..." : `Pay $${pkg.price.toFixed(2)}`}
+    </button>
+    <p className="text-gray-600 text-xs text-center">
+      Secured by Stripe. Your card info never touches our servers.
+    </p>
+  </form>
+);
+};
 
-    <div className="max-w-2xl mx-auto px-4 py-12">
+// ─── Main page ────────────────────────────────────────────────────────────────
+const AuthorBetaReaders = () => {
+const [form, setForm] = useState<FormState>({
+  authorName: "",
+  email: "",
+  bookTitle: "",
+  genre: "",
+  feedbackType: "",
+  excerpt: "",
+  blurb: "",
+  notes: "",
+});
+const [selectedPkg, setSelectedPkg] = useState<typeof PACKAGES[0] | null>(null);
+const [showPayment, setShowPayment] = useState(false);
 
-      {/* Title */}
+const set = (field: keyof FormState) => (
+  e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+) => setForm((f) => ({ ...f, [field]: e.target.value }));
+
+const isValid =
+  form.authorName.trim() &&
+  form.email.trim() &&
+  form.bookTitle.trim() &&
+  form.genre.trim() &&
+  form.feedbackType &&
+  form.excerpt.trim() &&
+  form.blurb.trim() &&
+  selectedPkg;
+
+const inputCls =
+  "w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-gray-500 text-sm";
+const labelCls = "block text-sm font-medium text-gray-300 mb-1";
+
+return (
+  <div className="min-h-screen bg-[#0f0f0f]">
+    <div className="max-w-2xl mx-auto px-4 py-16">
+      {/* Header */}
       <div className="mb-10">
-        <div className="flex items-center gap-3 mb-3">
-          <BookOpen className="text-[#D4A843] w-6 h-6" />
-          <h1 className={`font-serif text-4xl ${textPrimary}`}>Beta Readers</h1>
-        </div>
-        <p className={`text-sm leading-relaxed ${textMuted}`}>
-          Get real readers to review your first chapter and answer your custom questions. You write the questions. We handle the rest.
-        </p>
-        <p className={`text-xs mt-2 leading-relaxed ${textMuted}`}>
-          Readers can optionally indicate if they're interested in reading your full manuscript as a beta reader (paid or unpaid). Those contacts will be visible to you in the Author Hub so you can follow up directly.
+        <button
+          onClick={() => goTo("/author-dashboard")}
+          className="text-gray-500 hover:text-white text-sm transition mb-6 flex items-center gap-1"
+        >
+          ← Back
+        </button>
+        <h1 className="font-serif text-3xl text-white mb-2">Beta Readers</h1>
+        <p className="text-gray-400 text-sm">
+          Get real feedback from readers before you publish.
         </p>
       </div>
 
-      {/* Package selection */}
-      <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
-        <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Select a Package</h2>
-        <div className="space-y-3">
-          {PACKAGES.map(pkg => (
-            <label
-              key={pkg.label}
-              className={`flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-colors ${
-                selectedPackage.label === pkg.label
-                  ? 'border-[#D4A843] bg-[#D4A843]/10'
-                  : `${isDark ? 'border-[#F5F0E8]/10 hover:border-[#D4A843]/40' : 'border-[#1B2A4A]/10 hover:border-[#D4A843]/40'}`
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <input
-                  type="radio"
-                  name="package"
-                  checked={selectedPackage.label === pkg.label}
-                  onChange={() => setSelectedPackage(pkg)}
-                  className="accent-[#D4A843]"
-                />
-                <div>
-                  <p className={`font-semibold text-sm ${textPrimary}`}>{pkg.label}</p>
-                  <p className={`text-xs ${textMuted}`}>{pkg.readers} readers</p>
-                </div>
-              </div>
-              <p className="font-bold text-[#D4A843]">${pkg.price}</p>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {/* Author info */}
-      <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
-        <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Your Information</h2>
-        <div className="space-y-4">
-          <div>
-            <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>
-              Author Name <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              value={authorName}
-              onChange={e => setAuthorName(e.target.value)}
-              placeholder="Your name or pen name"
-              className={`w-full px-4 py-3 rounded-lg border text-sm focus:outline-none transition-colors ${inputBg}`}
-            />
-          </div>
-          <div>
-            <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>
-              Email <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className={`w-full px-4 py-3 rounded-lg border text-sm focus:outline-none transition-colors ${inputBg}`}
-            />
-          </div>
-          <div>
-            <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>
-              Book Title <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              value={bookTitle}
-              onChange={e => setBookTitle(e.target.value)}
-              placeholder="Title of the book being reviewed"
-              className={`w-full px-4 py-3 rounded-lg border text-sm focus:outline-none transition-colors ${inputBg}`}
-            />
-          </div>
-          <div>
-            <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>
-              Genre <span className="text-red-400">*</span>
-            </label>
-            <select
-              value={genre}
-              onChange={e => setGenre(e.target.value)}
-              className={`w-full px-4 py-3 rounded-lg border text-sm focus:outline-none transition-colors ${inputBg}`}
-            >
-              {GENRES.map(g => (
-                <option key={g} value={g}>{g}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Feedback type */}
-      <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
-        <h2 className={`font-serif text-xl mb-1 ${textPrimary}`}>
-          Feedback Focus <span className="text-red-400">*</span>
-        </h2>
-        <p className={`text-xs mb-4 ${textMuted}`}>
-          What type of feedback are you looking for from your beta readers?
-        </p>
-        <div className="space-y-3">
-          {FEEDBACK_TYPES.map(ft => (
-            <label
-              key={ft.value}
-              className={`flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${
-                feedbackType === ft.value
-                  ? 'border-[#D4A843] bg-[#D4A843]/10'
-                  : `${isDark ? 'border-[#F5F0E8]/10 hover:border-[#D4A843]/40' : 'border-[#1B2A4A]/10 hover:border-[#D4A843]/40'}`
-              }`}
-            >
+      <div className="space-y-8">
+        {/* Book Info */}
+        <section className="bg-[#141414] rounded-xl p-6 border border-gray-800 space-y-4">
+          <h2 className="text-white font-semibold text-lg">Book Information</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Author Name *</label>
               <input
-                type="radio"
-                name="feedbackType"
-                value={ft.value}
-                checked={feedbackType === ft.value}
-                onChange={() => setFeedbackType(ft.value)}
-                className="accent-[#D4A843] mt-0.5 flex-shrink-0"
+                className={inputCls}
+                placeholder="Your name"
+                value={form.authorName}
+                onChange={set("authorName")}
               />
-              <div>
-                <p className={`font-semibold text-sm ${textPrimary}`}>{ft.label}</p>
-                <p className={`text-xs mt-0.5 ${textMuted}`}>{ft.description}</p>
+            </div>
+            <div>
+              <label className={labelCls}>Email *</label>
+              <input
+                type="email"
+                className={inputCls}
+                placeholder="you@example.com"
+                value={form.email}
+                onChange={set("email")}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Book Title *</label>
+              <input
+                className={inputCls}
+                placeholder="Title of your book"
+                value={form.bookTitle}
+                onChange={set("bookTitle")}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Genre *</label>
+              <input
+                className={inputCls}
+                placeholder="e.g. Fantasy, Romance, Thriller"
+                value={form.genre}
+                onChange={set("genre")}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Feedback Type */}
+        <section className="bg-[#141414] rounded-xl p-6 border border-gray-800 space-y-4">
+          <h2 className="text-white font-semibold text-lg">Feedback Focus *</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {FEEDBACK_TYPES.map((ft) => (
+              <button
+                key={ft.value}
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, feedbackType: ft.value }))}
+                className={`p-4 rounded-lg border text-left transition ${
+                  form.feedbackType === ft.value
+                    ? "border-white bg-white/10"
+                    : "border-gray-700 hover:border-gray-500"
+                }`}
+              >
+                <div className="text-white text-sm font-medium">{ft.label}</div>
+                <div className="text-gray-400 text-xs mt-1">{ft.desc}</div>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* Package */}
+        <section className="bg-[#141414] rounded-xl p-6 border border-gray-800 space-y-4">
+          <h2 className="text-white font-semibold text-lg">Select Package *</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {PACKAGES.map((pkg) => (
+              <button
+                key={pkg.label}
+                type="button"
+                onClick={() => setSelectedPkg(pkg)}
+                className={`p-4 rounded-lg border text-center transition ${
+                  selectedPkg?.label === pkg.label
+                    ? "border-white bg-white/10"
+                    : "border-gray-700 hover:border-gray-500"
+                }`}
+              >
+                <div className="text-white font-semibold text-sm">{pkg.label}</div>
+                <div className="text-gray-400 text-xs mt-1">{pkg.readers} readers</div>
+                <div className="text-white font-bold mt-2">${pkg.price.toFixed(2)}</div>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* Excerpt & Blurb */}
+        <section className="bg-[#141414] rounded-xl p-6 border border-gray-800 space-y-4">
+          <h2 className="text-white font-semibold text-lg">Your Content</h2>
+          <div>
+            <label className={labelCls}>Excerpt * <span className="text-gray-500 font-normal">(first chapter or opening pages)</span></label>
+            <textarea
+              className={`${inputCls} h-40 resize-none`}
+              placeholder="Paste your excerpt here..."
+              value={form.excerpt}
+              onChange={set("excerpt")}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Back Cover Blurb *</label>
+            <textarea
+              className={`${inputCls} h-24 resize-none`}
+              placeholder="Your book's marketing description..."
+              value={form.blurb}
+              onChange={set("blurb")}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Additional Notes <span className="text-gray-500 font-normal">(optional)</span></label>
+            <textarea
+              className={`${inputCls} h-20 resize-none`}
+              placeholder="Anything specific you'd like readers to focus on..."
+              value={form.notes}
+              onChange={set("notes")}
+            />
+          </div>
+        </section>
+
+        {/* Payment */}
+        {!showPayment ? (
+          <button
+            type="button"
+            disabled={!isValid}
+            onClick={() => setShowPayment(true)}
+            className="w-full bg-white text-black font-medium py-4 rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed text-lg"
+          >
+            {selectedPkg
+              ? `Continue to Payment — $${selectedPkg.price.toFixed(2)}`
+              : "Complete all fields to continue"}
+          </button>
+        ) : (
+          <section className="bg-[#141414] rounded-xl p-6 border border-gray-800 space-y-4">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-white font-semibold text-lg">Payment</h2>
+              <button
+                type="button"
+                onClick={() => setShowPayment(false)}
+                className="text-gray-500 hover:text-white text-sm transition"
+              >
+                ← Edit
+              </button>
+            </div>
+            {/* Order summary */}
+            <div className="bg-[#1a1a1a] rounded-lg p-4 border border-gray-700 mb-4">
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-gray-400">Package</span>
+                <span className="text-white">{selectedPkg!.label} ({selectedPkg!.readers} readers)</span>
               </div>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {/* Short blurb */}
-      <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
-        <h2 className={`font-serif text-xl mb-1 ${textPrimary}`}>Short Blurb <span className="text-red-400">*</span></h2>
-        <p className={`text-xs mb-4 ${textMuted}`}>
-          A 2–4 sentence summary of your book so readers know what they're getting into.
-        </p>
-        <textarea
-          value={blurb}
-          onChange={e => setBlurb(e.target.value)}
-          placeholder="e.g. A slow-burn romance set in 1920s Paris between a jazz musician and a war correspondent..."
-          rows={3}
-          className={`w-full px-4 py-3 rounded-lg border text-sm resize-none focus:outline-none transition-colors ${inputBg}`}
-        />
-      </div>
-
-      {/* Excerpt */}
-      <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
-        <h2 className={`font-serif text-xl mb-1 ${textPrimary}`}>First Chapter / Excerpt <span className="text-red-400">*</span></h2>
-        <p className={`text-xs mb-4 ${textMuted}`}>
-          Paste the chapter or sample you want readers to review. This is what they'll read before answering your questions.
-        </p>
-        <textarea
-          value={excerpt}
-          onChange={e => setExcerpt(e.target.value)}
-          placeholder="Paste your first chapter or excerpt here..."
-          rows={10}
-          className={`w-full px-4 py-3 rounded-lg border text-sm resize-none focus:outline-none transition-colors ${inputBg}`}
-        />
-      </div>
-
-      {/* Question builder */}
-      <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
-        <div className="flex items-center justify-between mb-1">
-          <h2 className={`font-serif text-xl ${textPrimary}`}>Feedback Questions <span className="text-red-400">*</span></h2>
-          <span className={`text-xs font-medium ${questions.length >= MAX_QUESTIONS ? 'text-red-400' : textMuted}`}>
-            {questions.length}/{MAX_QUESTIONS}
-          </span>
-        </div>
-        <p className={`text-xs mb-5 ${textMuted}`}>
-          Write the questions you want beta readers to answer after reading your excerpt. All responses are free text.
-        </p>
-
-        <div className="space-y-3 mb-4">
-          {questions.map((q, idx) => (
-            <div
-              key={q.id}
-              className={`rounded-lg border p-4 transition-colors ${
-                isDark ? 'border-[#F5F0E8]/10 bg-[#0f1623]/40' : 'border-[#1B2A4A]/10 bg-[#F5F0E8]/50'
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <GripVertical size={16} className={`mt-3 flex-shrink-0 ${textMuted} opacity-40`} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={`text-xs font-semibold ${textMuted}`}>Q{idx + 1}</span>
-                  </div>
-                  <textarea
-                    value={q.question}
-                    onChange={e => updateQuestion(q.id, e.target.value)}
-                    placeholder="e.g. Did the opening hook make you want to keep reading?"
-                    rows={2}
-                    className={`w-full px-3 py-2.5 rounded-lg border text-sm resize-none focus:outline-none transition-colors ${inputBg}`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => toggleRequired(q.id)}
-                    className={`flex items-center gap-1.5 mt-2 text-xs transition-colors ${
-                      q.required ? 'text-[#D4A843]' : textMuted
-                    }`}
-                  >
-                    {q.required
-                      ? <ToggleRight size={16} className="text-[#D4A843]" />
-                      : <ToggleLeft size={16} />
-                    }
-                    {q.required ? 'Required' : 'Optional'}
-                  </button>
-                </div>
-                {questions.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeQuestion(q.id)}
-                    className={`mt-2.5 flex-shrink-0 p-1 rounded transition-colors ${textMuted} hover:text-red-400`}
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                )}
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-gray-400">Book</span>
+                <span className="text-white">{form.bookTitle}</span>
+              </div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-gray-400">Feedback</span>
+                <span className="text-white">{form.feedbackType}</span>
+              </div>
+              <div className="border-t border-gray-700 mt-3 pt-3 flex justify-between">
+                <span className="text-white font-medium">Total</span>
+                <span className="text-white font-bold">${selectedPkg!.price.toFixed(2)}</span>
               </div>
             </div>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          onClick={addQuestion}
-          disabled={questions.length >= MAX_QUESTIONS}
-          className={`flex items-center gap-2 text-sm font-medium px-4 py-2.5 rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-            isDark
-              ? 'border-[#D4A843]/30 text-[#D4A843] hover:bg-[#D4A843]/10'
-              : 'border-[#D4A843]/40 text-[#D4A843] hover:bg-[#D4A843]/10'
-          }`}
-        >
-          <Plus size={15} />
-          Add Question
-          {questions.length >= MAX_QUESTIONS && (
-            <span className={`text-xs ${textMuted}`}>(max reached)</span>
-          )}
-        </button>
+            <Elements stripe={stripePromise}>
+              <StripePaymentForm form={form} pkg={selectedPkg!} />
+            </Elements>
+          </section>
+        )}
       </div>
-
-      {/* Notes */}
-      <div className={`rounded-xl border p-6 mb-8 ${cardBg}`}>
-        <h2 className={`font-serif text-xl mb-1 ${textPrimary}`}>
-          Additional Notes <span className={`text-sm font-normal ${textMuted}`}>(optional)</span>
-        </h2>
-        <p className={`text-xs mb-4 ${textMuted}`}>Anything else readers or the admin team should know.</p>
-        <textarea
-          value={notes}
-          onChange={e => setNotes(e.target.value)}
-          placeholder="e.g. Content warnings, target audience, specific areas of concern..."
-          rows={3}
-          className={`w-full px-4 py-3 rounded-lg border text-sm resize-none focus:outline-none transition-colors ${inputBg}`}
-        />
-      </div>
-
-      {/* Error */}
-      {error && (
-        <div className="mb-4 p-3 bg-red-900/20 border border-red-900/50 rounded-lg text-red-400 text-sm">
-          {error}
-        </div>
-      )}
-
-      {/* Submit */}
-      <button
-        onClick={handleCheckout}
-        disabled={!isFormValid()}
-        className="w-full bg-[#D4A843] text-[#1B2A4A] font-semibold py-4 rounded-xl hover:bg-[#c49a3a] transition text-lg disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        Continue to Checkout — ${selectedPackage.price}
-      </button>
-      <p className={`text-xs text-center mt-3 ${textMuted}`}>
-        Your submission goes live after admin review.
-      </p>
-
     </div>
   </div>
 );
 };
+
+export default AuthorBetaReaders;
