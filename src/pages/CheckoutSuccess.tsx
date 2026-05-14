@@ -203,7 +203,7 @@ async function handleCapture() {
         console.log('[CheckoutSuccess] Inserting beta/sensitivity reader:', { table: pending.table, data: pending.data });
         const { error: insertError } = await supabase.from(pending.table).insert({
           ...pending.data,
-          status: 'pending',
+          status: 'active',
         });
         if (insertError) {
           console.error('[CheckoutSuccess] Insert error:', insertError);
