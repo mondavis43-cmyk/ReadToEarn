@@ -237,7 +237,7 @@ if (pending) {
     console.log('[Checkout] Inserting beta/sensitivity reader:', { table: pending?.table, data: pending?.data });
     const { error } = await supabase.from(pending.table).insert({
       ...pending.data,
-      status: "pending",
+      status: "active",
     });
     if (error) {
       console.error('[Checkout] beta/sensitivity insert error:', error);
