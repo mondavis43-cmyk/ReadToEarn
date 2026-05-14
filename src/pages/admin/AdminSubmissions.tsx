@@ -49,7 +49,6 @@ bounties: [
   { key: 'reader_pool',       label: 'Reader Pool ($)' },
   { key: 'per_pass_amount',   label: 'Per Pass ($)' },
   { key: 'estimated_readers', label: 'Est. Readers' },
-  { key: 'notes',             label: 'Notes' },
 ],
 competitions: [
   { key: 'book_titles',      label: 'Book Titles' },
@@ -277,7 +276,7 @@ const maybeWritePayoutPerResponse = async (id: string, overrideData?: Record<str
 };
 
 const approveStatus = (): SubmissionStatus =>
-  (activeTab === 'surveys' || activeTab === 'sensitivity') ? 'active' : 'approved';
+  (activeTab === 'surveys' || activeTab === 'sensitivity' || activeTab === 'bounties') ? 'active' : 'approved';
 
 const updateStatus = async (id: string, status: SubmissionStatus) => {
   const table = TAB_TABLES[activeTab];
