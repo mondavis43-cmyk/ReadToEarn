@@ -323,7 +323,7 @@ if (step === 'answer' && selected) {
           Interested in reading the full manuscript?
         </p>
         <p className="text-xs text-gray-500 mb-4">
-          The author may reach out through the Author Hub if you're open to it. Completely optional — you earn ${payout.toFixed(2)} either way.
+          The author may reach out to you if you're open to it. Completely optional — you earn ${payout.toFixed(2)} either way.
         </p>
         <div className="space-y-2 mb-4">
           {([
