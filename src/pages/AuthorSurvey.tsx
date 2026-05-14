@@ -32,6 +32,7 @@ export const AuthorSurvey = () => {
   const [questions, setQuestions]             = useState<Question[]>([
     { id: uid(), question: '', required: true },
   ]);
+  const [surveyFocus, setSurveyFocus] = useState('');
   const [excerpt, setExcerpt] = useState('');
   const [notes, setNotes]     = useState('');
   const [error, setError]     = useState('');
@@ -65,8 +66,17 @@ export const AuthorSurvey = () => {
   };
 
   // ── validation ─────────────────────────────────────────────
+  const SURVEY_FOCUS_OPTIONS = [
+    'General Impressions',
+    'Chapter / Sample Feedback',
+    'Cover & Packaging',
+    'Market Fit',
+    'Custom Questions',
+  ];
+
   const isFormValid = () => {
     if (!authorName.trim() || !email.trim() || !bookTitle.trim()) return false;
+    if (!surveyFocus) return false;
     const filledQuestions = questions.filter(q => q.question.trim());
     if (filledQuestions.length === 0) return false;
     return true;
@@ -101,10 +111,11 @@ export const AuthorSurvey = () => {
         package_label:    selectedPackage.label,
         responses:        selectedPackage.responses,
         price:            selectedPackage.price,
+        survey_focus:     surveyFocus,
         custom_questions: JSON.stringify(filledQuestions),
-        excerpt:          excerpt.trim(),
-        notes:            notes.trim(),
-        status:           'pending',
+        excerpt:          excerpt.trim() || null,
+        notes:            notes.trim() || null,
+        status:           'pending_payment',
       },
     }));
 
@@ -222,6 +233,38 @@ export const AuthorSurvey = () => {
                 className={`w-full px-4 py-3 rounded-lg border text-sm focus:outline-none transition-colors ${inputBg}`}
               />
             </div>
+          </div>
+        </div>
+
+        {/* Survey Focus */}
+        <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
+          <h2 className={`font-serif text-xl mb-1 ${textPrimary}`}>
+            Survey Focus <span className="text-red-400">*</span>
+          </h2>
+          <p className={`text-xs mb-4 ${textMuted}`}>
+            What is the primary goal of this survey?
+          </p>
+          <div className="space-y-2">
+            {SURVEY_FOCUS_OPTIONS.map(opt => (
+              <label
+                key={opt}
+                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                  surveyFocus === opt
+                    ? 'border-[#D4A843] bg-[#D4A843]/10'
+                    : isDark ? 'border-[#F5F0E8]/10 hover:border-[#D4A843]/40' : 'border-[#1B2A4A]/10 hover:border-[#D4A843]/40'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="survey_focus"
+                  value={opt}
+                  checked={surveyFocus === opt}
+                  onChange={() => setSurveyFocus(opt)}
+                  className="accent-[#D4A843]"
+                />
+                <span className={`text-sm ${textPrimary}`}>{opt}</span>
+              </label>
+            ))}
           </div>
         </div>
 
