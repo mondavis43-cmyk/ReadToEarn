@@ -276,10 +276,13 @@ const maybeWritePayoutPerResponse = async (id: string, overrideData?: Record<str
   }
 };
 
+const approveStatus = (): SubmissionStatus =>
+  (activeTab === 'surveys' || activeTab === 'sensitivity') ? 'active' : 'approved';
+
 const updateStatus = async (id: string, status: SubmissionStatus) => {
   const table = TAB_TABLES[activeTab];
 
-  if (status === 'approved') {
+  if (status === 'approved' || status === 'active') {
     await maybeWritePayoutPerResponse(id);
   }
 
@@ -323,7 +326,7 @@ const saveAndApprove = async (id: string) => {
   setEditingId(null);
 
   await maybeWritePayoutPerResponse(id, editDraft);
-  await updateStatus(id, 'approved');
+  await updateStatus(id, approveStatus());
   setEditDraft({});
 };
 
@@ -625,9 +628,9 @@ return (
                         >
                           <Edit2 size={14} /> Edit
                         </button>
-                        {sub.status !== 'approved' && (
+                        {sub.status !== 'approved' && sub.status !== 'active' && (
                           <button
-                            onClick={() => updateStatus(sub.id, 'approved')}
+                            onClick={() => updateStatus(sub.id, approveStatus())}
                             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm bg-green-600 text-white hover:bg-green-500 transition-colors"
                           >
                             <CheckCircle size={14} /> Approve
