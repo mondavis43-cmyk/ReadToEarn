@@ -73,14 +73,12 @@ export const AuthorBounty = () => {
         author_name:       authorName.trim(),
         email:             email.trim(),
         book_title:        bookTitle.trim(),
-        book_id:           bookId,
         pool_size:         selectedPool.size,
         platform_fee:      selectedPool.platform,
         reader_pool:       selectedPool.readerPool,
         per_pass_amount:   perPass,
         estimated_readers: estimatedReaders,
-        notes:             notes.trim(),
-        status:            'pending',
+        status:            'pending_payment',
       },
     }));
 
