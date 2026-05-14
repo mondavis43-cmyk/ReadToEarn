@@ -4,16 +4,14 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface QuickTask {
 id: string;
-title: string;
-author_name: string | null;
+author_name: string;
+book_title: string;
 task_type: string;
-description: string | null;
-options: string[] | null;
-payout_per_response: number;
-max_responses: number;
-responses_count: number;
-additional_notes: string | null;
-status: string;
+task_content: string;
+completions: number;
+completions_count: number;
+notes: string;
+package_label: string;
 }
 
 const taskTypeLabel: Record<string, string> = {
@@ -22,11 +20,18 @@ title_test: 'Title Test',
 blurb_test: 'Blurb Test',
 };
 
+const earnMap: Record<string, number> = {
+Sample: 0.42,
+Standard: 0.38,
+Wide: 0.35,
+};
+
 export default function QuickTasks() {
 const { user } = useAuth();
 const [tasks, setTasks] = useState<QuickTask[]>([]);
 const [selected, setSelected] = useState<QuickTask | null>(null);
 const [choice, setChoice] = useState('');
+const [comment, setComment] = useState('');
 const [submitting, setSubmitting] = useState(false);
 const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
 const [success, setSuccess] = useState(false);
@@ -40,13 +45,13 @@ async function loadTasks() {
   setLoading(true);
 
   const { data } = await supabase
-    .from('quick_tasks')
+    .from('author_quick_task_submissions')
     .select('*')
-    .eq('status', 'active')
+    .in('status', ['active', 'approved'])
     .order('created_at', { ascending: false });
 
   const open = (data ?? []).filter(
-    (t: QuickTask) => (t.responses_count ?? 0) < t.max_responses
+    (t: QuickTask) => (t.completions_count ?? 0) < t.completions
   );
 
   if (user) {
@@ -62,12 +67,11 @@ async function loadTasks() {
 }
 
 function getOptions(task: QuickTask): string[] {
-  if (Array.isArray(task.options)) return task.options;
   try {
-    const parsed = JSON.parse(task.options as unknown as string ?? '[]');
+    const parsed = JSON.parse(task.task_content ?? '[]');
     return Array.isArray(parsed) ? parsed : [];
   } catch {
-    return [];
+    return task.task_content ? task.task_content.split('\n').filter(Boolean) : [];
   }
 }
 
@@ -76,18 +80,18 @@ async function handleSubmit() {
   setSubmitting(true);
 
   const { data: current } = await supabase
-    .from('quick_tasks')
-    .select('responses_count, max_responses, payout_per_response')
+    .from('author_quick_task_submissions')
+    .select('package_label, completions, completions_count')
     .eq('id', selected.id)
     .single();
 
-  if (!current || (current.responses_count ?? 0) >= current.max_responses) {
+  if (!current || (current.completions_count ?? 0) >= current.completions) {
     alert('This task is no longer accepting responses.');
     setSubmitting(false);
     return;
   }
 
-  const earned = current.payout_per_response ?? selected.payout_per_response ?? 0.35;
+  const earned = earnMap[current.package_label] ?? 0.35;
 
   const { error } = await supabase.from('quick_task_responses').insert({
     task_id: selected.id,
@@ -111,13 +115,14 @@ async function handleSubmit() {
     user_id: user.id,
     amount: earned,
     status: 'completed',
-    reason: `Quick task response - ${selected.title}`,
+    reason: `Quick task response - ${selected.book_title}`,
   });
 
   setSuccess(true);
   setSubmitting(false);
   setSelected(null);
   setChoice('');
+  setComment('');
   loadTasks();
 }
 
@@ -152,32 +157,26 @@ return (
               <span className="text-xs font-semibold uppercase tracking-wide text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded">
                 {taskTypeLabel[selected.task_type] ?? selected.task_type}
               </span>
-              <h2 className="text-lg font-bold mt-2">{selected.title}</h2>
-              {selected.author_name && (
-                <p className="text-sm text-gray-400">by {selected.author_name}</p>
-              )}
+              <h2 className="text-lg font-bold mt-2">{selected.book_title}</h2>
+              <p className="text-sm text-gray-400">by {selected.author_name}</p>
             </div>
             <button
-              onClick={() => { setSelected(null); setChoice(''); }}
+              onClick={() => { setSelected(null); setChoice(''); setComment(''); }}
               className="text-gray-500 hover:text-white text-xl leading-none ml-4"
             >
               ✕
             </button>
           </div>
 
-          {selected.description && (
-            <p className="text-sm text-gray-400 mb-4">{selected.description}</p>
-          )}
-
-          {selected.additional_notes && (
+          {selected.notes && (
             <div className="bg-gray-800 rounded-lg p-3 mb-4">
-              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Notes</p>
-              <p className="text-sm text-gray-300">{selected.additional_notes}</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Notes from author</p>
+              <p className="text-sm text-gray-300">{selected.notes}</p>
             </div>
           )}
 
           <p className="text-sm font-medium text-gray-200 mb-3">Choose one:</p>
-          <div className="space-y-2 mb-6">
+          <div className="space-y-2 mb-4">
             {getOptions(selected).map((opt, idx) => (
               <label key={idx} className="flex items-center gap-3 cursor-pointer bg-gray-800 hover:bg-gray-750 border border-gray-700 rounded-lg px-4 py-3 transition">
                 <input
@@ -193,12 +192,25 @@ return (
             ))}
           </div>
 
+          <div className="mb-6">
+            <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">
+              Why did you choose this? <span className="normal-case text-gray-600">(optional)</span>
+            </label>
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              rows={3}
+              placeholder="Share your reasoning..."
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-yellow-400 resize-none"
+            />
+          </div>
+
           <button
             onClick={handleSubmit}
             disabled={!choice || submitting}
             className="w-full bg-yellow-400 text-black font-bold py-3 rounded-xl hover:bg-yellow-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {submitting ? 'Submitting...' : `Submit & Earn $${(selected.payout_per_response ?? 0.35).toFixed(2)}`}
+            {submitting ? 'Submitting...' : `Submit & Earn $${(earnMap[selected.package_label] ?? 0.35).toFixed(2)}`}
           </button>
         </div>
       </div>
@@ -213,8 +225,8 @@ return (
       <div className="space-y-4">
         {tasks.map((task) => {
           const done = completedIds.has(task.id);
-          const remaining = task.max_responses - (task.responses_count ?? 0);
-          const payout = task.payout_per_response ?? 0.35;
+          const remaining = task.completions - (task.completions_count ?? 0);
+          const payout = earnMap[task.package_label] ?? 0.35;
           return (
             <div
               key={task.id}
@@ -225,13 +237,8 @@ return (
                   <span className="text-xs font-semibold uppercase tracking-wide text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded">
                     {taskTypeLabel[task.task_type] ?? task.task_type}
                   </span>
-                  <h2 className="text-lg font-semibold mt-2">{task.title}</h2>
-                  {task.author_name && (
-                    <p className="text-sm text-gray-400">by {task.author_name}</p>
-                  )}
-                  {task.description && (
-                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">{task.description}</p>
-                  )}
+                  <h2 className="text-lg font-semibold mt-2">{task.book_title}</h2>
+                  <p className="text-sm text-gray-400">by {task.author_name}</p>
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-yellow-400 font-bold text-lg">${payout.toFixed(2)}</p>
@@ -243,7 +250,7 @@ return (
                 <p className="mt-4 text-sm text-green-400">✓ Completed</p>
               ) : (
                 <button
-                  onClick={() => { setSelected(task); setChoice(''); setSuccess(false); }}
+                  onClick={() => { setSelected(task); setChoice(''); setComment(''); setSuccess(false); }}
                   className="mt-4 bg-yellow-400 text-black font-semibold px-4 py-2 rounded-lg hover:bg-yellow-300 transition text-sm"
                 >
                   Start Task
