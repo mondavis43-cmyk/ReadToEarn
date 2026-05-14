@@ -278,11 +278,40 @@ const maybeWritePayoutPerResponse = async (id: string, overrideData?: Record<str
 const approveStatus = (): SubmissionStatus =>
   (activeTab === 'surveys' || activeTab === 'sensitivity' || activeTab === 'bounties') ? 'active' : 'approved';
 
+const maybeCreateBounty = async (id: string) => {
+  if (activeTab !== 'bounties') return;
+  const submission = submissions.find(s => s.id === id);
+  if (!submission) return;
+
+  const { data: book } = await supabase
+    .from('books')
+    .select('id, author_id')
+    .ilike('title', submission.book_title)
+    .maybeSingle();
+
+  if (!book) {
+    console.warn('[AdminSubmissions] No book found for title:', submission.book_title);
+    return;
+  }
+
+  const { error } = await supabase.from('bounties').insert({
+    book_id:         book.id,
+    author_id:       book.author_id ?? null,
+    pool_size:       submission.pool_size,
+    per_pass_amount: submission.per_pass_amount,
+    platform_fee:    submission.platform_fee,
+    reader_pool:     submission.reader_pool,
+    status:          'active',
+  });
+  if (error) console.error('[AdminSubmissions] bounties insert error:', error);
+};
+
 const updateStatus = async (id: string, status: SubmissionStatus) => {
   const table = TAB_TABLES[activeTab];
 
   if (status === 'approved' || status === 'active') {
     await maybeWritePayoutPerResponse(id);
+    await maybeCreateBounty(id);
   }
 
   const { error } = await supabase.from(table).update({ status }).eq('id', id);
