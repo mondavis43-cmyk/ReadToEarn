@@ -7,10 +7,12 @@ import { Plus, X, Trash2 } from 'lucide-react';
 interface QuickTask {
   id: string;
   title: string;
+  task_type: string;
   description: string | null;
   additional_notes: string | null;
   payout_per_response: number;
-  task_type: string;
+  max_responses: number;
+  responses_count: number;
   status: string;
   created_at: string;
 }
@@ -21,7 +23,8 @@ interface Survey {
   description: string | null;
   additional_notes: string | null;
   payout_per_response: number;
-  questions: number;
+  max_responses: number;
+  responses_count: number;
   status: string;
   created_at: string;
 }
@@ -29,11 +32,11 @@ interface Survey {
 interface BetaPanel {
   id: string;
   title: string;
-  description: string | null;
+  genre: string | null;
+  chapter_text: string;
   additional_notes: string | null;
   excerpt: string | null;
   payout_per_response: number;
-  genre: string | null;
   max_responses: number;
   responses_count: number;
   status: string;
@@ -44,10 +47,11 @@ interface SensitivityPanel {
   id: string;
   title: string;
   description: string | null;
+  identity_requirements: string;
+  chapter_text: string;
   additional_notes: string | null;
   excerpt: string | null;
   payout_per_response: number;
-  identity_requirements: string | null;
   max_responses: number;
   responses_count: number;
   status: string;
@@ -158,10 +162,11 @@ function QuickTasksPanel() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     title: '',
+    task_type: 'cover',
     description: '',
     additional_notes: '',
     payout_per_response: 0.35,
-    task_type: 'cover',
+    max_responses: 50,
   });
   const [questions, setQuestions] = useState<QuestionInput[]>([]);
 
@@ -181,40 +186,33 @@ function QuickTasksPanel() {
     if (!form.title) return;
     setSaving(true);
 
-    const { data: newTask, error } = await supabase
+    const questionsJsonb = questions.map((q, idx) => ({
+      question_text: q.question_text,
+      required: q.required,
+      order_index: idx,
+    }));
+
+    const { error } = await supabase
       .from('quick_tasks')
       .insert({
         title: form.title,
+        task_type: form.task_type,
         description: form.description || null,
         additional_notes: form.additional_notes || null,
+        options: questionsJsonb,
         payout_per_response: form.payout_per_response,
-        task_type: form.task_type,
+        max_responses: form.max_responses,
+        responses_count: 0,
         status: 'active',
-      })
-      .select('id')
-      .single();
-
-    if (!error && newTask && questions.length > 0) {
-      await supabase.from('earning_task_questions').insert(
-        questions.map((q, idx) => ({
-          task_id: newTask.id,
-          task_type: 'quick_task',
-          question_text: q.question_text,
-          required: q.required,
-          order_index: idx,
-        }))
-      );
-    }
-
-    if (!error && newTask) {
-      await supabase.functions.invoke('notify-content-live', {
-        body: { content_type: 'quick_task', content_id: newTask.id },
       });
-    }
 
-    setForm({ title: '', description: '', additional_notes: '', payout_per_response: 0.35, task_type: 'social' });
-    setQuestions([]);
-    setShowForm(false);
+    if (!error) {
+      setForm({ title: '', task_type: 'social', description: '', additional_notes: '', payout_per_response: 0.35, max_responses: 50 });
+      setQuestions([]);
+      setShowForm(false);
+    } else {
+      console.error('QuickTask insert error:', error);
+    }
     setSaving(false);
     load();
   }
@@ -222,11 +220,6 @@ function QuickTasksPanel() {
   async function handleToggle(id: string, current: string) {
     const next = current === 'active' ? 'inactive' : 'active';
     await supabase.from('quick_tasks').update({ status: next }).eq('id', id);
-    if (next === 'active') {
-      await supabase.functions.invoke('notify-content-live', {
-        body: { content_type: 'quick_task', content_id: id },
-      });
-    }
     load();
   }
 
@@ -271,7 +264,9 @@ function QuickTasksPanel() {
             />
           </div>
           <div>
-            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Additional Notes <span className="text-[#6B7280]/60">(optional — shown to readers)</span></label>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
+              Additional Notes <span className="text-[#6B7280]/60">(optional — shown to readers)</span>
+            </label>
             <textarea
               rows={2}
               className={textareaClass}
@@ -280,7 +275,7 @@ function QuickTasksPanel() {
               onChange={(e) => setForm({ ...form, additional_notes: e.target.value })}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Payout ($)</label>
               <input
@@ -290,6 +285,16 @@ function QuickTasksPanel() {
                 className={inputClass}
                 value={form.payout_per_response}
                 onChange={(e) => setForm({ ...form, payout_per_response: parseFloat(e.target.value) || 0 })}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Max Responses</label>
+              <input
+                type="number"
+                min="1"
+                className={inputClass}
+                value={form.max_responses}
+                onChange={(e) => setForm({ ...form, max_responses: parseInt(e.target.value) || 1 })}
               />
             </div>
             <div>
@@ -307,7 +312,7 @@ function QuickTasksPanel() {
           <div className="flex gap-2">
             <button
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || !form.title}
               className="px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-xs font-semibold hover:bg-[#c49a3e] disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Add'}
@@ -334,7 +339,7 @@ function QuickTasksPanel() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-[#1B2A4A] dark:text-[#F5F0E8] truncate">{task.title}</p>
                 <p className="text-xs text-[#6B7280] dark:text-gray-400">
-                  {task.task_type} · ${task.payout_per_response.toFixed(2)}
+                  {task.task_type} · {task.responses_count}/{task.max_responses} · ${task.payout_per_response.toFixed(2)}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -371,9 +376,9 @@ function SurveysPanel() {
     description: '',
     additional_notes: '',
     payout_per_response: 1.0,
-    questions: 5,
+    max_responses: 50,
   });
-  const [questionInputs, setQuestionInputs] = useState<QuestionInput[]>([]);
+  const [questions, setQuestions] = useState<QuestionInput[]>([]);
 
   useEffect(() => { load(); }, []);
 
@@ -389,40 +394,32 @@ function SurveysPanel() {
     if (!form.title) return;
     setSaving(true);
 
-    const { data: newSurvey, error } = await supabase
+    const questionsJsonb = questions.map((q, idx) => ({
+      question_text: q.question_text,
+      required: q.required,
+      order_index: idx,
+    }));
+
+    const { error } = await supabase
       .from('surveys')
       .insert({
         title: form.title,
         description: form.description || null,
         additional_notes: form.additional_notes || null,
+        questions: questionsJsonb,
         payout_per_response: form.payout_per_response,
-        questions: form.questions,
+        max_responses: form.max_responses,
+        responses_count: 0,
         status: 'active',
-      })
-      .select('id')
-      .single();
-
-    if (!error && newSurvey && questionInputs.length > 0) {
-      await supabase.from('earning_task_questions').insert(
-        questionInputs.map((q, idx) => ({
-          task_id: newSurvey.id,
-          task_type: 'survey',
-          question_text: q.question_text,
-          required: q.required,
-          order_index: idx,
-        }))
-      );
-    }
-
-    if (!error && newSurvey) {
-      await supabase.functions.invoke('notify-content-live', {
-        body: { content_type: 'survey', content_id: newSurvey.id },
       });
-    }
 
-    setForm({ title: '', description: '', additional_notes: '', payout_per_response: 1.0, questions: 5 });
-    setQuestionInputs([]);
-    setShowForm(false);
+    if (!error) {
+      setForm({ title: '', description: '', additional_notes: '', payout_per_response: 1.0, max_responses: 50 });
+      setQuestions([]);
+      setShowForm(false);
+    } else {
+      console.error('Survey insert error:', error);
+    }
     setSaving(false);
     load();
   }
@@ -430,11 +427,6 @@ function SurveysPanel() {
   async function handleToggle(id: string, current: string) {
     const next = current === 'active' ? 'inactive' : 'active';
     await supabase.from('surveys').update({ status: next }).eq('id', id);
-    if (next === 'active') {
-      await supabase.functions.invoke('notify-content-live', {
-        body: { content_type: 'survey', content_id: id },
-      });
-    }
     load();
   }
 
@@ -479,7 +471,9 @@ function SurveysPanel() {
             />
           </div>
           <div>
-            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Additional Notes <span className="text-[#6B7280]/60">(optional — shown to readers)</span></label>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
+              Additional Notes <span className="text-[#6B7280]/60">(optional — shown to readers)</span>
+            </label>
             <textarea
               rows={2}
               className={textareaClass}
@@ -501,27 +495,27 @@ function SurveysPanel() {
               />
             </div>
             <div>
-              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Question count</label>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Max Responses</label>
               <input
                 type="number"
                 min="1"
                 className={inputClass}
-                value={form.questions}
-                onChange={(e) => setForm({ ...form, questions: parseInt(e.target.value) || 1 })}
+                value={form.max_responses}
+                onChange={(e) => setForm({ ...form, max_responses: parseInt(e.target.value) || 1 })}
               />
             </div>
           </div>
-          <FreeTextQuestionBuilder questions={questionInputs} onChange={setQuestionInputs} />
+          <FreeTextQuestionBuilder questions={questions} onChange={setQuestions} />
           <div className="flex gap-2">
             <button
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || !form.title}
               className="px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-xs font-semibold hover:bg-[#c49a3e] disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Add'}
             </button>
             <button
-              onClick={() => { setShowForm(false); setQuestionInputs([]); }}
+              onClick={() => { setShowForm(false); setQuestions([]); }}
               className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs text-[#6B7280]"
             >
               Cancel
@@ -542,7 +536,7 @@ function SurveysPanel() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-[#1B2A4A] dark:text-[#F5F0E8] truncate">{s.title}</p>
                 <p className="text-xs text-[#6B7280] dark:text-gray-400">
-                  {s.questions} questions · ${s.payout_per_response.toFixed(2)}
+                  {s.responses_count}/{s.max_responses} · ${s.payout_per_response.toFixed(2)}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -576,11 +570,11 @@ function BetaPanel_() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     title: '',
-    description: '',
+    genre: '',
+    chapter_text: '',
     additional_notes: '',
     excerpt: '',
     payout_per_response: 1.5,
-    genre: '',
     max_responses: 10,
   });
   const [questions, setQuestions] = useState<QuestionInput[]>([]);
@@ -596,46 +590,37 @@ function BetaPanel_() {
   }
 
   async function handleSave() {
-    if (!form.title) return;
+    if (!form.title || !form.chapter_text) return;
     setSaving(true);
 
-    const { data: newPanel, error } = await supabase
+    const questionsJsonb = questions.map((q, idx) => ({
+      question_text: q.question_text,
+      required: q.required,
+      order_index: idx,
+    }));
+
+    const { error } = await supabase
       .from('beta_panels')
       .insert({
         title: form.title,
-        description: form.description || null,
+        genre: form.genre || null,
+        chapter_text: form.chapter_text,
         additional_notes: form.additional_notes || null,
         excerpt: form.excerpt || null,
+        questions: questionsJsonb,
         payout_per_response: form.payout_per_response,
-        genre: form.genre || null,
         max_responses: form.max_responses,
         responses_count: 0,
         status: 'active',
-      })
-      .select('id')
-      .single();
-
-    if (!error && newPanel && questions.length > 0) {
-      await supabase.from('earning_task_questions').insert(
-        questions.map((q, idx) => ({
-          task_id: newPanel.id,
-          task_type: 'beta_panel',
-          question_text: q.question_text,
-          required: q.required,
-          order_index: idx,
-        }))
-      );
-    }
-
-    if (!error && newPanel) {
-      await supabase.functions.invoke('notify-content-live', {
-        body: { content_type: 'beta_panel', content_id: newPanel.id },
       });
-    }
 
-    setForm({ title: '', description: '', additional_notes: '', excerpt: '', payout_per_response: 1.5, genre: '', max_responses: 10 });
-    setQuestions([]);
-    setShowForm(false);
+    if (!error) {
+      setForm({ title: '', genre: '', chapter_text: '', additional_notes: '', excerpt: '', payout_per_response: 1.5, max_responses: 10 });
+      setQuestions([]);
+      setShowForm(false);
+    } else {
+      console.error('BetaPanel insert error:', error);
+    }
     setSaving(false);
     load();
   }
@@ -643,11 +628,6 @@ function BetaPanel_() {
   async function handleToggle(id: string, current: string) {
     const next = current === 'active' ? 'inactive' : 'active';
     await supabase.from('beta_panels').update({ status: next }).eq('id', id);
-    if (next === 'active') {
-      await supabase.functions.invoke('notify-content-live', {
-        body: { content_type: 'beta_panel', content_id: id },
-      });
-    }
     load();
   }
 
@@ -677,32 +657,38 @@ function BetaPanel_() {
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e8d5] dark:border-gray-700 p-4 space-y-3">
           <input
             className={inputClass}
-            placeholder="Panel title"
+            placeholder="Panel title (e.g. book title)"
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
           />
           <div>
-            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Description / Blurb</label>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
+              Blurb / Description <span className="text-red-400">*</span>
+            </label>
             <textarea
               rows={3}
               className={textareaClass}
-              placeholder="Author's blurb for this book..."
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              placeholder="Author's blurb — shown to readers as the book description..."
+              value={form.chapter_text}
+              onChange={(e) => setForm({ ...form, chapter_text: e.target.value })}
             />
           </div>
           <div>
-            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Additional Notes <span className="text-[#6B7280]/60">(optional — shown to readers)</span></label>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
+              Additional Notes <span className="text-[#6B7280]/60">(optional — shown to readers)</span>
+            </label>
             <textarea
               rows={2}
               className={textareaClass}
-              placeholder="Any extra instructions or context for readers..."
+              placeholder="Any extra instructions or context from the author..."
               value={form.additional_notes}
               onChange={(e) => setForm({ ...form, additional_notes: e.target.value })}
             />
           </div>
           <div>
-            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Sample / Excerpt <span className="text-[#6B7280]/60">(readers will read this before answering questions)</span></label>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
+              Sample / Excerpt <span className="text-[#6B7280]/60">(readers read this before answering questions)</span>
+            </label>
             <textarea
               rows={8}
               className={textareaClass}
@@ -747,7 +733,7 @@ function BetaPanel_() {
           <div className="flex gap-2">
             <button
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || !form.title || !form.chapter_text}
               className="px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-xs font-semibold hover:bg-[#c49a3e] disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Add'}
@@ -809,10 +795,11 @@ function SensitivityPanel_() {
   const [form, setForm] = useState({
     title: '',
     description: '',
+    identity_requirements: '',
+    chapter_text: '',
     additional_notes: '',
     excerpt: '',
     payout_per_response: 10.0,
-    identity_requirements: '',
     max_responses: 5,
   });
   const [questions, setQuestions] = useState<QuestionInput[]>([]);
@@ -830,46 +817,38 @@ function SensitivityPanel_() {
   }
 
   async function handleSave() {
-    if (!form.title) return;
+    if (!form.title || !form.chapter_text || !form.identity_requirements) return;
     setSaving(true);
 
-    const { data: newPanel, error } = await supabase
+    const questionsJsonb = questions.map((q, idx) => ({
+      question_text: q.question_text,
+      required: q.required,
+      order_index: idx,
+    }));
+
+    const { error } = await supabase
       .from('sensitivity_panels')
       .insert({
         title: form.title,
         description: form.description || null,
+        identity_requirements: form.identity_requirements,
+        chapter_text: form.chapter_text,
         additional_notes: form.additional_notes || null,
         excerpt: form.excerpt || null,
+        questions: questionsJsonb,
         payout_per_response: form.payout_per_response,
-        identity_requirements: form.identity_requirements || null,
         max_responses: form.max_responses,
         responses_count: 0,
         status: 'active',
-      })
-      .select('id')
-      .single();
-
-    if (!error && newPanel && questions.length > 0) {
-      await supabase.from('earning_task_questions').insert(
-        questions.map((q, idx) => ({
-          task_id: newPanel.id,
-          task_type: 'sensitivity_panel',
-          question_text: q.question_text,
-          required: q.required,
-          order_index: idx,
-        }))
-      );
-    }
-
-    if (!error && newPanel) {
-      await supabase.functions.invoke('notify-content-live', {
-        body: { content_type: 'sensitivity_panel', content_id: newPanel.id },
       });
-    }
 
-    setForm({ title: '', description: '', additional_notes: '', excerpt: '', payout_per_response: 10.0, identity_requirements: '', max_responses: 5 });
-    setQuestions([]);
-    setShowForm(false);
+    if (!error) {
+      setForm({ title: '', description: '', identity_requirements: '', chapter_text: '', additional_notes: '', excerpt: '', payout_per_response: 10.0, max_responses: 5 });
+      setQuestions([]);
+      setShowForm(false);
+    } else {
+      console.error('SensitivityPanel insert error:', error);
+    }
     setSaving(false);
     load();
   }
@@ -877,11 +856,6 @@ function SensitivityPanel_() {
   async function handleToggle(id: string, current: string) {
     const next = current === 'active' ? 'inactive' : 'active';
     await supabase.from('sensitivity_panels').update({ status: next }).eq('id', id);
-    if (next === 'active') {
-      await supabase.functions.invoke('notify-content-live', {
-        body: { content_type: 'sensitivity_panel', content_id: id },
-      });
-    }
     load();
   }
 
@@ -911,7 +885,7 @@ function SensitivityPanel_() {
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e8d5] dark:border-gray-700 p-4 space-y-3">
           <input
             className={inputClass}
-            placeholder="Panel title"
+            placeholder="Panel title (e.g. book title)"
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
           />
@@ -920,29 +894,45 @@ function SensitivityPanel_() {
             <textarea
               rows={3}
               className={textareaClass}
-              placeholder="Author's blurb for this book..."
+              placeholder="Author's blurb — shown to readers as the book description..."
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
           </div>
           <div>
-            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Additional Notes <span className="text-[#6B7280]/60">(optional — shown to readers)</span></label>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
+              Additional Notes <span className="text-[#6B7280]/60">(optional — shown to readers)</span>
+            </label>
             <textarea
               rows={2}
               className={textareaClass}
-              placeholder="Any extra instructions or context for readers..."
+              placeholder="Any extra instructions or context from the author..."
               value={form.additional_notes}
               onChange={(e) => setForm({ ...form, additional_notes: e.target.value })}
             />
           </div>
           <div>
-            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Sample / Excerpt <span className="text-[#6B7280]/60">(readers will read this before answering questions)</span></label>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
+              Sample / Excerpt <span className="text-[#6B7280]/60">(readers read this before answering questions)</span>
+            </label>
             <textarea
               rows={8}
               className={textareaClass}
               placeholder="Paste the author's sample chapter or excerpt here..."
               value={form.excerpt}
               onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
+              Full Chapter Text <span className="text-red-400">*</span>
+            </label>
+            <textarea
+              rows={5}
+              className={textareaClass}
+              placeholder="Full chapter or passage for sensitivity review..."
+              value={form.chapter_text}
+              onChange={(e) => setForm({ ...form, chapter_text: e.target.value })}
             />
           </div>
           <div className="grid grid-cols-3 gap-3">
@@ -968,7 +958,9 @@ function SensitivityPanel_() {
               />
             </div>
             <div>
-              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Type</label>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">
+                Type <span className="text-red-400">*</span>
+              </label>
               <select
                 className={inputClass}
                 value={form.identity_requirements}
@@ -983,7 +975,7 @@ function SensitivityPanel_() {
           <div className="flex gap-2">
             <button
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || !form.title || !form.chapter_text || !form.identity_requirements}
               className="px-3 py-1.5 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-xs font-semibold hover:bg-[#c49a3e] disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Add'}
@@ -1010,7 +1002,7 @@ function SensitivityPanel_() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-[#1B2A4A] dark:text-[#F5F0E8] truncate">{p.title}</p>
                 <p className="text-xs text-[#6B7280] dark:text-gray-400">
-                  {p.identity_requirements ? `${p.identity_requirements} · ` : ''}{p.responses_count}/{p.max_responses} · ${p.payout_per_response.toFixed(2)}
+                  {p.identity_requirements} · {p.responses_count}/{p.max_responses} · ${p.payout_per_response.toFixed(2)}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
