@@ -1,92 +1,117 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import { supabase } from "../lib/supabase";
 import { loadStripe } from "@stripe/stripe-js";
-import {
-  Elements,
-  CardElement,
-  useStripe,
-  useElements,
-} from "@stripe/react-stripe-js";
-import { supabase } from "../lib/supabaseClient";
+import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
-const PACKAGES = [
-  { label: "Starter", readers: 5, price: 29 },
-  { label: "Standard", readers: 15, price: 69 },
-  { label: "Premium", readers: 30, price: 119 },
-];
+const goTo = (path: string) => {
+window.history.pushState({}, "", path);
+window.dispatchEvent(new PopStateEvent("popstate"));
+};
 
-const GENRES = [
-  "Fantasy","Science Fiction","Romance","Mystery","Thriller",
-  "Horror","Literary Fiction","Historical Fiction","Young Adult",
-  "Children's","Non-Fiction","Self-Help","Other",
+const PACKAGES = [
+{ label: "Starter",  readers: 5,  price: 28.00,  cents: 2800  },
+{ label: "Standard", readers: 10, price: 60.00,  cents: 6000  },
+{ label: "Extended", readers: 20, price: 110.00, cents: 11000 },
+{ label: "Pro",      readers: 40, price: 200.00, cents: 20000 },
 ];
 
 const FEEDBACK_TYPES = [
-  "General Impressions",
-  "Plot & Pacing",
-  "Character Development",
-  "World Building",
-  "Dialogue",
-  "All of the Above",
+{ value: "General Read",      desc: "Overall impressions and enjoyment" },
+{ value: "Detailed Critique", desc: "In-depth feedback on writing craft" },
+{ value: "Would You Buy?",    desc: "Purchase intent and market appeal"  },
 ];
 
+const MAX_QUESTIONS = 15;
+
+const CARD_STYLE = {
+style: {
+  base: {
+    color: "#ffffff",
+    fontFamily: "sans-serif",
+    fontSize: "16px",
+    "::placeholder": { color: "#6b7280" },
+  },
+  invalid: { color: "#ef4444" },
+},
+disableLink: true,
+};
+
 interface FormState {
-  authorName: string;
-  email: string;
-  bookTitle: string;
-  genre: string;
-  feedbackType: string;
-  excerpt: string;
-  blurb: string;
-  notes: string;
+authorName:   string;
+email:        string;
+bookTitle:    string;
+genre:        string;
+feedbackType: string;
+excerpt:      string;
+blurb:        string;
+notes:        string;
 }
 
-function StripePaymentForm({
-  pkg,
-  form,
-  questions,
-  onSuccess,
+type Pkg = typeof PACKAGES[0];
+
+const StripePaymentForm = ({
+form,
+pkg,
+questions,
 }: {
-  pkg: (typeof PACKAGES)[0];
-  form: FormState;
-  questions: string[];
-  onSuccess: () => void;
-}) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [paying, setPaying] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+form: FormState;
+pkg: Pkg;
+questions: string[];
+}) => {
+const stripe   = useStripe();
+const elements = useElements();
+const [loading, setLoading] = useState(false);
+const [error,   setError]   = useState<string | null>(null);
 
-  const handlePay = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-    setPaying(true);
-    setError(null);
+const handlePay = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!stripe || !elements) return;
+  setLoading(true);
+  setError(null);
 
-    try {
-      // 1. Create PaymentIntent
-      const res = await fetch("/api/create-payment-intent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: pkg.price * 100, currency: "usd" }),
+  try {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) throw new Error("You must be logged in.");
+
+    const { data, error: fnError } = await supabase.functions.invoke("create-payment-intent", {
+      body: {
+        amount:   pkg.cents,
+        currency: "usd",
+        metadata: {
+          user_id: user.id,
+          type:    "beta_reader",
+          label:   `Beta Readers — ${pkg.label} (${pkg.readers} readers) — ${form.bookTitle}`,
+        },
+      },
+    });
+    if (fnError || !data?.clientSecret)
+      throw new Error(fnError?.message || "Failed to initialize payment.");
+
+    const cardElement = elements.getElement(CardElement);
+    if (!cardElement) throw new Error("Card element not found.");
+
+    const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
+      data.clientSecret,
+      { payment_method: { card: cardElement } }
+    );
+    if (stripeError) throw new Error(stripeError.message);
+
+    if (paymentIntent?.status === "succeeded") {
+      const { error: payErr } = await supabase.from("payments").insert({
+        user_id:                  user.id,
+        stripe_payment_intent_id: paymentIntent.id,
+        amount:                   pkg.cents,
+        type:                     "beta_reader",
+        label:                    `Beta Readers — ${pkg.label} (${pkg.readers} readers) — ${form.bookTitle}`,
+        metadata:                 { package: pkg.label, readers: pkg.readers },
+        status:                   "succeeded",
       });
-      const { clientSecret, error: piError } = await res.json();
-      if (piError) throw new Error(piError);
+      if (payErr) console.error("[BetaReaders] payment log error:", payErr);
 
-      // 2. Confirm card payment
-      const { error: stripeError } = await stripe.confirmCardPayment(
-        clientSecret,
-        {
-          payment_method: {
-            card: elements.getElement(CardElement)!,
-            billing_details: { name: form.authorName, email: form.email },
-          },
-        }
-      );
-      if (stripeError) throw new Error(stripeError.message);
-
-      // 3. Save submission
+      // Save questions in the standard {id, question, required} format
+      // so BetaReaderPanel can parse them identically to other panel types
       const filledQuestions = questions
         .filter((q) => q.trim() !== "")
         .map((q, i) => ({ id: String(i + 1), question: q.trim(), required: false }));
@@ -109,245 +134,287 @@ function StripePaymentForm({
           status:           "pending",
         });
 
-      if (subErr) throw new Error(subErr.message);
+      if (subErr) {
+        console.error("[BetaReaders] submission insert error:", subErr);
+        throw new Error("Payment succeeded but submission failed: " + subErr.message);
+      }
 
-      onSuccess();
-    } catch (err: any) {
-      setError(err.message ?? "Payment failed");
-    } finally {
-      setPaying(false);
+      console.log("[BetaReaders] submission inserted successfully");
+      goTo("/author-dashboard");
     }
-  };
-
-  return (
-    <form onSubmit={handlePay} className="space-y-4">
-      <div className="border rounded p-3">
-        <CardElement options={{ hidePostalCode: true }} />
-      </div>
-      {error && <p className="text-red-600 text-sm">{error}</p>}
-      <button
-        type="submit"
-        disabled={paying}
-        className="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 disabled:opacity-50"
-      >
-        {paying ? "Processing…" : `Pay $${pkg.price}`}
-      </button>
-    </form>
-  );
-}
-
-export default function AuthorBetaReaders() {
-  const [step, setStep] = useState<"form" | "payment" | "done">("form");
-  const [selectedPkg, setSelectedPkg] = useState<(typeof PACKAGES)[0] | null>(null);
-  const [form, setForm] = useState<FormState>({
-    authorName: "",
-    email: "",
-    bookTitle: "",
-    genre: "",
-    feedbackType: "",
-    excerpt: "",
-    blurb: "",
-    notes: "",
-  });
-  const [questions, setQuestions] = useState<string[]>(["", "", ""]);
-
-  const updateForm = (field: keyof FormState, value: string) =>
-    setForm((prev) => ({ ...prev, [field]: value }));
-
-  const updateQuestion = (i: number, value: string) =>
-    setQuestions((prev) => prev.map((q, idx) => (idx === i ? value : q)));
-
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedPkg) return;
-    setStep("payment");
-  };
-
-  if (step === "done") {
-    return (
-      <div className="max-w-xl mx-auto py-20 text-center">
-        <h2 className="text-3xl font-bold text-indigo-700 mb-4">🎉 Submission Received!</h2>
-        <p className="text-gray-600">
-          Thank you! We'll match your book with beta readers and be in touch shortly.
-        </p>
-      </div>
-    );
+  } catch (err: unknown) {
+    setError(err instanceof Error ? err.message : "Something went wrong.");
+  } finally {
+    setLoading(false);
   }
+};
 
-  return (
-    <div className="max-w-2xl mx-auto py-12 px-4">
-      <h1 className="text-3xl font-bold text-indigo-700 mb-2">Find Beta Readers</h1>
-      <p className="text-gray-600 mb-8">
-        Submit your manuscript excerpt and get targeted feedback from real readers.
-      </p>
+return (
+  <form onSubmit={handlePay} className="space-y-4">
+    <div>
+      <label className="block text-sm font-medium text-gray-300 mb-2">Card Details</label>
+      <div className="px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-lg">
+        <CardElement options={CARD_STYLE} />
+      </div>
+    </div>
+    {error && (
+      <div className="p-3 bg-red-900/20 border border-red-900/50 rounded text-red-400 text-sm">
+        {error}
+      </div>
+    )}
+    <button
+      type="submit"
+      disabled={loading || !stripe}
+      className="w-full bg-white text-black font-medium py-4 rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed text-lg"
+    >
+      {loading ? "Processing..." : `Pay $${pkg.price.toFixed(2)}`}
+    </button>
+    <p className="text-gray-600 text-xs text-center">
+      Secured by Stripe. Your card info never touches our servers.
+    </p>
+  </form>
+);
+};
 
-      {/* Package Selection */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        {PACKAGES.map((p) => (
-          <button
-            key={p.label}
-            onClick={() => setSelectedPkg(p)}
-            className={`border-2 rounded-lg p-4 text-center transition ${
-              selectedPkg?.label === p.label
-                ? "border-indigo-600 bg-indigo-50"
-                : "border-gray-200 hover:border-indigo-300"
-            }`}
-          >
-            <div className="font-bold text-lg">{p.label}</div>
-            <div className="text-gray-500 text-sm">{p.readers} readers</div>
-            <div className="text-indigo-700 font-semibold mt-1">${p.price}</div>
-          </button>
-        ))}
+const AuthorBetaReaders = () => {
+const [form, setForm] = useState<FormState>({
+  authorName:   "",
+  email:        "",
+  bookTitle:    "",
+  genre:        "",
+  feedbackType: "",
+  excerpt:      "",
+  blurb:        "",
+  notes:        "",
+});
+const [selectedPkg,  setSelectedPkg]  = useState<Pkg | null>(null);
+const [showPayment,  setShowPayment]  = useState(false);
+const [questions,    setQuestions]    = useState<string[]>([""]);
+
+const set = (field: keyof FormState) =>
+  (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    setForm((f) => ({ ...f, [field]: e.target.value }));
+
+const setQuestion = (index: number, value: string) => {
+  setQuestions((prev) => {
+    const updated = [...prev];
+    updated[index] = value;
+    return updated;
+  });
+};
+
+const addQuestion = () => {
+  if (questions.length < MAX_QUESTIONS) {
+    setQuestions((prev) => [...prev, ""]);
+  }
+};
+
+const removeQuestion = (index: number) => {
+  setQuestions((prev) => prev.filter((_, i) => i !== index));
+};
+
+const isValid =
+  form.authorName.trim() &&
+  form.email.trim() &&
+  form.bookTitle.trim() &&
+  form.genre.trim() &&
+  form.feedbackType &&
+  form.excerpt.trim() &&
+  form.blurb.trim() &&
+  selectedPkg;
+
+const inputCls = "w-full bg-[#1a1a1a] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-gray-500 text-sm";
+const labelCls = "block text-sm font-medium text-gray-300 mb-1";
+
+return (
+  <div className="min-h-screen bg-[#0f0f0f]">
+    <div className="max-w-2xl mx-auto px-4 py-16">
+      <div className="mb-10">
+        <button
+          onClick={() => goTo("/author-dashboard")}
+          className="text-gray-500 hover:text-white text-sm transition mb-6 flex items-center gap-1"
+        >
+          ← Back
+        </button>
+        <h1 className="font-serif text-3xl text-white mb-2">Beta Readers</h1>
+        <p className="text-gray-400 text-sm">Get real feedback from readers before you publish.</p>
       </div>
 
-      {step === "form" && (
-        <form onSubmit={handleFormSubmit} className="space-y-5">
-          {/* Author Info */}
-          <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-8">
+        <section className="bg-[#141414] rounded-xl p-6 border border-gray-800 space-y-4">
+          <h2 className="text-white font-semibold text-lg">Book Information</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Author Name *</label>
-              <input
-                required
-                value={form.authorName}
-                onChange={(e) => updateForm("authorName", e.target.value)}
-                className="w-full border rounded px-3 py-2 text-sm"
-              />
+              <label className={labelCls}>Author Name *</label>
+              <input className={inputCls} placeholder="Your name" value={form.authorName} onChange={set("authorName")} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-              <input
-                required
-                type="email"
-                value={form.email}
-                onChange={(e) => updateForm("email", e.target.value)}
-                className="w-full border rounded px-3 py-2 text-sm"
-              />
+              <label className={labelCls}>Email *</label>
+              <input type="email" className={inputCls} placeholder="you@example.com" value={form.email} onChange={set("email")} />
+            </div>
+            <div>
+              <label className={labelCls}>Book Title *</label>
+              <input className={inputCls} placeholder="Title of your book" value={form.bookTitle} onChange={set("bookTitle")} />
+            </div>
+            <div>
+              <label className={labelCls}>Genre *</label>
+              <input className={inputCls} placeholder="e.g. Fantasy, Romance, Thriller" value={form.genre} onChange={set("genre")} />
             </div>
           </div>
+        </section>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Book Title *</label>
-            <input
-              required
-              value={form.bookTitle}
-              onChange={(e) => updateForm("bookTitle", e.target.value)}
-              className="w-full border rounded px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Genre *</label>
-              <select
-                required
-                value={form.genre}
-                onChange={(e) => updateForm("genre", e.target.value)}
-                className="w-full border rounded px-3 py-2 text-sm"
+        <section className="bg-[#141414] rounded-xl p-6 border border-gray-800 space-y-4">
+          <h2 className="text-white font-semibold text-lg">Feedback Focus *</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {FEEDBACK_TYPES.map((ft) => (
+              <button
+                key={ft.value}
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, feedbackType: ft.value }))}
+                className={`p-4 rounded-lg border text-left transition ${
+                  form.feedbackType === ft.value
+                    ? "border-white bg-white/10"
+                    : "border-gray-700 hover:border-gray-500"
+                }`}
               >
-                <option value="">Select genre…</option>
-                {GENRES.map((g) => <option key={g}>{g}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Feedback Type *</label>
-              <select
-                required
-                value={form.feedbackType}
-                onChange={(e) => updateForm("feedbackType", e.target.value)}
-                className="w-full border rounded px-3 py-2 text-sm"
-              >
-                <option value="">Select type…</option>
-                {FEEDBACK_TYPES.map((f) => <option key={f}>{f}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Book Blurb / Synopsis *
-            </label>
-            <textarea
-              required
-              rows={3}
-              value={form.blurb}
-              onChange={(e) => updateForm("blurb", e.target.value)}
-              className="w-full border rounded px-3 py-2 text-sm"
-              placeholder="A short description of your book…"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Excerpt (up to 5,000 words) *
-            </label>
-            <textarea
-              required
-              rows={8}
-              value={form.excerpt}
-              onChange={(e) => updateForm("excerpt", e.target.value)}
-              className="w-full border rounded px-3 py-2 text-sm font-mono"
-              placeholder="Paste your excerpt here…"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Custom Questions for Readers (optional)
-            </label>
-            {questions.map((q, i) => (
-              <input
-                key={i}
-                value={q}
-                onChange={(e) => updateQuestion(i, e.target.value)}
-                placeholder={`Question ${i + 1}`}
-                className="w-full border rounded px-3 py-2 text-sm mb-2"
-              />
+                <div className="text-white text-sm font-medium">{ft.value}</div>
+                <div className="text-gray-400 text-xs mt-1">{ft.desc}</div>
+              </button>
             ))}
           </div>
+        </section>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Additional Notes (optional)
-            </label>
-            <textarea
-              rows={2}
-              value={form.notes}
-              onChange={(e) => updateForm("notes", e.target.value)}
-              className="w-full border rounded px-3 py-2 text-sm"
-            />
+        <section className="bg-[#141414] rounded-xl p-6 border border-gray-800 space-y-4">
+          <h2 className="text-white font-semibold text-lg">Select Package *</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {PACKAGES.map((pkg) => (
+              <button
+                key={pkg.label}
+                type="button"
+                onClick={() => setSelectedPkg(pkg)}
+                className={`p-4 rounded-lg border text-center transition ${
+                  selectedPkg?.label === pkg.label
+                    ? "border-white bg-white/10"
+                    : "border-gray-700 hover:border-gray-500"
+                }`}
+              >
+                <div className="text-white font-semibold text-sm">{pkg.label}</div>
+                <div className="text-gray-400 text-xs mt-1">{pkg.readers} readers</div>
+                <div className="text-white font-bold mt-2">${pkg.price.toFixed(2)}</div>
+              </button>
+            ))}
           </div>
+        </section>
 
-          <button
-            type="submit"
-            disabled={!selectedPkg}
-            className="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 disabled:opacity-50"
-          >
-            Continue to Payment
-          </button>
-        </form>
-      )}
+        <section className="bg-[#141414] rounded-xl p-6 border border-gray-800 space-y-4">
+          <h2 className="text-white font-semibold text-lg">Your Content</h2>
+          <div>
+            <label className={labelCls}>Excerpt * <span className="text-gray-500 font-normal">(first chapter or opening pages)</span></label>
+            <textarea className={`${inputCls} h-40 resize-none`} placeholder="Paste your excerpt here..." value={form.excerpt} onChange={set("excerpt")} />
+          </div>
+          <div>
+            <label className={labelCls}>Back Cover Blurb *</label>
+            <textarea className={`${inputCls} h-24 resize-none`} placeholder="Your book's marketing description..." value={form.blurb} onChange={set("blurb")} />
+          </div>
+          <div>
+            <label className={labelCls}>Additional Notes <span className="text-gray-500 font-normal">(optional)</span></label>
+            <textarea className={`${inputCls} h-20 resize-none`} placeholder="Anything specific you'd like readers to focus on..." value={form.notes} onChange={set("notes")} />
+          </div>
+        </section>
 
-      {step === "payment" && selectedPkg && (
-        <div>
-          <h2 className="text-xl font-semibold mb-4">
-            Complete Payment — {selectedPkg.label} Package (${selectedPkg.price})
-          </h2>
-          <Elements stripe={stripePromise}>
-            <StripePaymentForm
-              pkg={selectedPkg}
-              form={form}
-              questions={questions}
-              onSuccess={() => setStep("done")}
-            />
-          </Elements>
+        <section className="bg-[#141414] rounded-xl p-6 border border-gray-800 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-white font-semibold text-lg">Custom Questions <span className="text-gray-500 font-normal text-sm">(optional)</span></h2>
+              <p className="text-gray-400 text-xs mt-1">Readers will answer these in free text. Up to {MAX_QUESTIONS} questions.</p>
+            </div>
+            <span className="text-gray-500 text-xs">{questions.filter(q => q.trim()).length}/{MAX_QUESTIONS}</span>
+          </div>
+          <div className="space-y-3">
+            {questions.map((q, i) => (
+              <div key={i} className="flex gap-2 items-start">
+                <div className="flex-1">
+                  <input
+                    className={inputCls}
+                    placeholder={`Question ${i + 1}...`}
+                    value={q}
+                    onChange={(e) => setQuestion(i, e.target.value)}
+                    maxLength={300}
+                  />
+                </div>
+                {questions.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeQuestion(i)}
+                    className="mt-0.5 text-gray-500 hover:text-red-400 transition text-lg leading-none px-1"
+                    title="Remove question"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          {questions.length < MAX_QUESTIONS && (
+            <button
+              type="button"
+              onClick={addQuestion}
+              className="text-sm text-gray-400 hover:text-white transition flex items-center gap-1"
+            >
+              + Add question
+            </button>
+          )}
+        </section>
+
+        {!showPayment ? (
           <button
-            onClick={() => setStep("form")}
-            className="mt-4 text-sm text-gray-500 underline"
+            type="button"
+            disabled={!isValid}
+            onClick={() => setShowPayment(true)}
+            className="w-full bg-white text-black font-medium py-4 rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed text-lg"
           >
-            ← Back to form
+            {selectedPkg ? `Continue to Payment — $${selectedPkg.price.toFixed(2)}` : "Complete all fields to continue"}
           </button>
-        </div>
-      )}
+        ) : (
+          <section className="bg-[#141414] rounded-xl p-6 border border-gray-800 space-y-4">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-white font-semibold text-lg">Payment</h2>
+              <button type="button" onClick={() => setShowPayment(false)} className="text-gray-500 hover:text-white text-sm transition">← Edit</button>
+            </div>
+            <div className="bg-[#1a1a1a] rounded-lg p-4 border border-gray-700 mb-4">
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-gray-400">Package</span>
+                <span className="text-white">{selectedPkg!.label} ({selectedPkg!.readers} readers)</span>
+              </div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-gray-400">Book</span>
+                <span className="text-white">{form.bookTitle}</span>
+              </div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-gray-400">Feedback</span>
+                <span className="text-white">{form.feedbackType}</span>
+              </div>
+              {questions.filter(q => q.trim()).length > 0 && (
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-gray-400">Custom Questions</span>
+                  <span className="text-white">{questions.filter(q => q.trim()).length}</span>
+                </div>
+              )}
+              <div className="border-t border-gray-700 mt-3 pt-3 flex justify-between">
+                <span className="text-white font-medium">Total</span>
+                <span className="text-white font-bold">${selectedPkg!.price.toFixed(2)}</span>
+              </div>
+            </div>
+            <Elements stripe={stripePromise}>
+              <StripePaymentForm form={form} pkg={selectedPkg!} questions={questions} />
+            </Elements>
+          </section>
+        )}
+      </div>
     </div>
-  );
-}
+  </div>
+);
+};
+
+export { AuthorBetaReaders };
+export default AuthorBetaReaders;
