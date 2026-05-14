@@ -59,10 +59,10 @@ async function loadPanels() {
 
   if (user) {
     const { data: done } = await supabase
-      .from('beta_reader_responses')
-      .select('submission_id')
+      .from('beta_panel_responses')
+      .select('panel_id')
       .eq('user_id', user.id);
-    setCompletedIds(new Set((done ?? []).map((r: { submission_id: string }) => r.submission_id)));
+    setCompletedIds(new Set((done ?? []).map((r: { panel_id: string }) => r.panel_id)));
   }
 
   setPanels(open);
@@ -107,12 +107,12 @@ async function handleSubmit() {
     answer: answers[idx] ?? '',
   }));
 
-  const { error } = await supabase.from('beta_reader_responses').insert({
-    submission_id: selected.id,
+  const { error } = await supabase.from('beta_panel_responses').insert({
+    panel_id: selected.id,
     user_id: user.id,
-    responses: responsePayload,
-    reader_email: readerEmail || null,
-    manuscript_interest: manuscriptInterest || null,
+    answers: responsePayload,
+    contact_email: readerEmail || null,
+    wants_full_beta: manuscriptInterest === 'unpaid' || manuscriptInterest === 'paid' ? true : false,
     earned: selected.payout_per_response,
   });
 
@@ -317,7 +317,6 @@ if (step === 'answer' && selected) {
         ))}
       </div>
 
-      {/* Manuscript interest */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-8">
         <p className="text-sm font-semibold text-white mb-1">
           Interested in reading the full manuscript?
