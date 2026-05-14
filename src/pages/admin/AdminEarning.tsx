@@ -8,6 +8,7 @@ interface QuickTask {
   id: string;
   title: string;
   description: string | null;
+  additional_notes: string | null;
   payout_per_response: number;
   task_type: string;
   status: string;
@@ -18,6 +19,7 @@ interface Survey {
   id: string;
   title: string;
   description: string | null;
+  additional_notes: string | null;
   payout_per_response: number;
   questions: number;
   status: string;
@@ -28,6 +30,8 @@ interface BetaPanel {
   id: string;
   title: string;
   description: string | null;
+  additional_notes: string | null;
+  excerpt: string | null;
   payout_per_response: number;
   genre: string | null;
   max_responses: number;
@@ -40,6 +44,8 @@ interface SensitivityPanel {
   id: string;
   title: string;
   description: string | null;
+  additional_notes: string | null;
+  excerpt: string | null;
   payout_per_response: number;
   identity_requirements: string | null;
   max_responses: number;
@@ -59,6 +65,9 @@ type ActiveTab = 'quick_tasks' | 'surveys' | 'beta' | 'sensitivity';
 
 const inputClass =
   'w-full px-3 py-2 rounded-lg border border-[#e8e8d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none focus:ring-2';
+
+const textareaClass =
+  'w-full px-3 py-2 rounded-lg border border-[#e8e8d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none focus:ring-2 resize-none';
 
 // ── Free-Text Question Builder ───────────────────────────────────────────────
 
@@ -150,12 +159,13 @@ function QuickTasksPanel() {
   const [form, setForm] = useState({
     title: '',
     description: '',
+    additional_notes: '',
     payout_per_response: 0.35,
-    task_type: 'social',
+    task_type: 'cover',
   });
   const [questions, setQuestions] = useState<QuestionInput[]>([]);
 
-  const TASK_TYPES = ['social', 'review', 'share', 'follow', 'other'];
+  const TASK_TYPES = ['cover', 'blurb', 'title', 'other'];
 
   useEffect(() => { load(); }, []);
 
@@ -173,7 +183,14 @@ function QuickTasksPanel() {
 
     const { data: newTask, error } = await supabase
       .from('quick_tasks')
-      .insert({ ...form, status: 'active' })
+      .insert({
+        title: form.title,
+        description: form.description || null,
+        additional_notes: form.additional_notes || null,
+        payout_per_response: form.payout_per_response,
+        task_type: form.task_type,
+        status: 'active',
+      })
       .select('id')
       .single();
 
@@ -195,7 +212,7 @@ function QuickTasksPanel() {
       });
     }
 
-    setForm({ title: '', description: '', payout_per_response: 0.35, task_type: 'social' });
+    setForm({ title: '', description: '', additional_notes: '', payout_per_response: 0.35, task_type: 'social' });
     setQuestions([]);
     setShowForm(false);
     setSaving(false);
@@ -243,12 +260,26 @@ function QuickTasksPanel() {
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
           />
-          <input
-            className={inputClass}
-            placeholder="Description (optional)"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
+          <div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Description / Blurb</label>
+            <textarea
+              rows={3}
+              className={textareaClass}
+              placeholder="Describe the task for readers..."
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Additional Notes <span className="text-[#6B7280]/60">(optional — shown to readers)</span></label>
+            <textarea
+              rows={2}
+              className={textareaClass}
+              placeholder="Any extra instructions or context for readers..."
+              value={form.additional_notes}
+              onChange={(e) => setForm({ ...form, additional_notes: e.target.value })}
+            />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Payout ($)</label>
@@ -338,6 +369,7 @@ function SurveysPanel() {
   const [form, setForm] = useState({
     title: '',
     description: '',
+    additional_notes: '',
     payout_per_response: 1.0,
     questions: 5,
   });
@@ -359,7 +391,14 @@ function SurveysPanel() {
 
     const { data: newSurvey, error } = await supabase
       .from('surveys')
-      .insert({ ...form, status: 'active' })
+      .insert({
+        title: form.title,
+        description: form.description || null,
+        additional_notes: form.additional_notes || null,
+        payout_per_response: form.payout_per_response,
+        questions: form.questions,
+        status: 'active',
+      })
       .select('id')
       .single();
 
@@ -381,7 +420,7 @@ function SurveysPanel() {
       });
     }
 
-    setForm({ title: '', description: '', payout_per_response: 1.0, questions: 5 });
+    setForm({ title: '', description: '', additional_notes: '', payout_per_response: 1.0, questions: 5 });
     setQuestionInputs([]);
     setShowForm(false);
     setSaving(false);
@@ -429,12 +468,26 @@ function SurveysPanel() {
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
           />
-          <input
-            className={inputClass}
-            placeholder="Description (optional)"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
+          <div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Description / Blurb</label>
+            <textarea
+              rows={3}
+              className={textareaClass}
+              placeholder="Describe the survey for readers..."
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Additional Notes <span className="text-[#6B7280]/60">(optional — shown to readers)</span></label>
+            <textarea
+              rows={2}
+              className={textareaClass}
+              placeholder="Any extra instructions or context for readers..."
+              value={form.additional_notes}
+              onChange={(e) => setForm({ ...form, additional_notes: e.target.value })}
+            />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Payout ($)</label>
@@ -524,6 +577,8 @@ function BetaPanel_() {
   const [form, setForm] = useState({
     title: '',
     description: '',
+    additional_notes: '',
+    excerpt: '',
     payout_per_response: 1.5,
     genre: '',
     max_responses: 10,
@@ -546,7 +601,17 @@ function BetaPanel_() {
 
     const { data: newPanel, error } = await supabase
       .from('beta_panels')
-      .insert({ ...form, genre: form.genre || null, responses_count: 0, status: 'active' })
+      .insert({
+        title: form.title,
+        description: form.description || null,
+        additional_notes: form.additional_notes || null,
+        excerpt: form.excerpt || null,
+        payout_per_response: form.payout_per_response,
+        genre: form.genre || null,
+        max_responses: form.max_responses,
+        responses_count: 0,
+        status: 'active',
+      })
       .select('id')
       .single();
 
@@ -568,7 +633,7 @@ function BetaPanel_() {
       });
     }
 
-    setForm({ title: '', description: '', payout_per_response: 1.5, genre: '', max_responses: 10 });
+    setForm({ title: '', description: '', additional_notes: '', excerpt: '', payout_per_response: 1.5, genre: '', max_responses: 10 });
     setQuestions([]);
     setShowForm(false);
     setSaving(false);
@@ -616,12 +681,36 @@ function BetaPanel_() {
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
           />
-          <input
-            className={inputClass}
-            placeholder="Description (optional)"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
+          <div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Description / Blurb</label>
+            <textarea
+              rows={3}
+              className={textareaClass}
+              placeholder="Author's blurb for this book..."
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Additional Notes <span className="text-[#6B7280]/60">(optional — shown to readers)</span></label>
+            <textarea
+              rows={2}
+              className={textareaClass}
+              placeholder="Any extra instructions or context for readers..."
+              value={form.additional_notes}
+              onChange={(e) => setForm({ ...form, additional_notes: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Sample / Excerpt <span className="text-[#6B7280]/60">(readers will read this before answering questions)</span></label>
+            <textarea
+              rows={8}
+              className={textareaClass}
+              placeholder="Paste the author's sample chapter or excerpt here..."
+              value={form.excerpt}
+              onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
+            />
+          </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Payout ($)</label>
@@ -720,6 +809,8 @@ function SensitivityPanel_() {
   const [form, setForm] = useState({
     title: '',
     description: '',
+    additional_notes: '',
+    excerpt: '',
     payout_per_response: 10.0,
     identity_requirements: '',
     max_responses: 5,
@@ -745,8 +836,13 @@ function SensitivityPanel_() {
     const { data: newPanel, error } = await supabase
       .from('sensitivity_panels')
       .insert({
-        ...form,
+        title: form.title,
+        description: form.description || null,
+        additional_notes: form.additional_notes || null,
+        excerpt: form.excerpt || null,
+        payout_per_response: form.payout_per_response,
         identity_requirements: form.identity_requirements || null,
+        max_responses: form.max_responses,
         responses_count: 0,
         status: 'active',
       })
@@ -771,7 +867,7 @@ function SensitivityPanel_() {
       });
     }
 
-    setForm({ title: '', description: '', payout_per_response: 10.0, identity_requirements: '', max_responses: 5 });
+    setForm({ title: '', description: '', additional_notes: '', excerpt: '', payout_per_response: 10.0, identity_requirements: '', max_responses: 5 });
     setQuestions([]);
     setShowForm(false);
     setSaving(false);
@@ -819,12 +915,36 @@ function SensitivityPanel_() {
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
           />
-          <input
-            className={inputClass}
-            placeholder="Description (optional)"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
+          <div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Description / Blurb</label>
+            <textarea
+              rows={3}
+              className={textareaClass}
+              placeholder="Author's blurb for this book..."
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Additional Notes <span className="text-[#6B7280]/60">(optional — shown to readers)</span></label>
+            <textarea
+              rows={2}
+              className={textareaClass}
+              placeholder="Any extra instructions or context for readers..."
+              value={form.additional_notes}
+              onChange={(e) => setForm({ ...form, additional_notes: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Sample / Excerpt <span className="text-[#6B7280]/60">(readers will read this before answering questions)</span></label>
+            <textarea
+              rows={8}
+              className={textareaClass}
+              placeholder="Paste the author's sample chapter or excerpt here..."
+              value={form.excerpt}
+              onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
+            />
+          </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Payout ($)</label>
