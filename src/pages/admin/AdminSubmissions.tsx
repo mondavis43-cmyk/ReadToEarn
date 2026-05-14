@@ -32,7 +32,6 @@ sensitivity:  'author_sensitivity_submissions',
 
 const STATUS_FILTER_OPTIONS: (SubmissionStatus)[] = ['pending', 'approved', 'rejected', 'paid', 'active'];
 
-// Fields shown in expanded detail view (non-question fields)
 const DETAIL_FIELDS: Record<Tab, { key: string; label: string }[]> = {
 bounties: [
   { key: 'book_title',        label: 'Book Title' },
@@ -53,12 +52,14 @@ competitions: [
   { key: 'notes',            label: 'Notes' },
 ],
 quick_tasks: [
-  { key: 'book_title',       label: 'Book Title' },
-  { key: 'tier_label',       label: 'Tier' },
-  { key: 'price',            label: 'Price ($)' },
-  { key: 'platform_fee',     label: 'Platform Fee ($)' },
-  { key: 'prize_pool',       label: 'Prize Pool ($)' },
-  { key: 'notes',            label: 'Notes' },
+  { key: 'book_title',          label: 'Book Title' },
+  { key: 'tier_label',          label: 'Tier' },
+  { key: 'price',               label: 'Price ($)' },
+  { key: 'platform_fee',        label: 'Platform Fee ($)' },
+  { key: 'prize_pool',          label: 'Prize Pool ($)' },
+  { key: 'completions',         label: 'Completions' },
+  { key: 'payout_per_response', label: 'Payout / Response ($)' },
+  { key: 'notes',               label: 'Notes' },
 ],
 surveys: [
   { key: 'book_title',    label: 'Book Title' },
@@ -88,7 +89,6 @@ sensitivity: [
 ],
 };
 
-// Fields editable inline
 const EDITABLE_FIELDS: Record<Tab, { key: string; label: string; type: 'input' | 'textarea' }[]> = {
 bounties: [
   { key: 'pool_size',         label: 'Pool Size ($)',    type: 'input'    },
@@ -109,6 +109,7 @@ quick_tasks: [
   { key: 'price',        label: 'Price ($)',        type: 'input'    },
   { key: 'platform_fee', label: 'Platform Fee ($)', type: 'input'    },
   { key: 'prize_pool',   label: 'Prize Pool ($)',   type: 'input'    },
+  { key: 'completions',  label: 'Completions',      type: 'input'    },
   { key: 'notes',        label: 'Notes',            type: 'textarea' },
 ],
 surveys: [
@@ -128,7 +129,6 @@ sensitivity: [
 ],
 };
 
-// Tabs that have custom_questions to render
 const QUESTION_TABS: Tab[] = ['surveys', 'beta', 'sensitivity'];
 
 // ── helpers ────────────────────────────────────────────────────────────────────
@@ -139,7 +139,6 @@ try {
   const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
   if (Array.isArray(parsed)) return parsed as Question[];
 } catch {
-  // legacy plain text — wrap as single question
   if (typeof raw === 'string' && raw.trim()) {
     return [{ id: 'legacy', question: raw.trim(), required: false }];
   }
@@ -155,6 +154,14 @@ try {
   if (Array.isArray(parsed)) return parsed as string[];
 } catch { /* ignore */ }
 return [];
+}
+
+// Auto-calc payout_per_response = prize_pool / completions
+function calcPayoutPerResponse(prizePool: unknown, completions: unknown): number | null {
+const pool = parseFloat(String(prizePool));
+const count = parseInt(String(completions), 10);
+if (!pool || !count || count <= 0) return null;
+return Math.round((pool / count) * 100) / 100;
 }
 
 // ── component ──────────────────────────────────────────────────────────────────
@@ -223,8 +230,49 @@ const fetchAllPendingCounts = async () => {
 };
 
 // ── actions ───────────────────────────────────────────────────────────────────
+
+// When approving a quick task, auto-calc and write payout_per_response
+const maybeWritePayoutPerResponse = async (id: string, overrideData?: Record<string, any>) => {
+  if (activeTab !== 'quick_tasks') return;
+
+  // Use override data (from editDraft) if available, otherwise fetch from DB
+  let prizePool: unknown;
+  let completions: unknown;
+
+  if (overrideData) {
+    prizePool   = overrideData.prize_pool;
+    completions = overrideData.completions;
+  } else {
+    const { data } = await supabase
+      .from('author_quick_task_submissions')
+      .select('prize_pool, completions')
+      .eq('id', id)
+      .single();
+    prizePool   = data?.prize_pool;
+    completions = data?.completions;
+  }
+
+  const payout = calcPayoutPerResponse(prizePool, completions);
+  if (payout !== null) {
+    await supabase
+      .from('author_quick_task_submissions')
+      .update({ payout_per_response: payout })
+      .eq('id', id);
+    // Update local state too
+    setSubmissions(prev =>
+      prev.map(s => s.id === id ? { ...s, payout_per_response: payout } : s)
+    );
+  }
+};
+
 const updateStatus = async (id: string, status: SubmissionStatus) => {
   const table = TAB_TABLES[activeTab];
+
+  // Auto-calc payout before approving quick tasks
+  if (status === 'approved') {
+    await maybeWritePayoutPerResponse(id);
+  }
+
   const { error } = await supabase.from(table).update({ status }).eq('id', id);
   if (error) {
     console.error('Failed to update status:', error);
@@ -258,8 +306,19 @@ const saveEdit = async (id: string) => {
 };
 
 const saveAndApprove = async (id: string) => {
-  await saveEdit(id);
+  const table = TAB_TABLES[activeTab];
+
+  // Save edits first
+  await supabase.from(table).update(editDraft).eq('id', id);
+  setSubmissions(prev => prev.map(s => s.id === id ? { ...s, ...editDraft } : s));
+  setEditingId(null);
+
+  // Auto-calc payout using the just-saved editDraft values
+  await maybeWritePayoutPerResponse(id, editDraft);
+
+  // Then approve
   await updateStatus(id, 'approved');
+  setEditDraft({});
 };
 
 // ── status badge ──────────────────────────────────────────────────────────────
@@ -508,6 +567,19 @@ return (
                             </div>
                           ))}
                         </div>
+
+                        {/* Payout preview for quick tasks */}
+                        {activeTab === 'quick_tasks' && editDraft.prize_pool && editDraft.completions && (
+                          <div className={`mb-4 px-3 py-2 rounded-lg border ${isDark ? 'border-[#D4A843]/30 bg-[#D4A843]/5' : 'border-[#D4A843]/40 bg-[#D4A843]/5'}`}>
+                            <p className="text-xs text-[#D4A843]">
+                              Payout per response will be set to{' '}
+                              <strong>
+                                ${calcPayoutPerResponse(editDraft.prize_pool, editDraft.completions)?.toFixed(2) ?? '—'}
+                              </strong>
+                              {' '}on approval
+                            </p>
+                          </div>
+                        )}
 
                         {/* Edit action bar */}
                         <div className="flex gap-2 flex-wrap">
