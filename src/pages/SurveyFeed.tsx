@@ -39,7 +39,7 @@ export default function SurveyFeed() {
     const { data } = await supabase
       .from('author_survey_submissions')
       .select('*')
-      .in('status', ['active', 'approved'])
+      .eq('status', 'active')
       .order('created_at', { ascending: false });
 
     const open = (data ?? []).filter(
@@ -77,6 +77,7 @@ export default function SurveyFeed() {
       .every((q) => (answers[q.id] ?? '').trim().length > 0);
   }
 
+
   async function handleSubmit() {
     if (!selected || !user || !isValid()) return;
     setSubmitting(true);
@@ -101,8 +102,7 @@ export default function SurveyFeed() {
     const { error } = await supabase.from('survey_responses').insert({
       survey_id: selected.id,
       user_id: user.id,
-      responses: responsePayload,
-      earned: 1.00,
+      answers: responsePayload,
     });
 
     if (error) {
@@ -156,7 +156,7 @@ export default function SurveyFeed() {
         <div className="space-y-4">
           {surveys.map((survey) => {
             const done = completedIds.has(survey.id);
-            const remaining = survey.responses - (survey.completions_count ?? 0);
+            const remaining = (survey.responses ?? 0) - (survey.completions_count ?? 0);
             return (
               <div
                 key={survey.id}
@@ -167,16 +167,14 @@ export default function SurveyFeed() {
                     <h2 className="text-lg font-semibold">{survey.book_title}</h2>
                     <p className="text-sm text-gray-400">by {survey.author_name}</p>
                     {survey.survey_focus && (
-                      <p className="text-sm text-gray-500 mt-1">
-                        Focus: {survey.survey_focus}
-                      </p>
+                      <p className="text-sm text-gray-500 mt-1">Focus: {survey.survey_focus}</p>
                     )}
                     {survey.notes && (
                       <p className="text-sm text-gray-500 italic mt-1">"{survey.notes}"</p>
                     )}
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-yellow-400 font-bold text-lg">$1.00</p>
+                    <p className="text-yellow-400 font-bold text-lg">${(1.00).toFixed(2)}</p>
                     <p className="text-xs text-gray-500">{remaining} spots left</p>
                   </div>
                 </div>
@@ -218,9 +216,7 @@ export default function SurveyFeed() {
             </div>
 
             {selected.notes && (
-              <p className="text-sm text-gray-400 italic mb-5 border-l-2 border-yellow-400/40 pl-3">
-                {selected.notes}
-              </p>
+              <p className="text-sm text-gray-400 italic mb-5 border-l-2 border-yellow-400/40 pl-3">{selected.notes}</p>
             )}
 
             <p className="text-xs text-gray-500 mb-5">
@@ -231,8 +227,7 @@ export default function SurveyFeed() {
               {questions.map((q) => (
                 <div key={q.id}>
                   <label className="block text-sm font-medium text-gray-200 mb-1">
-                    {q.question}
-                    {q.required && <span className="text-yellow-400 ml-1">*</span>}
+                    {q.question}{q.required && <span className="text-yellow-400 ml-1">*</span>}
                   </label>
                   <textarea
                     value={answers[q.id] ?? ''}
@@ -252,7 +247,7 @@ export default function SurveyFeed() {
               disabled={!isValid() || submitting}
               className="w-full bg-yellow-400 text-black font-bold py-3 rounded-xl hover:bg-yellow-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {submitting ? 'Submitting...' : 'Submit & Earn'}
+              {submitting ? 'Submitting...' : `Submit & Earn $1.00`}
             </button>
           </div>
         </div>
