@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useTheme } from '../../contexts/ThemeContext';
 import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
 
-type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'paid' | 'active';
+type SubmissionStatus = 'pending' | 'pending_payment' | 'approved' | 'rejected' | 'paid' | 'active';
 type Tab = 'bounties' | 'competitions' | 'quick_tasks' | 'surveys' | 'beta' | 'sensitivity';
 
 interface Question {
@@ -30,7 +30,7 @@ beta:         'author_beta_reader_submissions',
 sensitivity:  'author_sensitivity_submissions',
 };
 
-const STATUS_FILTER_OPTIONS: (SubmissionStatus)[] = ['pending', 'approved', 'rejected', 'paid', 'active'];
+const STATUS_FILTER_OPTIONS: SubmissionStatus[] = ['pending_payment', 'pending', 'approved', 'rejected', 'paid', 'active'];
 
 const DETAIL_FIELDS: Record<Tab, { key: string; label: string }[]> = {
 bounties: [
@@ -174,7 +174,7 @@ export const AdminSubmissions = () => {
 const { isDark } = useTheme();
 
 const [activeTab, setActiveTab]       = useState<Tab>('bounties');
-const [statusFilter, setStatusFilter] = useState<SubmissionStatus | 'all'>('pending');
+const [statusFilter, setStatusFilter] = useState<SubmissionStatus | 'all'>('pending_payment');
 const [submissions, setSubmissions]   = useState<any[]>([]);
 const [loading, setLoading]           = useState(false);
 const [expandedId, setExpandedId]     = useState<string | null>(null);
@@ -210,11 +210,11 @@ const fetchSubmissions = async () => {
   setExpandedId(null);
   setEditingId(null);
   const table = TAB_TABLES[activeTab];
-  const { data } = await supabase
-    .from(table)
-    .select('*')
-    .eq('status', statusFilter)
-    .order('created_at', { ascending: false });
+  const query = supabase.from(table).select('*').order('created_at', { ascending: false });
+  if (statusFilter !== 'all') {
+    query.eq('status', statusFilter);
+  }
+  const { data } = await query;
   setSubmissions(data || []);
   setLoading(false);
 };
@@ -226,7 +226,7 @@ const fetchAllPendingCounts = async () => {
       const { count } = await supabase
         .from(TAB_TABLES[tab])
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
+        .in('status', ['pending', 'pending_payment']);
       counts[tab] = count || 0;
     })
   );
@@ -280,7 +280,7 @@ const updateStatus = async (id: string, status: SubmissionStatus) => {
     return;
   }
   setSubmissions(prev => prev.map(s => s.id === id ? { ...s, status } : s));
-  if (status !== 'pending') {
+  if (status !== 'pending' && status !== 'pending_payment') {
     setPendingCounts(prev => ({
       ...prev,
       [activeTab]: Math.max(0, prev[activeTab] - 1),
@@ -318,18 +318,19 @@ const saveAndApprove = async (id: string) => {
 };
 
 // ── status badge ──────────────────────────────────────────────────────────────
-const StatusBadge = ({ status }: { status: SubmissionStatus }) => {
-  const map: Record<SubmissionStatus, { icon: React.ReactNode; cls: string }> = {
-    pending:  { icon: <Clock size={12} />,        cls: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
-    approved: { icon: <CheckCircle size={12} />,  cls: 'bg-green-500/20 text-green-400 border-green-500/30'   },
-    rejected: { icon: <XCircle size={12} />,      cls: 'bg-red-500/20 text-red-400 border-red-500/30'         },
-    paid:     { icon: <CheckCircle size={12} />,  cls: 'bg-blue-500/20 text-blue-400 border-blue-500/30'      },
-    active:   { icon: <Clock size={12} />,        cls: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
+const StatusBadge = ({ status }: { status: string }) => {
+  const map: Record<string, { icon: React.ReactNode; cls: string }> = {
+    pending:         { icon: <Clock size={12} />,        cls: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'   },
+    pending_payment: { icon: <Clock size={12} />,        cls: 'bg-orange-500/20 text-orange-400 border-orange-500/30'   },
+    approved:        { icon: <CheckCircle size={12} />,  cls: 'bg-green-500/20 text-green-400 border-green-500/30'      },
+    rejected:        { icon: <XCircle size={12} />,      cls: 'bg-red-500/20 text-red-400 border-red-500/30'            },
+    paid:            { icon: <CheckCircle size={12} />,  cls: 'bg-blue-500/20 text-blue-400 border-blue-500/30'         },
+    active:          { icon: <Clock size={12} />,        cls: 'bg-purple-500/20 text-purple-400 border-purple-500/30'   },
   };
   const { icon, cls } = map[status] || map['pending'];
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border font-medium ${cls}`}>
-      {icon}{status}
+      {icon}{status.replace('_', ' ')}
     </span>
   );
 };
@@ -408,7 +409,7 @@ return (
         {(Object.keys(TAB_LABELS) as Tab[]).map(tab => (
           <button
             key={tab}
-            onClick={() => { setActiveTab(tab); setStatusFilter('pending'); }}
+            onClick={() => { setActiveTab(tab); setStatusFilter('pending_payment'); }}
             className={`relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
               activeTab === tab
                 ? 'border-[#D4A843] text-[#D4A843]'
@@ -426,7 +427,7 @@ return (
       </div>
 
       {/* Status filter */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 flex-wrap">
         {STATUS_FILTER_OPTIONS.map(opt => (
           <button
             key={opt}
@@ -437,7 +438,7 @@ return (
                 : `${isDark ? 'border-[#F5F0E8]/20 text-[#F5F0E8]/60 hover:border-[#D4A843]/40' : 'border-[#1B2A4A]/20 text-[#1B2A4A]/60 hover:border-[#D4A843]/40'}`
             }`}
           >
-            {opt}
+            {opt.replace('_', ' ')}
           </button>
         ))}
       </div>
@@ -447,7 +448,7 @@ return (
         <div className={`text-center py-16 ${textMuted}`}>Loading...</div>
       ) : submissions.length === 0 ? (
         <div className={`text-center py-16 ${textMuted}`}>
-          No {statusFilter} submissions for {TAB_LABELS[activeTab]}.
+          No {statusFilter.replace('_', ' ')} submissions for {TAB_LABELS[activeTab]}.
         </div>
       ) : (
         <div className="space-y-3">
