@@ -74,6 +74,7 @@ quick_tasks: [
 ],
 surveys: [
   { key: 'book_title',    label: 'Book Title' },
+  { key: 'survey_focus',  label: 'Survey Focus' },
   { key: 'package_label', label: 'Package' },
   { key: 'responses',     label: 'Responses' },
   { key: 'price',         label: 'Price ($)' },
