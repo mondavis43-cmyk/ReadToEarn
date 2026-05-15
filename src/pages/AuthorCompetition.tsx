@@ -108,7 +108,7 @@ export const AuthorCompetition = () => {
       : bookTitle;
 
     sessionStorage.setItem('checkoutItem', JSON.stringify({
-      type:   'competition',
+      type:   'author_competition',
       label:  `${selectedTier.label} ${selectedType} — "${isElimination ? bookTitles[0] : bookTitle}${bookTitles.length > 1 ? ` +${bookTitles.length - 1} more` : ''}"`,
       amount: selectedTier.cents,
       metadata: {
@@ -124,14 +124,13 @@ export const AuthorCompetition = () => {
         author_name:      authorName.trim(),
         email:            email.trim(),
         book_titles:      titlesForSubmission,
-        book_ids:         isElimination ? bookIds.join(',') : bookId,
         tier_label:       selectedTier.label,
         price:            selectedTier.price,
         platform_fee:     selectedTier.platformFee,
         prize_pool:       selectedTier.prizePool,
         competition_type: selectedType,
-        notes:            notes.trim(),
-        status:           'pending',
+        notes:            notes.trim() || null,
+        status:           'pending_payment',
       },
     }));
 
