@@ -30,7 +30,7 @@ export const Cashout = () => {
   const { navigateTo } = useNavigate();
   const [balance, setBalance]             = useState(0);
   const [isUpgraded, setIsUpgraded]       = useState(false);
-  const [payoutType, setPayoutType]       = useState<'paypal' | 'wise' | 'gift_card'>('gift_card');
+  const [payoutType, setPayoutType]       = useState<'paypal' | 'wise' | 'gift_card'>('paypal');
   const [payoutDetails, setPayoutDetails] = useState('');
   const [loading, setLoading]             = useState(true);
   const [submitting, setSubmitting]       = useState(false);
@@ -53,7 +53,7 @@ export const Cashout = () => {
     const [profileResult, requestsResult] = await Promise.all([
       supabase
         .from('profiles')
-        .select('available_balance, is_upgraded')
+        .select('available_balance, is_upgraded, payout_email, payout_method')
         .eq('id', user.id)
         .single(),
       supabase
@@ -75,6 +75,10 @@ export const Cashout = () => {
     if (profileResult.data) {
       setBalance(profileResult.data.available_balance);
       setIsUpgraded(profileResult.data.is_upgraded ?? false);
+      if (profileResult.data.payout_email) setPayoutDetails(profileResult.data.payout_email);
+      if (profileResult.data.payout_method && profileResult.data.payout_method !== 'gift_card') {
+        setPayoutType(profileResult.data.payout_method as 'paypal' | 'wise');
+      }
     }
     if (requestsResult.data) setPastRequests(requestsResult.data);
     setLoading(false);
