@@ -279,20 +279,22 @@ const approveStatus = (): SubmissionStatus =>
   (activeTab === 'surveys' || activeTab === 'sensitivity' || activeTab === 'bounties') ? 'active' : 'approved';
 
 const maybeCreateBounty = async (id: string) => {
+  console.log('[Bounty] maybeCreateBounty called, activeTab:', activeTab);
   if (activeTab !== 'bounties') return;
   const submission = submissions.find(s => s.id === id);
+  console.log('[Bounty] submission:', submission);
   if (!submission) return;
 
-  const { data: book } = await supabase
+  const { data: book, error: bookErr } = await supabase
     .from('books')
     .select('id, author_id')
     .ilike('title', submission.book_title)
     .maybeSingle();
 
-  if (!book) {
-    console.warn('[AdminSubmissions] No book found for title:', submission.book_title);
-    return;
-  }
+  console.log('[Bounty] book lookup result:', { book, bookErr, searchedTitle: submission.book_title });
+
+  if (bookErr) { alert('Bounty create error (book lookup): ' + bookErr.message); return; }
+  if (!book) { alert(`Could not find a book titled "${submission.book_title}" in the library. Make sure the book is listed before approving.`); return; }
 
   const { error } = await supabase.from('bounties').insert({
     book_id:         book.id,
@@ -303,7 +305,8 @@ const maybeCreateBounty = async (id: string) => {
     reader_pool:     submission.reader_pool,
     status:          'active',
   });
-  if (error) console.error('[AdminSubmissions] bounties insert error:', error);
+  console.log('[Bounty] insert result:', { error });
+  if (error) { alert('Bounty create error (insert): ' + error.message); return; }
 };
 
 const updateStatus = async (id: string, status: SubmissionStatus) => {
