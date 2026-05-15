@@ -103,6 +103,7 @@ export const AdminBookListings = () => {
             page_count: parseInt(listing.page_count.toString()),
             description: listing.description || null,
             geniuslink_url: listing.affiliate_link || null,
+            submission_email: listing.email || null,
             book_type: 'standard',
             genres: listing.genres || [],
             is_listed: true,
