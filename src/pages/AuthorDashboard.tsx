@@ -4,7 +4,7 @@ import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
 import {
   BookOpen, Users, DollarSign, ArrowLeft, Edit2, Pin, PinOff,
-  MessageSquare, Trophy, Upload, Check, Search, X, Star
+  MessageSquare, Trophy, Upload, Check, Search, X, Star, BarChart2, Download, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -83,7 +83,9 @@ interface AuthorProfile {
 }
 
 type EditTab = 'details' | 'quiz';
-type DashTab = 'books' | 'ama' | 'bounties' | 'competitions' | 'ambassador';
+type DashTab = 'books' | 'ama' | 'bounties' | 'competitions' | 'ambassador' | 'results';
+type ResultTab = 'surveys' | 'beta' | 'sensitivity' | 'quick_tasks' | 'bounties' | 'competitions';
+interface ResultRow { [key: string]: any; }
 type ListingTier = 'single' | 'trilogy' | 'series' | 'catalog' | 'imprint';
 
 const LISTING_TIERS: Record<ListingTier, { label: string; fee: number; books: number }> = {
@@ -151,9 +153,18 @@ export const AuthorDashboard = () => {
   const [bulletinBook,       setBulletinBook]       = useState<BookListing | null>(null);
   const [bulletinSubmitting, setBulletinSubmitting] = useState(false);
 
+  const [resultTab,     setResultTab]     = useState<ResultTab>('surveys');
+  const [resultRows,    setResultRows]    = useState<ResultRow[]>([]);
+  const [resultLoading, setResultLoading] = useState(false);
+  const [expandedId,    setExpandedId]    = useState<string | null>(null);
+  const [authorEmail,   setAuthorEmail]   = useState<string | null>(null);
+
   // ── Init ─────────────────────────────────────────────────────────────────
 
   useEffect(() => { boot(); }, []);
+  useEffect(() => {
+    if (dashTab === 'results' && authorEmail) loadResults(resultTab);
+  }, [dashTab, resultTab, authorEmail]);
 
   async function boot() {
     setLoading(true);
@@ -172,6 +183,7 @@ export const AuthorDashboard = () => {
     }
 
     setUserId(user.id);
+    setAuthorEmail(user.email ?? null);
 
     await Promise.all([
       loadBooks(user.id),
@@ -182,6 +194,131 @@ export const AuthorDashboard = () => {
     ]);
 
     setLoading(false);
+  }
+
+  // ── Results loaders ──────────────────────────────────────────────────────
+
+  async function loadResults(tab: ResultTab) {
+    if (!authorEmail) return;
+    setResultLoading(true);
+    setResultRows([]);
+    setExpandedId(null);
+
+    if (tab === 'surveys') {
+      const { data: subs } = await supabase
+        .from('author_survey_submissions')
+        .select('id, book_title, survey_focus, package_label, status, created_at')
+        .eq('email', authorEmail)
+        .order('created_at', { ascending: false });
+      const rows = await Promise.all((subs ?? []).map(async s => {
+        const { data: resp } = await supabase
+          .from('survey_responses')
+          .select('id, answers, earned, created_at')
+          .eq('survey_id', s.id)
+          .order('created_at', { ascending: false });
+        return { ...s, _responses: resp ?? [] };
+      }));
+      setResultRows(rows);
+
+    } else if (tab === 'beta') {
+      const { data: subs } = await supabase
+        .from('beta_panels')
+        .select('id, book_title, status, responses_count, max_responses, payout_per_response, created_at')
+        .eq('author_email', authorEmail)
+        .order('created_at', { ascending: false });
+      const rows = await Promise.all((subs ?? []).map(async s => {
+        const { data: resp } = await supabase
+          .from('beta_reader_responses')
+          .select('id, responses, created_at')
+          .eq('submission_id', s.id)
+          .order('created_at', { ascending: false });
+        return { ...s, _responses: resp ?? [] };
+      }));
+      setResultRows(rows);
+
+    } else if (tab === 'sensitivity') {
+      const { data: subs } = await supabase
+        .from('author_sensitivity_submissions')
+        .select('id, book_title, status, completions_count, readers, payout_per_response, created_at')
+        .eq('email', authorEmail)
+        .order('created_at', { ascending: false });
+      const rows = await Promise.all((subs ?? []).map(async s => {
+        const { data: resp } = await supabase
+          .from('sensitivity_reader_responses')
+          .select('id, selected_identities, answers, created_at')
+          .eq('submission_id', s.id)
+          .order('created_at', { ascending: false });
+        return { ...s, _responses: resp ?? [] };
+      }));
+      setResultRows(rows);
+
+    } else if (tab === 'quick_tasks') {
+      const { data: subs } = await supabase
+        .from('author_quick_task_submissions')
+        .select('id, book_title, task_description, status, payout_per_response, created_at')
+        .eq('email', authorEmail)
+        .order('created_at', { ascending: false });
+      const rows = await Promise.all((subs ?? []).map(async s => {
+        const { data: resp } = await supabase
+          .from('quick_task_responses')
+          .select('id, response, created_at')
+          .eq('submission_id', s.id)
+          .order('created_at', { ascending: false });
+        return { ...s, _responses: resp ?? [] };
+      }));
+      setResultRows(rows);
+
+    } else if (tab === 'bounties') {
+      const { data: subs } = await supabase
+        .from('author_bounty_submissions')
+        .select('id, book_title, pool_size, per_pass_amount, reader_pool, status, created_at')
+        .eq('email', authorEmail)
+        .order('created_at', { ascending: false });
+      const rows = await Promise.all((subs ?? []).map(async s => {
+        const { data: bookRow } = await supabase
+          .from('books').select('id').ilike('title', s.book_title).maybeSingle();
+        const attempts = bookRow?.id
+          ? (await supabase.from('quiz_attempts')
+              .select('id, score, passed, attempted_at')
+              .eq('book_id', bookRow.id)
+              .order('attempted_at', { ascending: false })
+            ).data ?? []
+          : [];
+        return { ...s, _responses: attempts };
+      }));
+      setResultRows(rows);
+
+    } else if (tab === 'competitions') {
+      const { data: subs } = await supabase
+        .from('author_competition_submissions')
+        .select('id, book_titles, competition_type, tier_label, prize_pool, status, created_at')
+        .eq('email', authorEmail)
+        .order('created_at', { ascending: false });
+      setResultRows(subs ?? []);
+    }
+
+    setResultLoading(false);
+  }
+
+  function exportCSV(sub: ResultRow) {
+    const responses: any[] = sub._responses ?? [];
+    if (responses.length === 0) { alert('No responses to export yet.'); return; }
+    const keys = Object.keys(responses[0]).filter(k => k !== 'id');
+    const lines = [
+      keys.join(','),
+      ...responses.map(r => keys.map(k => {
+        const v = r[k];
+        const s = typeof v === 'object' ? JSON.stringify(v) : String(v ?? '');
+        return `"${s.replace(/"/g, '""')}"`;
+      }).join(','))
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(sub.book_title ?? sub.book_titles ?? 'results').replace(/[^a-z0-9]/gi, '_')}_${resultTab}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   // ── Data loaders ─────────────────────────────────────────────────────────
@@ -391,11 +528,21 @@ export const AuthorDashboard = () => {
   // ── Tabs config ───────────────────────────────────────────────────────────
 
   const tabs: { key: DashTab; label: string; icon: any }[] = [
-    { key: 'books',        label: 'My Books',     icon: BookOpen     },
+    { key: 'books',        label: 'My Books',     icon: BookOpen      },
     { key: 'ama',          label: 'AMAs',          icon: MessageSquare },
-    { key: 'bounties',     label: 'Bounties',      icon: DollarSign   },
-    { key: 'competitions', label: 'Competitions',  icon: Trophy       },
-    { key: 'ambassador',   label: 'Ambassador',    icon: Star         },
+    { key: 'bounties',     label: 'Bounties',      icon: DollarSign    },
+    { key: 'competitions', label: 'Competitions',  icon: Trophy        },
+    { key: 'ambassador',   label: 'Ambassador',    icon: Star          },
+    { key: 'results',      label: 'Results',       icon: BarChart2     },
+  ];
+
+  const RESULT_TABS: { key: ResultTab; label: string }[] = [
+    { key: 'surveys',      label: 'Surveys'      },
+    { key: 'beta',         label: 'Beta Readers' },
+    { key: 'sensitivity',  label: 'Sensitivity'  },
+    { key: 'quick_tasks',  label: 'Quick Tasks'  },
+    { key: 'bounties',     label: 'Bounties'     },
+    { key: 'competitions', label: 'Competitions' },
   ];
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -637,6 +784,225 @@ export const AuthorDashboard = () => {
                     </p>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════
+            RESULTS TAB
+        ══════════════════════════════════════════════════════════════════ */}
+        {dashTab === 'results' && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className={`font-semibold ${textPrimary}`}>Campaign Results</h2>
+              <p className={`text-xs ${textMuted}`}>Data from your paid campaigns.</p>
+            </div>
+
+            {/* Result sub-tabs */}
+            <div className="flex gap-1 flex-wrap mb-5">
+              {RESULT_TABS.map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setResultTab(key)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${
+                    resultTab === key
+                      ? 'bg-[#D4A843] text-[#1B2A4A]'
+                      : isDark ? 'text-[#F5F0E8]/50 hover:text-[#F5F0E8]' : 'text-[#1B2A4A]/50 hover:text-[#1B2A4A]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {resultLoading ? (
+              <div className="flex justify-center py-16">
+                <div className="w-6 h-6 border-2 border-[#D4A843] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : resultRows.length === 0 ? (
+              <div className="text-center py-16">
+                <BarChart2 size={36} className="mx-auto text-[#D4A843]/30 mb-3" />
+                <p className={`text-sm ${textMuted}`}>No {RESULT_TABS.find(t => t.key === resultTab)?.label.toLowerCase()} submissions found.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+
+                {/* ── DRILLDOWN STYLE: surveys, beta, sensitivity, quick_tasks ── */}
+                {(['surveys', 'beta', 'sensitivity', 'quick_tasks'] as ResultTab[]).includes(resultTab) && resultRows.map(sub => (
+                  <div key={sub.id} className={`rounded-2xl border ${cardBg} overflow-hidden`}>
+                    {/* Submission header */}
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className={`font-semibold text-sm ${textPrimary} truncate`}>
+                            {sub.book_title ?? '—'}
+                          </h3>
+                          <div className={`flex flex-wrap gap-x-4 gap-y-1 text-xs ${textMuted} mt-1`}>
+                            {sub.survey_focus    && <span>Focus: {sub.survey_focus}</span>}
+                            {sub.package_label   && <span>Package: {sub.package_label}</span>}
+                            {sub.task_description && <span className="truncate max-w-xs">{sub.task_description}</span>}
+                            {sub.payout_per_response != null && <span>${sub.payout_per_response}/response</span>}
+                            {sub.responses_count != null && <span>{sub.responses_count}/{sub.max_responses} responses</span>}
+                            {sub.completions_count != null && <span>{sub.completions_count}/{sub.readers} completions</span>}
+                            <span className={`px-1.5 py-0.5 rounded-full ${
+                              sub.status === 'active' || sub.status === 'approved'
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                            }`}>{sub.status}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => exportCSV(sub)}
+                            className="flex items-center gap-1 px-2.5 py-1 text-xs border border-[#D4A843]/40 text-[#D4A843] rounded-lg hover:bg-[#D4A843]/10 transition"
+                          >
+                            <Download size={11} /> CSV
+                          </button>
+                          <button
+                            onClick={() => setExpandedId(expandedId === sub.id ? null : sub.id)}
+                            className={`flex items-center gap-1 px-2.5 py-1 text-xs border rounded-lg transition ${
+                              isDark ? 'border-white/10 text-white/60 hover:border-white/30' : 'border-black/10 text-black/50 hover:border-black/30'
+                            }`}
+                          >
+                            {expandedId === sub.id ? <><ChevronUp size={11} /> Hide</> : <><ChevronDown size={11} /> {(sub._responses ?? []).length} responses</>}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Expanded responses */}
+                    {expandedId === sub.id && (
+                      <div className={`border-t ${divider}`}>
+                        {(sub._responses ?? []).length === 0 ? (
+                          <p className={`text-sm ${textMuted} text-center py-6`}>No responses yet.</p>
+                        ) : (
+                          <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
+                            {(sub._responses as any[]).map((r, i) => (
+                              <div key={r.id ?? i} className="p-4">
+                                <div className={`flex justify-between text-xs ${textMuted} mb-2`}>
+                                  <span>Response #{i + 1}</span>
+                                  <span>{r.created_at ? new Date(r.created_at).toLocaleDateString() : ''}</span>
+                                </div>
+                                {/* Survey answers */}
+                                {r.answers && (
+                                  <div className="space-y-2">
+                                    {(Array.isArray(r.answers) ? r.answers : Object.entries(r.answers)).map((a: any, ai: number) => (
+                                      <div key={ai} className={`text-xs p-2.5 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+                                        {typeof a === 'object' && a.question && (
+                                          <p className={`font-medium ${textMuted} mb-1`}>{a.question}</p>
+                                        )}
+                                        <p className={textPrimary}>{typeof a === 'object' ? (a.answer ?? a[1] ?? JSON.stringify(a)) : String(a)}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {/* Beta responses */}
+                                {r.responses && (
+                                  <div className="space-y-2">
+                                    {(Array.isArray(r.responses) ? r.responses : []).map((resp: any, ri: number) => (
+                                      <div key={ri} className={`text-xs p-2.5 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+                                        {resp.question && <p className={`font-medium ${textMuted} mb-1`}>{resp.question}</p>}
+                                        <p className={textPrimary}>{resp.answer ?? JSON.stringify(resp)}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {/* Sensitivity */}
+                                {r.selected_identities && (
+                                  <div className={`text-xs ${textMuted} mb-2`}>
+                                    Identities: {Array.isArray(r.selected_identities) ? r.selected_identities.join(', ') : r.selected_identities}
+                                  </div>
+                                )}
+                                {/* Quick task */}
+                                {r.response != null && (
+                                  <p className={`text-xs p-2.5 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-50'} ${textPrimary}`}>
+                                    {typeof r.response === 'object' ? JSON.stringify(r.response) : String(r.response)}
+                                  </p>
+                                )}
+                                {r.earned != null && (
+                                  <p className="text-xs text-[#D4A843] mt-1">Earned: ${r.earned}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* ── DATA TABLE STYLE: bounties, competitions ── */}
+                {resultTab === 'bounties' && resultRows.map(sub => (
+                  <div key={sub.id} className={`rounded-2xl border ${cardBg} overflow-hidden`}>
+                    <div className="p-4 flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className={`font-semibold text-sm ${textPrimary}`}>{sub.book_title}</h3>
+                        <div className={`flex flex-wrap gap-x-4 text-xs ${textMuted} mt-1`}>
+                          <span>Pool: ${sub.pool_size}</span>
+                          <span>${sub.per_pass_amount}/pass</span>
+                          <span>{(sub._responses ?? []).length} attempts</span>
+                          <span>{(sub._responses ?? []).filter((r: any) => r.passed).length} passed</span>
+                          <span className={`px-1.5 py-0.5 rounded-full ${
+                            sub.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                          }`}>{sub.status}</span>
+                        </div>
+                      </div>
+                      <button onClick={() => exportCSV(sub)} className="flex items-center gap-1 px-2.5 py-1 text-xs border border-[#D4A843]/40 text-[#D4A843] rounded-lg hover:bg-[#D4A843]/10 transition shrink-0">
+                        <Download size={11} /> CSV
+                      </button>
+                    </div>
+                    {(sub._responses ?? []).length > 0 && (
+                      <div className={`border-t ${divider} overflow-x-auto`}>
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className={`${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+                              <th className={`px-4 py-2 text-left font-medium ${textMuted}`}>Score</th>
+                              <th className={`px-4 py-2 text-left font-medium ${textMuted}`}>Result</th>
+                              <th className={`px-4 py-2 text-left font-medium ${textMuted}`}>Date</th>
+                            </tr>
+                          </thead>
+                          <tbody className={`divide-y ${isDark ? 'divide-white/5' : 'divide-gray-100'}`}>
+                            {(sub._responses as any[]).map((r, i) => (
+                              <tr key={r.id ?? i}>
+                                <td className={`px-4 py-2 ${textPrimary}`}>{r.score}</td>
+                                <td className={`px-4 py-2`}>
+                                  <span className={`px-1.5 py-0.5 rounded-full ${r.passed ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>
+                                    {r.passed ? 'Passed' : 'Failed'}
+                                  </span>
+                                </td>
+                                <td className={`px-4 py-2 ${textMuted}`}>{r.attempted_at ? new Date(r.attempted_at).toLocaleDateString() : '—'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {resultTab === 'competitions' && resultRows.map(sub => (
+                  <div key={sub.id} className={`rounded-2xl border ${cardBg} p-4`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className={`font-semibold text-sm ${textPrimary}`}>{sub.book_titles}</h3>
+                        <div className={`flex flex-wrap gap-x-4 text-xs ${textMuted} mt-1`}>
+                          <span>{sub.competition_type}</span>
+                          <span>Tier: {sub.tier_label}</span>
+                          <span>Prize pool: ${sub.prize_pool}</span>
+                          <span className={`px-1.5 py-0.5 rounded-full ${
+                            sub.status === 'active' || sub.status === 'approved'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                              : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                          }`}>{sub.status}</span>
+                        </div>
+                      </div>
+                      <span className={`text-xs ${textMuted} shrink-0`}>{new Date(sub.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <p className={`text-xs ${textMuted} mt-3 italic`}>Competition results will be shown once the competition completes.</p>
+                  </div>
+                ))}
+
               </div>
             )}
           </div>
