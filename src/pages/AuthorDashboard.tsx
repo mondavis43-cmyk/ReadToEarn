@@ -35,7 +35,7 @@ interface AMASessionRow {
   id: string;
   title: string;
   status: 'open' | 'answering' | 'closed';
-  ama_start_date: string;
+  ama_starts_at: string;
   questions_close_at: string;
   books?: { title: string } | null;
 }
@@ -145,6 +145,7 @@ export const AuthorDashboard = () => {
 
   const [showClaim,    setShowClaim]    = useState(false);
   const [claimSearch,  setClaimSearch]  = useState('');
+  const [claimEmail,   setClaimEmail]   = useState('');
   const [claimResults, setClaimResults] = useState<ClaimableBook[]>([]);
   const [claimBusy,    setClaimBusy]    = useState(false);
   const [claiming,     setClaiming]     = useState<string | null>(null);
@@ -223,8 +224,8 @@ export const AuthorDashboard = () => {
     } else if (tab === 'beta') {
       const { data: subs } = await supabase
         .from('beta_panels')
-        .select('id, book_title, status, responses_count, max_responses, payout_per_response, created_at')
-        .eq('author_email', authorEmail)
+        .select('id, title, author_name, status, responses_count, max_responses, payout_per_response, created_at')
+        .eq('author_id', userId)
         .order('created_at', { ascending: false });
       const rows = await Promise.all((subs ?? []).map(async s => {
         const { data: resp } = await supabase
@@ -245,7 +246,7 @@ export const AuthorDashboard = () => {
       const rows = await Promise.all((subs ?? []).map(async s => {
         const { data: resp } = await supabase
           .from('sensitivity_reader_responses')
-          .select('id, selected_identities, answers, created_at')
+          .select('id, selected_identities, responses, earned, created_at')
           .eq('submission_id', s.id)
           .order('created_at', { ascending: false });
         return { ...s, _responses: resp ?? [] };
@@ -255,7 +256,7 @@ export const AuthorDashboard = () => {
     } else if (tab === 'quick_tasks') {
       const { data: subs } = await supabase
         .from('author_quick_task_submissions')
-        .select('id, book_title, task_description, status, payout_per_response, created_at')
+        .select('id, book_title, task_type, task_content, package_label, status, payout_per_response, created_at')
         .eq('email', authorEmail)
         .order('created_at', { ascending: false });
       const rows = await Promise.all((subs ?? []).map(async s => {
@@ -338,9 +339,9 @@ export const AuthorDashboard = () => {
   async function loadAMA(uid: string) {
     const { data } = await supabase
       .from('ama_sessions')
-      .select('id,title,status,ama_start_date,questions_close_at,books(title)')
+      .select('id,title,status,ama_starts_at,questions_close_at,books(title)')
       .eq('author_id', uid)
-      .order('ama_start_date', { ascending: false });
+      .order('ama_starts_at', { ascending: false });
     setAmaSessions(data || []);
   }
 
@@ -481,8 +482,7 @@ export const AuthorDashboard = () => {
     setClaimBusy(true);
     const { data } = await supabase
       .from('books')
-      .select('id,title,author,cover_url,page_count')
-      .is('author_id', null)
+      .select('id,title,author,cover_url,page_count,author_id,submission_email')
       .ilike('title', `%${claimSearch}%`)
       .limit(10);
     setClaimResults(data || []);
@@ -491,6 +491,22 @@ export const AuthorDashboard = () => {
 
   async function claimBook(book: ClaimableBook) {
     if (!userId) return;
+    const existing = (book as any).author_id;
+    if (existing && existing !== userId) {
+      alert('This book is already claimed by another author. Contact support if you believe this is an error.');
+      return;
+    }
+    const submissionEmail = (book as any).submission_email;
+    if (submissionEmail) {
+      if (!claimEmail.trim()) {
+        alert('Please enter the email used when this book was submitted.');
+        return;
+      }
+      if (claimEmail.trim().toLowerCase() !== submissionEmail.toLowerCase()) {
+        alert('The email you entered does not match the submission email for this book.');
+        return;
+      }
+    }
     setClaiming(book.id);
     await supabase.from('books').update({ author_id: userId }).eq('id', book.id);
     setClaimSuccess(book.title);
@@ -707,7 +723,7 @@ export const AuthorDashboard = () => {
                       {statusBadge(s.status)}
                     </div>
                     {s.books && <p className="text-xs text-[#D4A843] mb-1">{s.books.title}</p>}
-                    <p className={`text-xs ${textMuted}`}>AMA: {fmt(s.ama_start_date)}</p>
+                    <p className={`text-xs ${textMuted}`}>AMA: {fmt(s.ama_starts_at)}</p>
                   </button>
                 ))}
               </div>
@@ -836,12 +852,13 @@ export const AuthorDashboard = () => {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <h3 className={`font-semibold text-sm ${textPrimary} truncate`}>
-                            {sub.book_title ?? '—'}
+                            {sub.title ?? sub.book_title ?? '—'}
                           </h3>
                           <div className={`flex flex-wrap gap-x-4 gap-y-1 text-xs ${textMuted} mt-1`}>
                             {sub.survey_focus    && <span>Focus: {sub.survey_focus}</span>}
                             {sub.package_label   && <span>Package: {sub.package_label}</span>}
-                            {sub.task_description && <span className="truncate max-w-xs">{sub.task_description}</span>}
+                            {sub.task_type    && <span>Type: {sub.task_type}</span>}
+                            {sub.task_content && <span className="truncate max-w-xs">{sub.task_content}</span>}
                             {sub.payout_per_response != null && <span>${sub.payout_per_response}/response</span>}
                             {sub.responses_count != null && <span>{sub.responses_count}/{sub.max_responses} responses</span>}
                             {sub.completions_count != null && <span>{sub.completions_count}/{sub.readers} completions</span>}
@@ -1289,7 +1306,7 @@ export const AuthorDashboard = () => {
             <div className={`flex items-center justify-between px-5 py-4 border-b ${divider}`}>
               <h2 className={`font-semibold ${textPrimary}`}>Claim a Book</h2>
               <button
-                onClick={() => { setShowClaim(false); setClaimResults([]); setClaimSearch(''); setClaimSuccess(null); }}
+                onClick={() => { setShowClaim(false); setClaimResults([]); setClaimSearch(''); setClaimEmail(''); setClaimSuccess(null); }}
                 className={`${textMuted} hover:text-[#D4A843]`}
               >
                 <X size={18} />
@@ -1301,6 +1318,18 @@ export const AuthorDashboard = () => {
                   <Check size={14} /> "{claimSuccess}" claimed successfully.
                 </div>
               )}
+              <div className="mb-3">
+                <label className={`block text-xs font-semibold mb-1 ${textMuted}`}>
+                  Email used when this book was submitted
+                </label>
+                <input
+                  type="email"
+                  value={claimEmail}
+                  onChange={(e) => setClaimEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  className={inputCls}
+                />
+              </div>
               <div className="flex gap-2 mb-4">
                 <input
                   className={`${inputCls} flex-1`}
