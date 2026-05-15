@@ -17,9 +17,6 @@ interface BookListing {
   page_count: number;
   book_type: 'standard' | 'bulletin_board';
   description: string | null;
-  total_completions: number;
-  pass_count: number;
-  total_paid_out: number;
 }
 
 interface Question {
@@ -42,20 +39,21 @@ interface AMASessionRow {
 
 interface BountyRow {
   id: string;
-  title: string;
-  payout_per_reader: number;
-  pool_amount: number;
-  is_active: boolean;
+  book_id: string;
+  pool_size: number;
+  per_pass_amount: number;
+  status: string;
   books?: { title: string } | null;
 }
 
 interface CompetitionRow {
   id: string;
   title: string;
-  format: string;
-  start_date: string;
-  end_date: string;
-  book_title: string;
+  type: string;
+  start_date: string | null;
+  end_date: string | null;
+  book_title: string | null;
+  status: string;
 }
 
 interface ClaimableBook {
@@ -327,13 +325,24 @@ export const AuthorDashboard = () => {
   async function loadBooks(uid: string) {
     const { data } = await supabase
       .from('books')
-      .select('id,title,author,cover_url,page_count,book_type,description,total_completions,pass_count,total_paid_out')
+      .select('id,title,author,cover_url,page_count,book_type,description')
       .eq('author_id', uid)
       .order('created_at', { ascending: false });
     const list = data || [];
     setBooks(list);
-    setTotalReaders(list.reduce((s, b) => s + (b.total_completions || 0), 0));
-    setTotalPaid(list.reduce((s, b) => s + (b.total_paid_out || 0), 0));
+    const bookIds = list.map((b) => b.id);
+    if (bookIds.length > 0) {
+      const { data: attempts } = await supabase
+        .from('quiz_attempts')
+        .select('passed, payout_amount')
+        .in('book_id', bookIds);
+      const att = attempts || [];
+      setTotalReaders(att.length);
+      setTotalPaid(att.reduce((s, a) => s + (a.payout_amount || 0), 0));
+    } else {
+      setTotalReaders(0);
+      setTotalPaid(0);
+    }
   }
 
   async function loadAMA(uid: string) {
@@ -346,10 +355,12 @@ export const AuthorDashboard = () => {
   }
 
   async function loadBounties(uid: string) {
+    const bookIds = books.map((b) => b.id);
+    if (bookIds.length === 0) { setBounties([]); return; }
     const { data } = await supabase
       .from('bounties')
-      .select('id,title,payout_per_reader,pool_amount,is_active,books(title)')
-      .eq('author_id', uid)
+      .select('id,book_id,pool_size,per_pass_amount,status,books(title)')
+      .in('book_id', bookIds)
       .order('created_at', { ascending: false });
     setBounties(data || []);
   }
@@ -357,7 +368,7 @@ export const AuthorDashboard = () => {
   async function loadCompetitions(uid: string) {
     const { data } = await supabase
       .from('competitions')
-      .select('id,title,format,start_date,end_date,book_title')
+      .select('id,title,type,start_date,end_date,book_title,status')
       .eq('author_id', uid)
       .order('start_date', { ascending: false });
     setCompetitions(data || []);
