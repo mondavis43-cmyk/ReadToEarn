@@ -36,6 +36,8 @@ export const Profile = () => {
   const { isDark } = useTheme();
 
   const [profile, setProfile]                   = useState<Profile | null>(null);
+  const [booksThisMonth, setBooksThisMonth]     = useState(0);
+  const [accuracyRate, setAccuracyRate]         = useState(0);
   const [completedBooks, setCompletedBooks]     = useState<CompletedBook[]>([]);
   const [loading, setLoading]                   = useState(true);
   const [birthdayInput, setBirthdayInput]       = useState('');
@@ -65,13 +67,20 @@ export const Profile = () => {
   const loadProfile = async () => {
     if (!user) return;
 
-    const [profileResult, completedResult] = await Promise.all([
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+    const [profileResult, completedResult, attemptsResult] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
       supabase
         .from('completed_books')
         .select('book_id, books(title, author, cover_url)')
         .eq('user_id', user.id)
         .limit(10),
+      supabase
+        .from('quiz_attempts')
+        .select('passed, attempted_at')
+        .eq('user_id', user.id),
     ]);
 
     if (profileResult.data) {
@@ -83,6 +92,16 @@ export const Profile = () => {
 
     if (completedResult.data) {
       setCompletedBooks(completedResult.data as CompletedBook[]);
+    }
+
+    console.log('[Profile] quiz_attempts result:', attemptsResult);
+    if (attemptsResult.data) {
+      const all = attemptsResult.data;
+      const total = all.length;
+      const passed = all.filter(a => a.passed).length;
+      const thisMonth = all.filter(a => a.passed && a.attempted_at >= monthStart).length;
+      setAccuracyRate(total > 0 ? Math.round((passed / total) * 100) : 0);
+      setBooksThisMonth(thisMonth);
     }
 
     setLoading(false);
@@ -214,12 +233,12 @@ export const Profile = () => {
         <div className="grid grid-cols-3 gap-4">
           <div className={`${cardBg} p-4 border ${cardBorder} rounded-xl text-center`}>
             <BookCheck className="w-5 h-5 mx-auto mb-2 text-green-500" />
-            <p className={`text-xl font-serif ${headingColor}`}>{profile?.completed_this_month ?? 0}</p>
+            <p className={`text-xl font-serif ${headingColor}`}>{booksThisMonth}</p>
             <p className={`text-[10px] uppercase ${subColor}`}>Books this Month</p>
           </div>
           <div className={`${cardBg} p-4 border ${cardBorder} rounded-xl text-center`}>
             <Target className="w-5 h-5 mx-auto mb-2 text-blue-500" />
-            <p className={`text-xl font-serif ${headingColor}`}>{profile?.accuracy_rate ?? 0}%</p>
+            <p className={`text-xl font-serif ${headingColor}`}>{accuracyRate}%</p>
             <p className={`text-[10px] uppercase ${subColor}`}>Accuracy Rate</p>
           </div>
           <div className={`${cardBg} p-4 border ${cardBorder} rounded-xl text-center`}>
