@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { Copy, Check, Gift, Lock } from 'lucide-react';
+import { Copy, Check, Gift, Lock, Users, Wallet } from 'lucide-react';
 
 const PLANS = [
   {
@@ -34,6 +34,9 @@ export const Refer = () => {
   const [isPaidSubscriber, setIsPaidSubscriber] = useState(false);
   const [loading, setLoading]                   = useState(true);
   const [selectedPlan, setSelectedPlan]         = useState(PLANS[0]);
+  const [referredUsers, setReferredUsers]       = useState<any[]>([]);
+  const [totalEarned, setTotalEarned]           = useState(0);
+  const [availableBalance, setAvailableBalance] = useState(0);
 
   useEffect(() => { loadReferralData(); }, [user]);
 
@@ -42,13 +45,14 @@ export const Refer = () => {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('referral_code, is_upgraded')
+      .select('referral_code, is_upgraded, available_balance')
       .eq('id', user.id)
       .single();
 
     if (!profile) { setLoading(false); return; }
 
     setIsPaidSubscriber(!!profile.is_upgraded);
+    setAvailableBalance(profile.available_balance ?? 0);
 
     if (profile.referral_code) {
       setReferralCode(profile.referral_code);
@@ -60,6 +64,21 @@ export const Refer = () => {
         .eq('is_upgraded', true);
 
       setActiveReferrals(count ?? 0);
+
+      const { data: referred } = await supabase
+        .from('profiles')
+        .select('email, is_upgraded, created_at')
+        .eq('referred_by', profile.referral_code);
+
+      setReferredUsers(referred ?? []);
+
+      const { data: calcs } = await supabase
+        .from('referral_calculations')
+        .select('amount')
+        .eq('referrer_id', user.id);
+
+      const earned = calcs?.reduce((sum, c) => sum + (c.amount || 0), 0) ?? 0;
+      setTotalEarned(earned);
     }
 
     setLoading(false);
@@ -69,7 +88,7 @@ export const Refer = () => {
     ? `${window.location.origin}?ref=${referralCode}`
     : '';
 
-  const monthlyEarnings = activeReferrals * 0.5;
+  const monthlyProjected = activeReferrals * 0.5;
 
   const copyLink = () => {
     navigator.clipboard.writeText(referralLink);
@@ -226,14 +245,16 @@ export const Refer = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-3 gap-4 mb-6">
           {[
-            { label: 'Active Referrals', value: activeReferrals },
-            { label: 'Monthly Earnings', value: `$${monthlyEarnings.toFixed(2)}` },
-          ].map(({ label, value }) => (
-            <div key={label} className={`rounded-xl border p-5 ${cardBg}`}>
+            { label: 'Active Referrals', value: activeReferrals, icon: Users },
+            { label: 'Total Earned', value: `$${totalEarned.toFixed(2)}`, icon: Gift },
+            { label: 'In Your Balance', value: `$${availableBalance.toFixed(2)}`, icon: Wallet },
+          ].map(({ label, value, icon: Icon }) => (
+            <div key={label} className={`rounded-xl border p-4 ${cardBg}`}>
+              <Icon className="text-[#D4A843] w-5 h-5 mb-2" />
               <p className={`text-xs uppercase tracking-wide font-semibold mb-1 ${textMuted}`}>{label}</p>
-              <p className={`font-serif text-3xl font-bold ${textPrimary}`}>{value}</p>
+              <p className={`font-serif text-2xl font-bold ${textPrimary}`}>{value}</p>
             </div>
           ))}
         </div>
@@ -253,18 +274,38 @@ export const Refer = () => {
               {copied ? 'Copied!' : 'Copy'}
             </button>
           </div>
+          <p className={`text-xs mt-3 ${textMuted}`}>
+            Projected monthly: <strong className={textPrimary}>${monthlyProjected.toFixed(2)}</strong> if all referrals stay subscribed
+          </p>
         </div>
+
+        {/* Referred Users */}
+        {referredUsers.length > 0 && (
+          <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
+            <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>People You Referred</h2>
+            <div className="space-y-2">
+              {referredUsers.map((ref: { email: string; is_upgraded: boolean }, i: number) => (
+                <div key={i} className={`flex justify-between items-center py-2 ${i < referredUsers.length - 1 ? `border-b ${divider}` : ''}`}>
+                  <span className={`text-sm ${textMuted}`}>{ref.email}</span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${ref.is_upgraded ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}`}>
+                    {ref.is_upgraded ? 'Active' : 'Signed Up'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Payout rules */}
         <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
           <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Payout Rules</h2>
           <div className="space-y-3">
             {[
-              ['Earnings',     '$0.50/month per active referred subscriber'],
+              ['Earnings',     '$0.50/month per active referred subscriber — added to your ReadToEarn balance'],
               ['Trigger',      'Referral must sign up and become a paid subscriber'],
               ['Recurring',    'Earnings continue each month they stay subscribed'],
               ['Cancellation', 'Earnings stop if the referred user cancels'],
-              ['Fraud Hold',   'Suspicious referrals are held for 30 days before payout'],
+              ['Payout',       'Cash out via PayPal, Wise, or gift cards like normal earnings'],
               ['Cap',          'No cap — refer as many as you want'],
             ].map(([rule, detail], i) => (
               <div
