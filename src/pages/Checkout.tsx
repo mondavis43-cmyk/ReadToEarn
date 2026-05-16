@@ -20,7 +20,6 @@ type:
   | "survey"
   | "beta_reader"
   | "sensitivity_reader"
-  | "sensitivity_readers"
   | "subscription"
   | "time_boost"
   | "competition_entry"
@@ -107,7 +106,6 @@ quick_task: "/author-dashboard",
 survey: "/author-dashboard",
 beta_reader: "/author-dashboard",
 sensitivity_reader: "/author-dashboard",
-sensitivity_readers: "/author-dashboard",
 subscription: "/profile",
 time_boost: "/profile",
 competition_entry: FEATURES.elimination ? "/elimination" : "/sprints",
@@ -168,6 +166,21 @@ if (pending) {
           .insert({ email, credits_total: bundleSize, credits_used: 1 });
       }
     }
+
+    // Trigger ambassador payout (25% commission to referrer)
+    const tierMap: Record<number, string> = {
+      1: 'single',
+      3: 'trilogy',
+      5: 'series',
+      10: 'catalog',
+      25: 'imprint',
+    };
+    const tier = tierMap[bundleSize] || 'single';
+
+    const { error: ambError } = await supabase.functions.invoke('process-ambassador-payout', {
+      body: { buyer_id: userId, listing_tier: tier },
+    });
+    if (ambError) console.error('[Checkout] ambassador payout error:', ambError);
 
   } else if (item.type === "competition_entry") {
     const { error } = await supabase.from("competition_entries").insert({
@@ -235,18 +248,12 @@ if (pending) {
         .eq("id", pending.sprint_id);
     }
 
-  } else if (
-    item.type === "beta_reader" ||
-    item.type === "sensitivity_reader" ||
-    item.type === "sensitivity_readers"
-  ) {
+  } else if (item.type === "beta_reader" || item.type === "sensitivity_reader") {
     console.log('[Checkout] Inserting beta/sensitivity reader:', { table: pending?.table, data: pending?.data });
-    const insertData = { ...pending.data };
-    // Ensure status is a valid DB enum value
-    if (!insertData.status || insertData.status === 'pending') {
-      insertData.status = 'pending_payment';
-    }
-    const { error } = await supabase.from(pending.table).insert(insertData);
+    const { error } = await supabase.from(pending.table).insert({
+      ...pending.data,
+      status: "active",
+    });
     if (error) {
       console.error('[Checkout] beta/sensitivity insert error:', error);
     } else {
