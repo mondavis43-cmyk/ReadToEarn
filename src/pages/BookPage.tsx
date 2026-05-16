@@ -145,12 +145,12 @@ export const BookPage = () => {
         .maybeSingle(),
       supabase
         .from('competitions')
-        .select('id, title, format, entry_fee, prize_pool, status, ends_at')
+        .select('id, title, type, entry_fee, prize_pool, status, ends_at')
         .contains('book_ids', [book.id])
         .eq('status', 'active'),
       supabase
         .from('competitions')
-        .select('id, title, format, entry_fee, prize_pool, status, ends_at')
+        .select('id, title, type, entry_fee, prize_pool, status, ends_at')
         .contains('book_ids', [book.id])
         .eq('status', 'completed')
         .order('ends_at', { ascending: false })
