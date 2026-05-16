@@ -110,7 +110,7 @@ export const AMASession = ({ sessionId }: { sessionId: string }) => {
     const [{ data: sessionData }, { data: questionsData }] = await Promise.all([
       supabase
         .from('ama_sessions')
-        .select('*, books(title, author), profiles(display_name, username, email)')
+        .select('*, books(title, author)')
         .eq('id', sessionId)
         .single(),
       supabase
