@@ -85,7 +85,6 @@ export const Home = () => {
       .from('competitions')
       .select('id, title, type, entry_fee, prize_pool, start_date, end_date, status')
       .in('status', ['upcoming', 'active'])
-      .neq('book_type', 'bulletin_board')
       .order('start_date', { ascending: true })
       .limit(3);
 
