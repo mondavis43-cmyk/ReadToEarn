@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
+import { assignAuthorReferralCode } from '../lib/generateReferralCode';
 import {
   BookOpen, Users, DollarSign, ArrowLeft, Edit2, Pin, PinOff,
   MessageSquare, Trophy, Upload, Check, Search, X, Star, BarChart2, Download, ChevronDown, ChevronUp
@@ -375,11 +376,18 @@ export const AuthorDashboard = () => {
   }
 
   async function loadAmbassador(uid: string) {
-    const { data: p } = await supabase
+    let { data: p } = await supabase
       .from('profiles')
       .select('author_referral_code')
       .eq('id', uid)
       .single();
+
+    // Auto-generate code if missing
+    if (!p?.author_referral_code) {
+      const newCode = await assignAuthorReferralCode(uid);
+      p = { author_referral_code: newCode };
+    }
+
     setAuthorProfile(p);
 
     const { data: pays } = await supabase
