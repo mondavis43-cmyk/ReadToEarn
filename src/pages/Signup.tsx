@@ -286,6 +286,7 @@ export const Signup = () => {
     };
 
     if (referredBy) profilePayload.referred_by = referredBy;
+    if (authorReferredBy) profilePayload.author_referred_by = authorReferredBy;
 
     if (isMinor) {
       profilePayload.parent_phone      = parentPhone.phone.trim();
@@ -649,4 +650,5 @@ export const Signup = () => {
       </div>
     </div>
   );
+};
 };
