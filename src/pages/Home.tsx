@@ -130,7 +130,7 @@ export const Home = () => {
         </h1>
 
         <p className="text-lg max-w-xl mx-auto mb-8" style={{ color: textMuted }}>
-          Compete in reading tournaments, pass book quizzes, and earn real money.
+          Compete in reading competitions, pass book quizzes, and earn real money.
           ReadToEarn turns your reading habit into a reward.
         </p>
 
