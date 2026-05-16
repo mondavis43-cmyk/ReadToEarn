@@ -45,9 +45,9 @@ export const AuthorAMA = () => {
     };
     const { data } = await supabase
       .from('ama_sessions')
-      .select('*, books(title, author), profiles(display_name, email)')
+      .select('*, books(title, author)')
       .in('status', statusMap[tab])
-      .order('ama_start_date', { ascending: tab !== 'past' });
+      .order('ama_starts_at', { ascending: tab !== 'past' });
     setSessions(data || []);
     setLoading(false);
   }
