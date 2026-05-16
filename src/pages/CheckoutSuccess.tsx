@@ -109,6 +109,22 @@ async function handleCapture() {
           }
         }
 
+        // Trigger ambassador payout (25% commission to referrer)
+        const tierMap: Record<number, string> = {
+          1: 'single',
+          3: 'trilogy',
+          5: 'series',
+          10: 'catalog',
+          25: 'imprint',
+        };
+        const tier = tierMap[bundleSize] || 'single';
+
+        // Call edge function to process ambassador payout
+        const { error: ambError } = await supabase.functions.invoke('process-ambassador-payout', {
+          body: { buyer_id: user.id, listing_tier: tier },
+        });
+        if (ambError) console.error('[CheckoutSuccess] ambassador payout error:', ambError);
+
       } else if (item.type === 'readathon_entry') {
         const { error } = await supabase.from('readathon_entries').insert({
           readathon_id:   pending.readathon_id,
