@@ -2,6 +2,26 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Plus, X, Trash2, CheckCircle } from 'lucide-react';
 
+async function sendEmail(to: string, subject: string, html: string) {
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${import.meta.env.VITE_RESEND_API_KEY || ''}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'notifications@joinreadtoearn.com',
+        to,
+        subject,
+        html,
+      }),
+    });
+  } catch (e) {
+    console.error('[Email] Failed to send:', e);
+  }
+}
+
 interface Book {
   id: string;
   title: string;
@@ -129,8 +149,34 @@ export function AdminAMA() {
   }
 
   async function handleApproveRequest(id: string) {
+    const { data: request } = await supabase.from('ama_requests').select('*, profiles(email, display_name)').eq('id', id).single();
+    if (!request) return;
+
     await supabase.from('ama_requests').update({ status: 'approved' }).eq('id', id);
-    setSuccess('Request approved. Create their AMA session below.');
+
+    // Pre-populate form with request data
+    setNewSession({
+      author_id: request.author_id,
+      book_id: '',
+      title: request.proposed_topic,
+      description: request.bio_blurb || '',
+      questions_close_at: request.proposed_date ? new Date(new Date(request.proposed_date).getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 16) : '',
+      ama_start_date: request.proposed_date || '',
+      ama_end_date: request.proposed_date ? new Date(new Date(request.proposed_date).getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16) : '',
+    });
+
+    // Send approval email
+    const email = request.profiles?.email;
+    if (email) {
+      await sendEmail(email, 'Your AMA Request was Approved! 🎉',
+        `<p>Hi ${request.profiles?.display_name || 'there'},</p>
+        <p>Great news! Your AMA request "${request.proposed_topic}" has been approved.</p>
+        <p>We're setting up your session now. You'll receive another email when it's scheduled.</p>
+        <p>Thanks for being part of ReadToEarn!</p>`
+      );
+    }
+
+    setSuccess('Request approved. Form pre-filled below.');
     setAdminTab('sessions');
     setShowForm(true);
     loadRequests();
@@ -138,7 +184,21 @@ export function AdminAMA() {
 
   async function handleRejectRequest(id: string) {
     const note = rejectNotes[id] || '';
+    const { data: request } = await supabase.from('ama_requests').select('*, profiles(email, display_name)').eq('id', id).single();
+
     await supabase.from('ama_requests').update({ status: 'rejected', admin_note: note || null }).eq('id', id);
+
+    // Send rejection email
+    const email = request?.profiles?.email;
+    if (email) {
+      await sendEmail(email, 'Update on Your AMA Request',
+        `<p>Hi ${request?.profiles?.display_name || 'there'},</p>
+        <p>Thank you for your interest in hosting an AMA. Unfortunately, we can't accommodate your request "${request?.proposed_topic}" at this time.</p>
+        ${note ? `<p><strong>Note from team:</strong> ${note}</p>` : ''}
+        <p>Feel free to submit another request in the future!</p>`
+      );
+    }
+
     setRejectOpen(null);
     setRejectNotes(prev => { const n = { ...prev }; delete n[id]; return n; });
     loadRequests();
