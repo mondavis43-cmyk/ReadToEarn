@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import { MessageSquare, Clock, Send, ChevronLeft, BookOpen, Lock } from 'lucide-react';
+import { MessageSquare, Clock, Send, ChevronLeft, BookOpen, Lock, Bell } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 type AMASession = {
@@ -88,10 +88,37 @@ export const AMASession = ({ sessionId }: { sessionId: string }) => {
 
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [submittingR, setSubmittingR] = useState<string | null>(null);
+  const [isFollowing, setIsFollowing] = useState(false);
 
   useEffect(() => {
     loadAll();
   }, [sessionId]);
+
+  useEffect(() => {
+    if (user && sessionId) checkFollowStatus();
+  }, [user, sessionId]);
+
+  async function checkFollowStatus() {
+    if (!user || !sessionId) return;
+    const { data } = await supabase
+      .from('ama_followers')
+      .select('id')
+      .eq('session_id', sessionId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    setIsFollowing(!!data);
+  }
+
+  async function toggleFollow() {
+    if (!user) { setQuestionError('Sign in to get notified.'); return; }
+    if (isFollowing) {
+      await supabase.from('ama_followers').delete().eq('session_id', sessionId).eq('user_id', user.id);
+      setIsFollowing(false);
+    } else {
+      await supabase.from('ama_followers').insert({ session_id: sessionId, user_id: user.id });
+      setIsFollowing(true);
+    }
+  }
 
   async function loadAll() {
     setLoading(true);
@@ -238,6 +265,21 @@ export const AMASession = ({ sessionId }: { sessionId: string }) => {
 
           {session.description && (
             <p className={`text-sm ${textMuted} mb-4`}>{session.description}</p>
+          )}
+
+          {/* Notify me button */}
+          {!isAuthor && session.status !== 'closed' && (
+            <button
+              onClick={toggleFollow}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition mb-4 ${
+                isFollowing
+                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                  : 'bg-[#D4A843]/10 text-[#D4A843] hover:bg-[#D4A843]/20'
+              }`}
+            >
+              <Bell size={16} />
+              {isFollowing ? 'You\'ll be notified when live' : 'Notify me when live'}
+            </button>
           )}
 
           <div className={`flex flex-wrap gap-4 text-xs ${textMuted}`}>
