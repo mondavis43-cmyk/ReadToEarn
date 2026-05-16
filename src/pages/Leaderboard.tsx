@@ -162,7 +162,7 @@ useEffect(() => {
       // readathon fetch only runs when flag is on
       supabase
         .from('competitions')
-        .select('id, title, format, book_title, prize_pool, status, start_date, end_date')
+        .select('id, title, type, book_title, prize_pool, status, start_date, end_date')
         .eq('status', status)
         .order('start_date', { ascending: false })
         .limit(20),
@@ -174,7 +174,7 @@ useEffect(() => {
         .limit(20),
       supabase
         .from('readathons')
-        .select('id, title, book_title, prize_pool, status, start_date, end_date')
+        .select('id, title, prize_pool, status, start_date, end_date')
         .eq('status', status)
         .order('start_date', { ascending: false })
         .limit(20),
@@ -198,7 +198,7 @@ useEffect(() => {
       id: r.id,
       title: r.title,
       format: 'readathon' as Format,
-      book_title: r.book_title,
+      book_title: null,
       prize_pool: r.prize_pool ?? 0,
       status: r.status === 'active' ? 'active' : 'completed',
       start_date: r.start_date,
