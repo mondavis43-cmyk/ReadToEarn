@@ -204,13 +204,22 @@ export const Earn = () => {
           {loading ? (
             <div className={`rounded-xl border p-6 animate-pulse ${cardBg}`}><div className={`h-16 rounded ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#1B2A4A]/10'}`} /></div>
           ) : tasks.length === 0 ? (
-            <EmptyState message="No open tasks right now. Check back soon." />
+            <div className={`rounded-xl border p-8 text-center transition-colors ${cardBg}`}>
+              <p className={`text-sm ${textMuted} mb-3`}>No open tasks right now. Check back soon.</p>
+              <button
+                onClick={() => navigateTo('/quick-tasks')}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
+              >
+                View task page <ArrowRight size={14} />
+              </button>
+            </div>
           ) : (
             <div className="space-y-3">
-              {tasks.map((t) => {
+              {(() => {
+                const t = tasks[0];
                 const spotsLeft = t.max_responses - t.responses_count;
                 return (
-                  <div key={t.id} className={`rounded-xl border p-5 flex items-center justify-between transition-colors ${cardBg}`}>
+                  <div className={`rounded-xl border p-5 flex items-center justify-between transition-colors ${cardBg}`}>
                     <div>
                       <p className={`text-sm font-medium ${textPrimary}`}>{t.title}</p>
                       <p className={`text-xs ${textMuted}`}>{taskTypeLabel(t.task_type)} · {spotsLeft} spots left</p>
@@ -220,13 +229,13 @@ export const Earn = () => {
                     </div>
                   </div>
                 );
-              })}
+              })()}
               <button
-  onClick={() => navigateTo('/quick-tasks')}
-  className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline mt-2"
->
-  See all open tasks <ArrowRight size={14} />
-</button>
+                onClick={() => navigateTo('/quick-tasks')}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline mt-2"
+              >
+                See all open tasks <ArrowRight size={14} />
+              </button>
             </div>
           )}
         </div>
@@ -242,32 +251,41 @@ export const Earn = () => {
           {loading ? (
             <div className={`rounded-xl border p-6 animate-pulse ${cardBg}`}><div className={`h-16 rounded ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#1B2A4A]/10'}`} /></div>
           ) : surveys.length === 0 ? (
-            <EmptyState message="No open surveys right now. Check back soon." />
+            <div className={`rounded-xl border p-8 text-center transition-colors ${cardBg}`}>
+              <p className={`text-sm ${textMuted} mb-3`}>No open surveys right now. Check back soon.</p>
+              <button
+                onClick={() => navigateTo('/surveys')}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
+              >
+                View survey page <ArrowRight size={14} />
+              </button>
+            </div>
           ) : (
             <div className="space-y-3">
-              {surveys.map((s) => {
-        const spotsLeft = s.max_responses - s.responses_count;
-        return (
-          <div key={s.id} className={`rounded-xl border p-5 flex items-center justify-between transition-colors ${cardBg}`}>
-            <div>
-              <p className={`text-sm font-medium ${textPrimary}`}>{s.title}</p>
-              <p className={`text-xs ${textMuted}`}>{spotsLeft} spots left</p>
+              {(() => {
+                const s = surveys[0];
+                const spotsLeft = s.max_responses - s.responses_count;
+                return (
+                  <div className={`rounded-xl border p-5 flex items-center justify-between transition-colors ${cardBg}`}>
+                    <div>
+                      <p className={`text-sm font-medium ${textPrimary}`}>{s.title}</p>
+                      <p className={`text-xs ${textMuted}`}>{spotsLeft} spots left</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-[#D4A843]">$1.00</p>
+                    </div>
+                  </div>
+                );
+              })()}
+              <button
+                onClick={() => navigateTo('/surveys')}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline mt-2"
+              >
+                See all open surveys <ArrowRight size={14} />
+              </button>
             </div>
-            <div className="text-right">
-              <p className="text-sm font-semibold text-[#D4A843]">$1.00</p>
-            </div>
-          </div>
-        );
-      })}
-      <button
-        onClick={() => navigateTo('/surveys')}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline mt-2"
-      >
-        See all open surveys <ArrowRight size={14} />
-      </button>
-    </div>
-  )}
-</div>
+          )}
+        </div>
 
         {/* Beta Panels */}
         <div className="mb-16">
@@ -280,32 +298,41 @@ export const Earn = () => {
           {loading ? (
             <div className={`rounded-xl border p-6 animate-pulse ${cardBg}`}><div className={`h-16 rounded ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#1B2A4A]/10'}`} /></div>
           ) : betaPanels.length === 0 ? (
-            <EmptyState message="No open beta panels right now. Check back soon." />
+            <div className={`rounded-xl border p-8 text-center transition-colors ${cardBg}`}>
+              <p className={`text-sm ${textMuted} mb-3`}>No open beta panels right now. Check back soon.</p>
+              <button
+                onClick={() => navigateTo('/beta-reader-panels')}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
+              >
+                View beta panel page <ArrowRight size={14} />
+              </button>
+            </div>
           ) : (
             <div className="space-y-3">
-              {betaPanels.map((p) => {
-        const spotsLeft = p.max_responses - p.responses_count;
-        return (
-          <div key={p.id} className={`rounded-xl border p-5 flex items-center justify-between transition-colors ${cardBg}`}>
-            <div>
-              <p className={`text-sm font-medium ${textPrimary}`}>{p.title}</p>
-              <p className={`text-xs ${textMuted}`}>{p.genre} · {spotsLeft} spots left</p>
+              {(() => {
+                const p = betaPanels[0];
+                const spotsLeft = p.max_responses - p.responses_count;
+                return (
+                  <div className={`rounded-xl border p-5 flex items-center justify-between transition-colors ${cardBg}`}>
+                    <div>
+                      <p className={`text-sm font-medium ${textPrimary}`}>{p.title}</p>
+                      <p className={`text-xs ${textMuted}`}>{p.genre} · {spotsLeft} spots left</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-[#D4A843]">$1.50</p>
+                    </div>
+                  </div>
+                );
+              })()}
+              <button
+                onClick={() => navigateTo('/beta-reader-panels')}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline mt-2"
+              >
+                See all open panels <ArrowRight size={14} />
+              </button>
             </div>
-            <div className="text-right">
-              <p className="text-sm font-semibold text-[#D4A843]">$1.50</p>
-            </div>
-          </div>
-        );
-      })}
-      <button
-        onClick={() => navigateTo('/beta-reader-panels')}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline mt-2"
-      >
-        See all open panels <ArrowRight size={14} />
-      </button>
-    </div>
-  )}
-</div>
+          )}
+        </div>
         
         {/* Sensitivity Panels */}
         <div className="mb-16">
@@ -318,45 +345,18 @@ export const Earn = () => {
           {loading ? (
             <div className={`rounded-xl border p-6 animate-pulse ${cardBg}`}><div className={`h-16 rounded ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#1B2A4A]/10'}`} /></div>
           ) : sensitivityPanels.length === 0 ? (
-            <EmptyState message="No open sensitivity panels right now. Check back soon." />
+            <div className={`rounded-xl border p-8 text-center transition-colors ${cardBg}`}>
+              <p className={`text-sm ${textMuted} mb-3`}>No open sensitivity panels right now. Check back soon.</p>
+              <button
+                onClick={() => navigateTo('/sensitivity-reader-panels')}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline"
+              >
+                View sensitivity panel page <ArrowRight size={14} />
+              </button>
+            </div>
           ) : (
             <div className="space-y-3">
-              {sensitivityPanels.map((p) => {
-        const spotsLeft = p.max_responses - p.responses_count;
-        return (
-          <div key={p.id} className={`rounded-xl border p-5 transition-colors ${cardBg}`}>
-            <div className="flex items-start justify-between mb-2">
-              <p className={`text-sm font-medium ${textPrimary}`}>{p.title}</p>
-              <p className="text-sm font-semibold text-[#D4A843]">$10.00</p>
-            </div>
-            <p className={`text-xs mb-3 ${textMuted}`}>Looking for: {p.identity_requirements}</p>
-            <p className={`text-xs ${textMuted}`}>{spotsLeft} spots left</p>
-          </div>
-        );
-      })}
-      <button
-        onClick={() => navigateTo('/sensitivity-reader-panels')}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline mt-2"
-      >
-        See all open panels <ArrowRight size={14} />
-      </button>
-    </div>
-  )}
-</div>
-
-        {/* CTA */}
-        <div className="text-center">
-          <h2 className={`font-serif text-3xl mb-3 ${textPrimary}`}>Ready to start earning?</h2>
-          <p className={`text-sm mb-8 ${textMuted}`}>Create your free account and start earning today.</p>
-          <button
-            onClick={() => navigateTo('/signup')}
-            className="inline-flex items-center gap-2 bg-[#D4A843] text-[#1B2A4A] font-semibold px-8 py-4 rounded-xl hover:bg-[#c49a3a] transition-colors text-lg"
-          >
-            Create Your Free Account <ArrowRight size={20} />
-          </button>
-        </div>
-
-      </div>
-    </div>
-  );
-};
+              {(() => {
+                const p = sensitivityPanels[0];
+                const spotsLeft = p.max_responses - p.responses_count;
+                return (
