@@ -360,3 +360,39 @@ export const Earn = () => {
                 const p = sensitivityPanels[0];
                 const spotsLeft = p.max_responses - p.responses_count;
                 return (
+                  <div className={`rounded-xl border p-5 transition-colors ${cardBg}`}>
+                    <div className="flex items-start justify-between mb-2">
+                      <p className={`text-sm font-medium ${textPrimary}`}>{p.title}</p>
+                      <p className="text-sm font-semibold text-[#D4A843]">$10.00</p>
+                    </div>
+                    <p className={`text-xs mb-3 ${textMuted}`}>Looking for: {p.identity_requirements}</p>
+                    <p className={`text-xs ${textMuted}`}>{spotsLeft} spots left</p>
+                  </div>
+                );
+              })()}
+              <button
+                onClick={() => navigateTo('/sensitivity-reader-panels')}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline mt-2"
+              >
+                See all open panels <ArrowRight size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* CTA */}
+        <div className="text-center">
+          <h2 className={`font-serif text-3xl mb-3 ${textPrimary}`}>Ready to start earning?</h2>
+          <p className={`text-sm mb-8 ${textMuted}`}>Create your free account and start earning today.</p>
+          <button
+            onClick={() => navigateTo('/signup')}
+            className="inline-flex items-center gap-2 bg-[#D4A843] text-[#1B2A4A] font-semibold px-8 py-4 rounded-xl hover:bg-[#c49a3a] transition-colors text-lg"
+          >
+            Create Your Free Account <ArrowRight size={20} />
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+};
