@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Plus, X, Trash2, CheckCircle } from 'lucide-react';
 
-async function sendEmail(to: string, subject: string, html: string) {
+async function sendEmail(to: string, subject: string, html: string): Promise<{ success: boolean; error?: string }> {
   try {
-    await fetch('https://api.resend.com/emails', {
+    const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${import.meta.env.VITE_RESEND_API_KEY || ''}`,
@@ -17,8 +17,16 @@ async function sendEmail(to: string, subject: string, html: string) {
         html,
       }),
     });
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('[Email] Failed to send:', errorData);
+      return { success: false, error: `HTTP ${response.status}: ${errorData}` };
+    }
+    return { success: true };
   } catch (e) {
-    console.error('[Email] Failed to send:', e);
+    const errorMsg = e instanceof Error ? e.message : 'Unknown error';
+    console.error('[Email] Failed to send:', errorMsg);
+    return { success: false, error: errorMsg };
   }
 }
 
@@ -168,12 +176,16 @@ export function AdminAMA() {
     // Send approval email
     const email = request.profiles?.email;
     if (email) {
-      await sendEmail(email, 'Your AMA Request was Approved! 🎉',
+      const emailResult = await sendEmail(email, 'Your AMA Request was Approved! 🎉',
         `<p>Hi ${request.profiles?.display_name || 'there'},</p>
         <p>Great news! Your AMA request "${request.proposed_topic}" has been approved.</p>
-        <p>We're setting up your session now. You'll receive another email when it's scheduled.</p>
-        <p>Thanks for being part of ReadToEarn!</p>`
+        <p>We're setting up your session now. You'll receive another email when it's scheduled.</p>`
       );
+      if (!emailResult.success) {
+        setError(`Request approved but email failed to send: ${emailResult.error}`);
+      } else {
+        setSuccess('Request approved and email sent successfully!');
+      }
     }
 
     setSuccess('Request approved. Form pre-filled below.');
@@ -191,12 +203,16 @@ export function AdminAMA() {
     // Send rejection email
     const email = request?.profiles?.email;
     if (email) {
-      await sendEmail(email, 'Update on Your AMA Request',
+      const emailResult = await sendEmail(email, 'Update on Your AMA Request',
         `<p>Hi ${request?.profiles?.display_name || 'there'},</p>
         <p>Thank you for your interest in hosting an AMA. Unfortunately, we can't accommodate your request "${request?.proposed_topic}" at this time.</p>
-        ${note ? `<p><strong>Note from team:</strong> ${note}</p>` : ''}
-        <p>Feel free to submit another request in the future!</p>`
+        ${note ? `<p><strong>Note from team:</strong> ${note}</p>` : ''}`
       );
+      if (!emailResult.success) {
+        setError(`Request rejected but email failed to send: ${emailResult.error}`);
+      } else {
+        setSuccess('Request rejected and email sent successfully!');
+      }
     }
 
     setRejectOpen(null);
