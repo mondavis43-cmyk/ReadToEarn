@@ -250,6 +250,12 @@ if (pending) {
 
   } else if (item.type === "beta_reader" || item.type === "sensitivity_reader") {
     console.log('[Checkout] Inserting beta/sensitivity reader:', { table: pending?.table, data: pending?.data });
+    // Whitelist valid table names to prevent SQL injection
+    const ALLOWED_TABLES = ['author_beta_reader_submissions', 'author_sensitivity_submissions'];
+    if (!pending?.table || !ALLOWED_TABLES.includes(pending.table)) {
+      console.error('[Checkout] Invalid table name:', pending?.table);
+      throw new Error('Invalid submission table');
+    }
     const { error } = await supabase.from(pending.table).insert({
       ...pending.data,
       status: "active",
@@ -284,6 +290,23 @@ if (pending) {
     }
 
   } else if (pending.table) {
+    // Whitelist valid table names to prevent SQL injection
+    const ALLOWED_TABLES = [
+      'author_bounty_submissions',
+      'author_competition_submissions',
+      'author_quick_task_submissions',
+      'author_survey_submissions',
+      'author_sensitivity_submissions',
+      'sponsored_pins',
+      'subscriptions',
+      'profiles',
+      'user_boost_purchases',
+      'tournament_participants',
+    ];
+    if (!ALLOWED_TABLES.includes(pending.table)) {
+      console.error('[Checkout] Invalid table name:', pending.table);
+      throw new Error('Invalid submission table: ' + pending.table);
+    }
     const { error } = await supabase.from(pending.table).insert(pending.data);
     if (error) console.error('[Checkout] generic table insert error:', error);
   }
