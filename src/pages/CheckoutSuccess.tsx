@@ -2,6 +2,23 @@ import { useEffect, useState } from 'react';
 import { FEATURES } from '../config/features';
 import { supabase } from '../lib/supabase';
 
+// Validate sessionStorage data shape
+function isValidCheckoutItem(obj: unknown): obj is { type: string; amount: number; label: string } {
+  if (!obj || typeof obj !== 'object') return false;
+  const item = obj as Record<string, unknown>;
+  return (
+    typeof item.type === 'string' &&
+    typeof item.amount === 'number' &&
+    typeof item.label === 'string'
+  );
+}
+
+function isValidPendingSubmission(obj: unknown): boolean {
+  if (!obj || typeof obj !== 'object') return false;
+  const pending = obj as Record<string, unknown>;
+  return typeof pending.table === 'string' && pending.table.length > 0;
+}
+
 const REDIRECT_MAP: Record<string, string> = {
 listing:               '/author-dashboard',
 bounty:                '/author-dashboard',
@@ -64,11 +81,13 @@ async function handleCapture() {
     if (!captureRes.ok) throw new Error(capture?.error || 'Capture request failed.');
     if (capture?.status !== 'COMPLETED') throw new Error(`Payment not completed (status: ${capture?.status ?? 'unknown'}).`);
 
-    // 4. Pull item + pending submission from sessionStorage
-    const item    = JSON.parse(sessionStorage.getItem('checkoutItem')      ?? 'null');
-    const pending = JSON.parse(sessionStorage.getItem('pendingSubmission') ?? 'null');
+    // 4. Pull item + pending submission from sessionStorage (with validation)
+    const rawItem = JSON.parse(sessionStorage.getItem('checkoutItem') ?? 'null');
+    const rawPending = JSON.parse(sessionStorage.getItem('pendingSubmission') ?? 'null');
+    const item = isValidCheckoutItem(rawItem) ? rawItem : null;
+    const pending = isValidPendingSubmission(rawPending) ? rawPending : null;
 
-    if (!item) throw new Error('Checkout item missing from session.');
+    if (!item) throw new Error('Checkout item missing or invalid in session.');
 
     // 5. Log payment to DB — column is payment_type, not type
     const { error: paymentLogError } = await supabase.from('payments').insert({
