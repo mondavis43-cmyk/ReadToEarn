@@ -163,9 +163,9 @@ paymentRef: string
 ) {
 const rawPending = JSON.parse(sessionStorage.getItem("pendingSubmission") ?? "null");
 const pending = isValidPendingSubmission(rawPending) ? rawPending : null;
-console.log('[Checkout] handlePostPayment called:', { itemType: item.type, pending, userId });
+if (import.meta.env.DEV) console.log('[Checkout] handlePostPayment called:', { itemType: item.type, pending, userId });
 
-if (!pending) {
+if (!pending && import.meta.env.DEV) {
   console.warn('[Checkout] No valid pending submission found');
 }
 
@@ -277,7 +277,7 @@ if (pending) {
     }
 
   } else if (item.type === "beta_reader" || item.type === "sensitivity_reader") {
-    console.log('[Checkout] Inserting beta/sensitivity reader:', { table: pending?.table, data: pending?.data });
+    if (import.meta.env.DEV) console.log('[Checkout] Inserting beta/sensitivity reader:', { table: pending?.table, data: pending?.data });
     // Whitelist valid table names to prevent SQL injection
     const ALLOWED_TABLES = ['author_beta_reader_submissions', 'author_sensitivity_submissions'];
     if (!pending?.table || !ALLOWED_TABLES.includes(pending.table)) {
@@ -290,7 +290,7 @@ if (pending) {
     });
     if (error) {
       console.error('[Checkout] beta/sensitivity insert error:', error);
-    } else {
+    } else if (import.meta.env.DEV) {
       console.log('[Checkout] beta/sensitivity inserted successfully');
     }
 
