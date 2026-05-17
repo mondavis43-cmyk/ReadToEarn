@@ -4,25 +4,14 @@ import { Plus, X, Trash2, CheckCircle } from 'lucide-react';
 
 async function sendEmail(to: string, subject: string, html: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${import.meta.env.VITE_RESEND_API_KEY || ''}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'notifications@joinreadtoearn.com',
-        to,
-        subject,
-        html,
-      }),
+    const { data, error } = await supabase.functions.invoke('send-email', {
+      body: { to, subject, html },
     });
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error('[Email] Failed to send:', errorData);
-      return { success: false, error: `HTTP ${response.status}: ${errorData}` };
+    if (error) {
+      console.error('[Email] Failed to send:', error);
+      return { success: false, error: error.message };
     }
-    return { success: true };
+    return data || { success: true };
   } catch (e) {
     const errorMsg = e instanceof Error ? e.message : 'Unknown error';
     console.error('[Email] Failed to send:', errorMsg);
