@@ -235,7 +235,7 @@ async function handleCapture() {
 
       } else if (item.type === 'beta_reader' || item.type === 'sensitivity_reader') {
         // singular — matches what AuthorBetaReaders.tsx sets in sessionStorage
-        console.log('[CheckoutSuccess] Inserting beta/sensitivity reader:', { table: pending.table, data: pending.data });
+        if (import.meta.env.DEV) console.log('[CheckoutSuccess] Inserting beta/sensitivity reader:', { table: pending.table, data: pending.data });
         // Whitelist valid table names to prevent SQL injection
         const ALLOWED_TABLES = ['author_beta_reader_submissions', 'author_sensitivity_submissions'];
         if (!pending?.table || !ALLOWED_TABLES.includes(pending.table)) {
@@ -250,7 +250,7 @@ async function handleCapture() {
           console.error('[CheckoutSuccess] Insert error:', insertError);
           throw new Error('Failed to insert submission: ' + insertError.message);
         }
-        console.log('[CheckoutSuccess] Inserted successfully');
+        if (import.meta.env.DEV) console.log('[CheckoutSuccess] Inserted successfully');
 
       } else if (pending.table) {
         // Whitelist valid table names to prevent SQL injection
@@ -272,7 +272,7 @@ async function handleCapture() {
         }
         const { error } = await supabase.from(pending.table).insert(pending.data);
         if (error) console.error('[CheckoutSuccess] generic table insert error:', error);
-      } else {
+      } else if (import.meta.env.DEV) {
         console.warn('[CheckoutSuccess] No handler for item.type:', item.type);
       }
 
