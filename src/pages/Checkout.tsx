@@ -11,6 +11,29 @@ useElements,
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
+// Validate sessionStorage data shape
+function isValidCheckoutItem(obj: unknown): obj is CheckoutItem {
+  if (!obj || typeof obj !== 'object') return false;
+  const item = obj as Record<string, unknown>;
+  const validTypes = [
+    'listing', 'bounty', 'competition_sponsored', 'quick_task', 'survey',
+    'beta_reader', 'sensitivity_reader', 'subscription', 'time_boost',
+    'competition_entry', 'tournament_entry', 'sprint_entry', 'readathon_entry'
+  ];
+  return (
+    typeof item.type === 'string' && validTypes.includes(item.type) &&
+    typeof item.label === 'string' &&
+    typeof item.amount === 'number'
+  );
+}
+
+function isValidPendingSubmission(obj: unknown): boolean {
+  if (!obj || typeof obj !== 'object') return false;
+  const pending = obj as Record<string, unknown>;
+  // Must have a table property that's a string
+  return typeof pending.table === 'string' && pending.table.length > 0;
+}
+
 export type CheckoutItem = {
 type:
   | "listing"
@@ -138,8 +161,13 @@ item: CheckoutItem,
 userId: string,
 paymentRef: string
 ) {
-const pending = JSON.parse(sessionStorage.getItem("pendingSubmission") ?? "null");
+const rawPending = JSON.parse(sessionStorage.getItem("pendingSubmission") ?? "null");
+const pending = isValidPendingSubmission(rawPending) ? rawPending : null;
 console.log('[Checkout] handlePostPayment called:', { itemType: item.type, pending, userId });
+
+if (!pending) {
+  console.warn('[Checkout] No valid pending submission found');
+}
 
 if (pending) {
   if (item.type === "listing") {
@@ -545,7 +573,8 @@ return (
 
 // ─── Page wrapper ─────────────────────────────────────────────────────────────
 const Checkout = () => {
-const item = JSON.parse(sessionStorage.getItem("checkoutItem") ?? "null") as CheckoutItem | undefined;
+const rawItem = JSON.parse(sessionStorage.getItem("checkoutItem") ?? "null");
+const item = isValidCheckoutItem(rawItem) ? rawItem : undefined;
 
 if (!item) {
   return (
