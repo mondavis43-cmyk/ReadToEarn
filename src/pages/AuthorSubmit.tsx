@@ -111,6 +111,11 @@ export const AuthorSubmit = () => {
       setError(`Please fill out all required fields including all ${questions.length} questions.`);
       return;
     }
+    // Prevent race condition: wait for credit check to complete
+    if (checkingCredits) {
+      setError('Please wait - verifying your credits...');
+      return;
+    }
     setLoading(true);
     setError('');
 
