@@ -28,7 +28,7 @@ interface Book {
 interface Author {
   id: string;
   email: string;
-  display_name: string | null;
+  username: string | null;
 }
 
 interface AMASession {
@@ -64,7 +64,7 @@ interface AMARequest {
   status: string;
   admin_note: string | null;
   created_at: string;
-  profiles?: { display_name: string | null; email: string } | null;
+  profiles?: { username: string | null; email: string } | null;
 }
 
 interface NewSession {
@@ -125,9 +125,9 @@ export function AdminAMA() {
 
     const { data: authorsData } = await supabase
       .from('profiles')
-      .select('id, email, display_name')
+      .select('id, email, username')
       .eq('role', 'author')
-      .order('display_name');
+      .order('username');
 
     setBooks(booksData || []);
     setSessions(sessionsData || []);
@@ -139,14 +139,14 @@ export function AdminAMA() {
     setRequestsLoading(true);
     const { data } = await supabase
       .from('ama_requests')
-      .select('*, profiles(display_name, email)')
+      .select('*, profiles(username, email)')
       .order('created_at', { ascending: false });
     setRequests(data || []);
     setRequestsLoading(false);
   }
 
   async function handleApproveRequest(id: string) {
-    const { data: request } = await supabase.from('ama_requests').select('*, profiles(email, display_name)').eq('id', id).single();
+    const { data: request } = await supabase.from('ama_requests').select('*, profiles(email, username)').eq('id', id).single();
     if (!request) return;
 
     await supabase.from('ama_requests').update({ status: 'approved' }).eq('id', id);
@@ -166,7 +166,7 @@ export function AdminAMA() {
     const email = request.profiles?.email;
     if (email) {
       const emailResult = await sendEmail(email, 'Your AMA Request was Approved! 🎉',
-        `<p>Hi ${request.profiles?.display_name || 'there'},</p>
+        `<p>Hi ${request.profiles?.username || 'there'},</p>
         <p>Great news! Your AMA request "${request.proposed_topic}" has been approved.</p>
         <p>We're setting up your session now. You'll receive another email when it's scheduled.</p>`
       );
@@ -185,7 +185,7 @@ export function AdminAMA() {
 
   async function handleRejectRequest(id: string) {
     const note = rejectNotes[id] || '';
-    const { data: request } = await supabase.from('ama_requests').select('*, profiles(email, display_name)').eq('id', id).single();
+    const { data: request } = await supabase.from('ama_requests').select('*, profiles(email, username)').eq('id', id).single();
 
     await supabase.from('ama_requests').update({ status: 'rejected', admin_note: note || null }).eq('id', id);
 
@@ -193,7 +193,7 @@ export function AdminAMA() {
     const email = request?.profiles?.email;
     if (email) {
       const emailResult = await sendEmail(email, 'Update on Your AMA Request',
-        `<p>Hi ${request?.profiles?.display_name || 'there'},</p>
+        `<p>Hi ${request?.profiles?.username || 'there'},</p>
         <p>Thank you for your interest in hosting an AMA. Unfortunately, we can't accommodate your request "${request?.proposed_topic}" at this time.</p>
         ${note ? `<p><strong>Note from team:</strong> ${note}</p>` : ''}`
       );
@@ -342,7 +342,7 @@ export function AdminAMA() {
             <p className="text-sm text-[#6B7280] dark:text-gray-400">No requests yet.</p>
           ) : (
             requests.map((req) => {
-              const authorName = req.profiles?.display_name || req.profiles?.email || req.author_id;
+              const authorName = req.profiles?.username || req.profiles?.email || req.author_id;
               return (
                 <div key={req.id} className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-4 space-y-3">
                   <div className="flex items-start justify-between gap-4">
@@ -461,7 +461,7 @@ export function AdminAMA() {
                   <option value="">Select an author...</option>
                   {authors.map((a) => (
                     <option key={a.id} value={a.id}>
-                      {a.display_name || a.email}
+                      {a.username || a.email}
                     </option>
                   ))}
                 </select>
