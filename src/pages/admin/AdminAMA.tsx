@@ -121,7 +121,7 @@ export function AdminAMA() {
       supabase
         .from('ama_sessions')
         .select('*, books(title, author)')
-        .order('ama_start_date', { ascending: false }),
+        .order('ama_starts_at', { ascending: false }),
     ]);
 
     const { data: authorsData } = await supabase
