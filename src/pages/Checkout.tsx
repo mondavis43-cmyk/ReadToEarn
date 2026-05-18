@@ -9,6 +9,10 @@ useStripe,
 useElements,
 } from "@stripe/react-stripe-js";
 
+async function sendEmail(to: string, subject: string, html: string) {
+  await supabase.functions.invoke('send-email', { body: { to, subject, html } });
+}
+
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 // Validate sessionStorage data shape
@@ -395,6 +399,26 @@ const handleSubmit = async (e: React.FormEvent) => {
         status: "succeeded",
       });
       if (paymentLogError) console.error('[Checkout] payments log error:', paymentLogError);
+
+      // Subscription welcome email
+      if (item.type === 'subscription' && user.email) {
+        const plan = item.metadata?.plan === 'annual' ? 'Annual' : 'Monthly';
+        const amount = (item.amount / 100).toFixed(2);
+        await sendEmail(
+          user.email,
+          'Welcome to ReadToEarn Premium! 🎉',
+          `<p>Hi there,</p>
+          <p>Your <strong>${plan} subscription</strong> is now active. You paid <strong>$${amount}</strong>.</p>
+          <p>You now have access to:</p>
+          <ul>
+            <li>Early access to new bounties (2 hours before free members)</li>
+            <li>Entry into the monthly subscriber giveaway</li>
+            <li>Access to exclusive sprints and competitions</li>
+          </ul>
+          <p><a href="https://joinreadtoearn.com">Head to ReadToEarn to start earning →</a></p>
+          <p>— The ReadToEarn Team</p>`
+        );
+      }
 
       await handlePostPayment(item, user.id, paymentIntent.id);
       setSuccess(true);
