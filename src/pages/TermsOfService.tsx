@@ -18,9 +18,9 @@ export const TermsOfService = () => {
     },
     {
       title: '2. Eligibility',
-      body: `You must be at least 13 years old to use ReadToEarn. Users aged 13–17 must provide verifiable parental or guardian consent at signup, including a verified parent or guardian phone number. Users under 13 are not permitted on the Platform and any such accounts will be terminated immediately upon discovery.
+      body: `You must be at least 18 years old to use ReadToEarn. Users under 18 are not permitted on the Platform and any such accounts will be terminated immediately upon discovery.
 
-By creating an account, you represent that you meet these age requirements and that all information you provide is accurate. We reserve the right to terminate accounts that do not comply.`,
+By creating an account, you represent that you meet this age requirement and that all information you provide is accurate. We reserve the right to terminate accounts that do not comply.`,
     },
     {
       title: '3. Account Registration & Identity Verification',
@@ -36,7 +36,7 @@ You are responsible for maintaining the security of your account credentials. Re
 
 Earnings are subject to the following rules:
 • Minimum cashout threshold: $10
-• Payment methods: PayPal and Venmo (US residents, 18+), Wise (international, 18+), Giftogram gift cards (all ages including minors)
+• Payment methods: PayPal (US residents), Wise (international)
 • Earnings are credited only after verification and approval
 • We reserve the right to withhold or reverse earnings obtained through fraudulent activity, cheating, or abuse of the Platform
 
