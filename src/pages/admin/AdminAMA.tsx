@@ -38,8 +38,8 @@ interface AMASession {
   title: string;
   description: string | null;
   questions_close_at: string;
-  ama_start_date: string;
-  ama_end_date: string | null;
+  ama_starts_at: string;
+  ama_ends_at: string | null;
   status: 'open' | 'answering' | 'closed';
   created_at: string;
   books?: { title: string; author: string } | null;
@@ -73,8 +73,8 @@ interface NewSession {
   title: string;
   description: string;
   questions_close_at: string;
-  ama_start_date: string;
-  ama_end_date: string;
+  ama_starts_at: string;
+  ama_ends_at: string;
 }
 
 const emptySession: NewSession = {
@@ -83,8 +83,8 @@ const emptySession: NewSession = {
   title: '',
   description: '',
   questions_close_at: '',
-  ama_start_date: '',
-  ama_end_date: '',
+  ama_starts_at: '',
+  ama_ends_at: '',
 };
 
 type AdminTab = 'sessions' | 'requests';
@@ -101,6 +101,7 @@ export function AdminAMA() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [editingSession, setEditingSession] = useState<AMASession | null>(null);
 
   // Requests state
   const [requests, setRequests] = useState<AMARequest[]>([]);
@@ -158,8 +159,8 @@ export function AdminAMA() {
       title: request.proposed_topic,
       description: request.bio_blurb || '',
       questions_close_at: request.proposed_date ? new Date(new Date(request.proposed_date).getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 16) : '',
-      ama_start_date: request.proposed_date || '',
-      ama_end_date: request.proposed_date ? new Date(new Date(request.proposed_date).getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16) : '',
+      ama_starts_at: request.proposed_date || '',
+      ama_ends_at: request.proposed_date ? new Date(new Date(request.proposed_date).getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16) : '',
     });
 
     // Send approval email
@@ -240,8 +241,8 @@ export function AdminAMA() {
       title: newSession.title,
       description: newSession.description || null,
       questions_close_at: newSession.questions_close_at,
-      ama_start_date: newSession.ama_start_date,
-      ama_end_date: newSession.ama_end_date || null,
+      ama_starts_at: newSession.ama_starts_at,
+      ama_ends_at: newSession.ama_ends_at || null,
       status: 'open',
     });
     if (err) { setError('Failed to save: ' + err.message); setSaving(false); return; }
@@ -254,6 +255,24 @@ export function AdminAMA() {
 
   async function handleUpdateStatus(id: string, status: 'open' | 'answering' | 'closed') {
     await supabase.from('ama_sessions').update({ status }).eq('id', id);
+    loadData();
+  }
+
+  async function handleEditSession() {
+    if (!editingSession) return;
+    setSaving(true);
+    const { error: err } = await supabase.from('ama_sessions').update({
+      title: editingSession.title,
+      description: editingSession.description || null,
+      questions_close_at: editingSession.questions_close_at,
+      ama_starts_at: editingSession.ama_starts_at,
+      ama_ends_at: editingSession.ama_ends_at || null,
+      status: editingSession.status,
+    }).eq('id', editingSession.id);
+    setSaving(false);
+    if (err) { setError('Failed to update: ' + err.message); return; }
+    setSuccess('AMA session updated!');
+    setEditingSession(null);
     loadData();
   }
 
@@ -298,6 +317,56 @@ export function AdminAMA() {
       {success && (
         <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-4 py-3 text-green-700 dark:text-green-400 text-sm flex items-center justify-between">
           {success}<button onClick={() => setSuccess('')}><X size={14} /></button>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingSession && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-[#e8e0d5] dark:border-gray-700 p-6 w-full max-w-lg space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Edit AMA Session</h3>
+              <button onClick={() => setEditingSession(null)}><X size={16} /></button>
+            </div>
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Title *</label>
+              <input className={inputClass} value={editingSession.title} onChange={(e) => setEditingSession({ ...editingSession, title: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Description</label>
+              <textarea className={inputClass} rows={3} value={editingSession.description || ''} onChange={(e) => setEditingSession({ ...editingSession, description: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Questions Close *</label>
+                <input type="datetime-local" className={inputClass} value={editingSession.questions_close_at?.slice(0, 16) || ''} onChange={(e) => setEditingSession({ ...editingSession, questions_close_at: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">AMA Starts *</label>
+                <input type="datetime-local" className={inputClass} value={editingSession.ama_starts_at?.slice(0, 16) || ''} onChange={(e) => setEditingSession({ ...editingSession, ama_starts_at: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">AMA Ends</label>
+                <input type="datetime-local" className={inputClass} value={editingSession.ama_ends_at?.slice(0, 16) || ''} onChange={(e) => setEditingSession({ ...editingSession, ama_ends_at: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Status</label>
+              <select className={selectClass} value={editingSession.status} onChange={(e) => setEditingSession({ ...editingSession, status: e.target.value as AMASession['status'] })}>
+                <option value="open">open</option>
+                <option value="answering">answering</option>
+                <option value="closed">closed</option>
+              </select>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button onClick={handleEditSession} disabled={saving} className="px-4 py-2 bg-[#D4A843] text-[#1B2A4A] rounded-lg text-sm font-semibold hover:bg-[#c49a3a] disabled:opacity-50">
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+              <button onClick={() => setEditingSession(null)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-[#6B7280] hover:bg-gray-50 dark:hover:bg-gray-700">
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -524,8 +593,8 @@ export function AdminAMA() {
                   <input
                     type="datetime-local"
                     className={inputClass}
-                    value={newSession.ama_start_date}
-                    onChange={(e) => setNewSession({ ...newSession, ama_start_date: e.target.value })}
+                    value={newSession.ama_starts_at}
+                    onChange={(e) => setNewSession({ ...newSession, ama_starts_at: e.target.value })}
                   />
                 </div>
                 <div>
@@ -533,8 +602,8 @@ export function AdminAMA() {
                   <input
                     type="datetime-local"
                     className={inputClass}
-                    value={newSession.ama_end_date}
-                    onChange={(e) => setNewSession({ ...newSession, ama_end_date: e.target.value })}
+                    value={newSession.ama_ends_at}
+                    onChange={(e) => setNewSession({ ...newSession, ama_ends_at: e.target.value })}
                   />
                 </div>
               </div>
@@ -571,7 +640,7 @@ export function AdminAMA() {
                         <p className="text-xs text-[#6B7280] dark:text-gray-400 mt-0.5">
                           {session.books ? `${session.books.title} · ` : 'General AMA · '}
                           Questions close {new Date(session.questions_close_at).toLocaleDateString()} ·
-                          AMA {new Date(session.ama_start_date).toLocaleDateString()}
+                          AMA {new Date(session.ama_starts_at).toLocaleDateString()}
                         </p>
                       </div>
                       <span className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 ${statusColor(session.status)}`}>
@@ -601,6 +670,12 @@ export function AdminAMA() {
                         className="text-xs px-3 py-1.5 rounded-lg border border-[#D4A843] text-[#D4A843] hover:bg-[#D4A843]/10 transition"
                       >
                         {expandedSession === session.id ? 'Hide Questions' : 'Moderate Questions'}
+                      </button>
+                      <button
+                        onClick={() => setEditingSession({ ...session })}
+                        className="text-xs px-3 py-1.5 rounded-lg border border-blue-300 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
+                      >
+                        Edit
                       </button>
                       <button
                         onClick={() => handleDeleteSession(session.id)}
