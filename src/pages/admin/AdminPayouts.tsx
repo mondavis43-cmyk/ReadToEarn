@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { X, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 
+async function sendEmail(to: string, subject: string, html: string) {
+  await supabase.functions.invoke('send-email', { body: { to, subject, html } });
+}
+
 interface CashoutRequest {
   id: string;
   user_id: string;
@@ -83,21 +87,32 @@ export function AdminPayouts() {
 
     if (err) { setError('Failed to update status.'); return; }
 
-    if (status === 'rejected') {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('available_balance, held_balance')
-        .eq('id', req.user_id)
-        .single();
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('email, username, available_balance, held_balance')
+      .eq('id', req.user_id)
+      .single();
 
-      if (profile) {
+    if (status === 'rejected') {
+      if (userProfile) {
         await supabase
           .from('profiles')
           .update({
-            available_balance: profile.available_balance + profile.held_balance,
+            available_balance: userProfile.available_balance + userProfile.held_balance,
             held_balance: 0,
           })
           .eq('id', req.user_id);
+      }
+      if (userProfile?.email) {
+        await sendEmail(
+          userProfile.email,
+          'Your Cashout Request Was Not Approved',
+          `<p>Hi ${userProfile.username || 'there'},</p>
+          <p>Unfortunately your cashout request for <strong>$${req.amount.toFixed(2)}</strong> could not be approved at this time.</p>
+          <p>Your balance of $${req.amount.toFixed(2)} has been restored to your account and is available for future requests.</p>
+          <p>If you have questions, reply to this email.</p>
+          <p>— The ReadToEarn Team</p>`
+        );
       }
     }
 
@@ -106,6 +121,17 @@ export function AdminPayouts() {
         .from('profiles')
         .update({ held_balance: 0 })
         .eq('id', req.user_id);
+      if (userProfile?.email) {
+        await sendEmail(
+          userProfile.email,
+          'Your Cashout Has Been Sent! 💸',
+          `<p>Hi ${userProfile.username || 'there'},</p>
+          <p>Great news — your cashout of <strong>$${req.amount.toFixed(2)}</strong> has been processed and sent to you.</p>
+          <p>Please allow 1–3 business days for delivery depending on your payout method.</p>
+          <p>Thanks for being part of ReadToEarn!</p>
+          <p>— The ReadToEarn Team</p>`
+        );
+      }
     }
 
     setSuccess(`Request marked as ${status}.`);
