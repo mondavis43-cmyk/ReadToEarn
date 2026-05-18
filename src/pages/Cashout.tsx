@@ -4,40 +4,19 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { ArrowLeft } from 'lucide-react';
 
-interface GiftCardOption {
-  id: string;
-  name: string;
-  logo: string;
-}
-
-const GIFT_CARDS: GiftCardOption[] = [
-  { id: 'amazon',      name: 'Amazon',       logo: '🛒' },
-  { id: 'starbucks',   name: 'Starbucks',    logo: '☕' },
-  { id: 'target',      name: 'Target',       logo: '🎯' },
-  { id: 'walmart',     name: 'Walmart',      logo: '🏪' },
-  { id: 'netflix',     name: 'Netflix',      logo: '🎬' },
-  { id: 'apple',       name: 'Apple',        logo: '🍎' },
-  { id: 'google_play', name: 'Google Play',  logo: '▶️' },
-  { id: 'doordash',    name: 'DoorDash',     logo: '🍔' },
-  { id: 'uber',        name: 'Uber',         logo: '🚗' },
-  { id: 'sephora',     name: 'Sephora',      logo: '💄' },
-  { id: 'nike',        name: 'Nike',         logo: '👟' },
-  { id: 'visa',        name: 'Visa Prepaid', logo: '💳' },
-];
 
 export const Cashout = () => {
   const { user } = useAuth();
   const { navigateTo } = useNavigate();
   const [balance, setBalance]             = useState(0);
   const [isUpgraded, setIsUpgraded]       = useState(false);
-  const [payoutType, setPayoutType]       = useState<'paypal' | 'wise' | 'gift_card'>('paypal');
+  const [payoutType, setPayoutType]       = useState<'paypal' | 'wise'>('paypal');
   const [payoutDetails, setPayoutDetails] = useState('');
   const [loading, setLoading]             = useState(true);
   const [submitting, setSubmitting]       = useState(false);
   const [error, setError]                 = useState('');
   const [success, setSuccess]             = useState(false);
   const [pastRequests, setPastRequests]   = useState<any[]>([]);
-  const [selectedCard, setSelectedCard]   = useState<GiftCardOption>(GIFT_CARDS[0]);
   const [cashoutAmount, setCashoutAmount]   = useState<string>('');
 
   const MIN_CASHOUT = isUpgraded ? 5 : 10;
@@ -76,7 +55,7 @@ export const Cashout = () => {
       setBalance(profileResult.data.available_balance);
       setIsUpgraded(profileResult.data.is_upgraded ?? false);
       if (profileResult.data.payout_email) setPayoutDetails(profileResult.data.payout_email);
-      if (profileResult.data.payout_method && profileResult.data.payout_method !== 'gift_card') {
+      if (profileResult.data.payout_method) {
         setPayoutType(profileResult.data.payout_method as 'paypal' | 'wise');
       }
     }
@@ -98,7 +77,7 @@ export const Cashout = () => {
       return;
     }
 
-    if (payoutType !== 'gift_card' && !payoutDetails.trim()) {
+    if (!payoutDetails.trim()) {
       setError(
         payoutType === 'paypal' ? 'Please enter your PayPal email.' : 'Please enter your Wise email.'
       );
@@ -112,8 +91,8 @@ export const Cashout = () => {
       p_email:             user!.email ?? '',
       p_amount:            parsedAmount,
       p_payout_type:       payoutType,
-      p_payout_details:    payoutType === 'gift_card' ? selectedCard.name : payoutDetails,
-      p_gift_card_brand:   payoutType === 'gift_card' ? selectedCard.name : null,
+      p_payout_details:    payoutDetails,
+      p_gift_card_brand:   null,
     });
 
     if (rpcError) {
@@ -149,11 +128,7 @@ export const Cashout = () => {
             <p className="text-white text-2xl font-semibold mb-2">${parsedAmount.toFixed(2)}</p>
             <p className="text-gray-400 text-sm mb-6">
               has been submitted. You'll receive your{' '}
-              {payoutType === 'gift_card'
-                ? `${selectedCard.name} gift card`
-                : payoutType === 'paypal'
-                ? 'PayPal payment'
-                : 'Wise payment'}{' '}
+              {payoutType === 'paypal' ? 'PayPal payment' : 'Wise payment'}{' '}
               within 1-3 business days.
             </p>
             <button
@@ -233,8 +208,8 @@ export const Cashout = () => {
               <label className="block text-sm font-medium text-gray-300 mb-3">
                 How would you like to be paid?
               </label>
-              <div className="grid grid-cols-3 gap-3">
-                {(['gift_card', 'paypal', 'wise'] as const).map((type) => (
+              <div className="grid grid-cols-2 gap-3">
+                {(['paypal', 'wise'] as const).map((type) => (
                   <button
                     key={type}
                     type="button"
@@ -245,41 +220,11 @@ export const Cashout = () => {
                         : 'bg-transparent text-gray-300 border-gray-700 hover:border-gray-500'
                     }`}
                   >
-                    {type === 'gift_card' ? 'Gift Card' : type === 'paypal' ? 'PayPal' : 'Wise'}
+                    {type === 'paypal' ? 'PayPal' : 'Wise'}
                   </button>
                 ))}
               </div>
             </div>
-
-            {payoutType === 'gift_card' && (
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-300 mb-3">
-                  Select a gift card
-                </label>
-                <div className="grid grid-cols-3 gap-3">
-                  {GIFT_CARDS.map((card) => (
-                    <button
-                      key={card.id}
-                      type="button"
-                      onClick={() => setSelectedCard(card)}
-                      className={`rounded-lg border p-3 flex flex-col items-center gap-2 transition ${
-                        selectedCard.id === card.id
-                          ? 'border-white bg-white/10'
-                          : 'border-gray-700 hover:border-gray-500 cursor-pointer'
-                      }`}
-                    >
-                      <span className="text-3xl">{card.logo}</span>
-                      <span className="text-xs text-center text-gray-300 leading-tight">
-                        {card.name}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-                <p className="text-gray-500 text-xs mt-3">
-                  Selected: {selectedCard.name} — gift card delivered to your email on file.
-                </p>
-              </div>
-            )}
 
             {payoutType === 'paypal' && (
               <div className="mb-6">
@@ -349,11 +294,7 @@ export const Cashout = () => {
                 >
                   <div>
                     <p className="text-white text-sm font-medium">
-                      {req.payout_type === 'gift_card'
-                        ? `${req.gift_card_brand} Gift Card`
-                        : req.payout_type === 'paypal'
-                        ? 'PayPal'
-                        : 'Wise'}
+                      {req.payout_type === 'paypal' ? 'PayPal' : 'Wise'}
                     </p>
                     <p className="text-gray-500 text-xs mt-0.5">
                       {new Date(req.created_at).toLocaleDateString()}
