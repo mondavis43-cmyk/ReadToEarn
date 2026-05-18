@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react';
 import { FEATURES } from '../config/features';
 import { supabase } from '../lib/supabase';
 
+async function sendEmail(to: string, subject: string, html: string) {
+  await supabase.functions.invoke('send-email', { body: { to, subject, html } });
+}
+
 // Validate sessionStorage data shape
 function isValidCheckoutItem(obj: unknown): obj is { type: string; amount: number; label: string } {
   if (!obj || typeof obj !== 'object') return false;
@@ -100,6 +104,26 @@ async function handleCapture() {
       status:            'succeeded',
     });
     if (paymentLogError) console.error('[CheckoutSuccess] payments log error:', paymentLogError);
+
+    // Subscription welcome email
+    if (item.type === 'subscription' && user.email) {
+      const plan = (item as any).metadata?.plan === 'annual' ? 'Annual' : 'Monthly';
+      const amount = (item.amount / 100).toFixed(2);
+      await sendEmail(
+        user.email,
+        'Welcome to ReadToEarn Premium! 🎉',
+        `<p>Hi there,</p>
+        <p>Your <strong>${plan} subscription</strong> is now active. You paid <strong>$${amount}</strong>.</p>
+        <p>You now have access to:</p>
+        <ul>
+          <li>Early access to new bounties (2 hours before free members)</li>
+          <li>Entry into the monthly subscriber giveaway</li>
+          <li>Access to exclusive sprints and competitions</li>
+        </ul>
+        <p><a href="https://joinreadtoearn.com">Head to ReadToEarn to start earning →</a></p>
+        <p>— The ReadToEarn Team</p>`
+      );
+    }
 
     // 6. Insert pending submission
     if (pending) {
