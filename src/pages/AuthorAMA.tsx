@@ -10,10 +10,10 @@ type AMASession = {
   description: string | null;
   status: 'open' | 'answering' | 'closed';
   questions_close_at: string;
-  ama_start_date: string;
-  ama_end_date: string | null;
+  ama_starts_at: string;
+  ama_ends_at: string | null;
   books?: { title: string; author: string } | null;
-  profiles?: { display_name: string | null; email: string } | null;
+  profiles?: { username: string | null; email: string } | null;
 };
 
 type Tab = 'upcoming' | 'live' | 'past';
@@ -144,7 +144,7 @@ export const AuthorAMA = () => {
           <div className="space-y-4">
             {sessions.map((session) => {
               const authorName =
-                session.profiles?.display_name || session.profiles?.email || 'Author';
+                session.profiles?.username || session.profiles?.email || 'Author';
               return (
                 <button
                   key={session.id}
@@ -180,7 +180,7 @@ export const AuthorAMA = () => {
                         )}
                         <span className="flex items-center gap-1">
                           <Calendar size={11} />
-                          AMA {new Date(session.ama_start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                          AMA {new Date(session.ama_starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                         </span>
                       </div>
                     </div>
