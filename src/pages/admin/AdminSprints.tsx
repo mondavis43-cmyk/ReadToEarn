@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Zap, Trophy, Users, Plus, Play, Square, ChevronDown, ChevronUp, DollarSign, Trash2, Pencil, Check, X } from 'lucide-react';
 
+async function sendEmail(to: string, subject: string, html: string) {
+  await supabase.functions.invoke('send-email', { body: { to, subject, html } });
+}
+
 interface Sprint {
   id: string;
   title: string;
@@ -148,11 +152,37 @@ export function AdminSprints() {
     }
     await supabase.from('sprints').update({ status: newStatus }).eq('id', id);
 
-    // Notify when going live
+    // Notify + email pre-registrants when going live
     if (newStatus === 'active') {
-      await supabase.functions.invoke('notify-content-live', {
-        body: { content_type: 'sprint', content_id: id },
+      await supabase.functions.invoke('notify-competition-live', {
+        body: { sprint_id: id },
       });
+
+      // Fetch sprint details + pre-registrant emails
+      const { data: sprint } = await supabase.from('sprints').select('title, entry_fee').eq('id', id).single();
+      const { data: preRegs } = await supabase
+        .from('sprint_pre_registrations')
+        .select('user_id, profiles(email, username)')
+        .eq('sprint_id', id)
+        .eq('converted', false);
+
+      if (sprint && preRegs) {
+        for (const reg of preRegs as any[]) {
+          const email = reg.profiles?.email;
+          const name = reg.profiles?.username || 'there';
+          if (email) {
+            await sendEmail(
+              email,
+              `⚡ ${sprint.title} is now live!`,
+              `<p>Hi ${name},</p>
+              <p>The sprint you pre-registered for — <strong>${sprint.title}</strong> — is now open!</p>
+              <p>Your entry fee of <strong>$${Number(sprint.entry_fee).toFixed(2)}</strong> is due within 48 hours. Late fees apply after that.</p>
+              <p><a href="https://joinreadtoearn.com">Head to ReadToEarn to join now →</a></p>
+              <p>— The ReadToEarn Team</p>`
+            );
+          }
+        }
+      }
     }
 
     load();
@@ -210,6 +240,30 @@ export function AdminSprints() {
       setError('No prize pool to distribute.');
       return;
     }
+
+    // Email the winner
+    const { data: sprint } = await supabase.from('sprints').select('prize_pool').eq('id', id).single();
+    const { data: topEntry } = await supabase
+      .from('sprint_entries')
+      .select('user_id, profiles(email, username)')
+      .eq('sprint_id', id)
+      .order('score', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const winnerEmail = (topEntry as any)?.profiles?.email;
+    const winnerName = (topEntry as any)?.profiles?.username || 'there';
+    if (winnerEmail) {
+      await sendEmail(
+        winnerEmail,
+        `🏆 You won the ${title} sprint!`,
+        `<p>Hi ${winnerName},</p>
+        <p>Congratulations — you finished first in the <strong>${title}</strong> sprint!</p>
+        <p>Your prize of <strong>$${Number(sprint?.prize_pool ?? 0).toFixed(2)}</strong> has been added to your ReadToEarn balance.</p>
+        <p>Thanks for competing — see you in the next one!</p>
+        <p>— The ReadToEarn Team</p>`
+      );
+    }
+
     setSuccess(`"${title}" closed and winner paid successfully.`);
     load();
   };
