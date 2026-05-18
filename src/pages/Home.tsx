@@ -156,7 +156,7 @@ export const Home = () => {
         </div>
 
         <p className="text-xs" style={{ color: textMuted }}>
-          Payouts via PayPal, Wise & Gift Cards. Cash out at $10.
+          Payouts via PayPal & Wise. Cash out at $10.
         </p>
       </section>
 
@@ -189,7 +189,7 @@ export const Home = () => {
               icon: <DollarSign className="w-5 h-5" style={{ color: gold }} />,
               step: '03',
               title: 'Collect Your Winnings',
-              body: 'Top performers split the prize pool (50% / 30% / 20%). Funds go to PayPal, Wise, or a gift card — your choice.',
+              body: 'Top performers split the prize pool (50% / 30% / 20%). Funds go to PayPal or Wise — your choice.',
             },
           ].map(({ icon, step, title, body }) => (
             <div
