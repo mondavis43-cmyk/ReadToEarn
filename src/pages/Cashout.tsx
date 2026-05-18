@@ -302,10 +302,17 @@ export const Cashout = () => {
                   type="email"
                   value={payoutDetails}
                   onChange={(e) => setPayoutDetails(e.target.value)}
-                  placeholder="your@email.com"
+                  placeholder="Email linked to your Wise account"
                   className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 transition"
                   required
                 />
+                <p className="text-xs text-gray-500 mt-2">
+                  You <strong className="text-gray-400">must have a free Wise account</strong> — enter the email registered to it.{' '}
+                  Don't have one?{' '}
+                  <a href="https://wise.com/register" target="_blank" rel="noopener noreferrer" className="text-green-400 underline hover:opacity-80">
+                    Create a free Wise account
+                  </a>
+                </p>
               </div>
             )}
 
