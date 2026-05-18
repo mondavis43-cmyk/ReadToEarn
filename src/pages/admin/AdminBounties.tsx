@@ -86,9 +86,9 @@ export function AdminBounties() {
       return;
     }
 
-    // Notify subscribers and standard users (2hr delay)
-    await supabase.functions.invoke('notify-content-live', {
-      body: { content_type: 'bounty', content_id: data.id },
+    // Notify subscribers (email) and standard users (in-app, 2hr delay)
+    await supabase.functions.invoke('notify-bounty-live', {
+      body: { bounty_id: data.id },
     });
 
     setSuccess('Bounty created!');
@@ -103,8 +103,8 @@ export function AdminBounties() {
 
     // Only notify when going live (not pause or complete)
     if (status === 'active') {
-      await supabase.functions.invoke('notify-content-live', {
-        body: { content_type: 'bounty', content_id: id },
+      await supabase.functions.invoke('notify-bounty-live', {
+        body: { bounty_id: id },
       });
     }
 
