@@ -338,7 +338,11 @@ export const Profile = () => {
 
           {payoutMethod === 'wise' && (
             <p className={`text-xs ${subColor} mt-2`}>
-              Wise is used for international payouts. Make sure the email matches your Wise account exactly.
+              Wise is for international payouts. You <strong>must have a free Wise account</strong> — enter the email address registered to it.{' '}
+              Don't have one?{' '}
+              <a href="https://wise.com/register" target="_blank" rel="noopener noreferrer" className="text-[#9FE870] underline hover:opacity-80">
+                Create a free Wise account
+              </a>
             </p>
           )}
         </div>
