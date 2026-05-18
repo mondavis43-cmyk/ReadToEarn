@@ -141,6 +141,24 @@ serve(async (req) => {
         status: "flagged",
         reason: fraudReason,
       });
+      const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
+      const FROM_EMAIL = Deno.env.get("FROM_EMAIL") ?? "notifications@joinreadtoearn.com";
+      if (user.email && RESEND_API_KEY) {
+        await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            from: FROM_EMAIL,
+            to: user.email,
+            subject: "Action Required: Your account has been flagged for review",
+            html: `<p>Hi there,</p>
+            <p>Your account has been flagged for a security review. This can happen when unusual activity is detected.</p>
+            <p>Your earnings are safe but cashouts will be paused until the review is complete. This typically takes 1–3 business days.</p>
+            <p>If you believe this is a mistake, please reply to this email.</p>
+            <p>— The ReadToEarn Team</p>`,
+          }),
+        });
+      }
     }
     // Log quiz attempt
     await adminClient.from("quiz_attempts").insert({
@@ -264,6 +282,24 @@ serve(async (req) => {
         await adminClient.from("payout_logs").insert({
           user_id: user.id, amount: 0, status: "flagged", reason: fraudReason,
         });
+        const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
+        const FROM_EMAIL = Deno.env.get("FROM_EMAIL") ?? "notifications@joinreadtoearn.com";
+        if (user.email && RESEND_API_KEY) {
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              from: FROM_EMAIL,
+              to: user.email,
+              subject: "Action Required: Your account has been flagged for review",
+              html: `<p>Hi there,</p>
+              <p>Your account has been flagged for a security review. This can happen when unusual activity is detected.</p>
+              <p>Your earnings are safe but cashouts will be paused until the review is complete. This typically takes 1–3 business days.</p>
+              <p>If you believe this is a mistake, please reply to this email.</p>
+              <p>— The ReadToEarn Team</p>`,
+            }),
+          });
+        }
       }
       if (!passed) {
         return new Response(
@@ -379,6 +415,24 @@ serve(async (req) => {
       status: "flagged",
       reason: fraudReason,
     });
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
+    const FROM_EMAIL = Deno.env.get("FROM_EMAIL") ?? "notifications@joinreadtoearn.com";
+    if (user.email && RESEND_API_KEY) {
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: FROM_EMAIL,
+          to: user.email,
+          subject: "Action Required: Your account has been flagged for review",
+          html: `<p>Hi there,</p>
+          <p>Your account has been flagged for a security review. This can happen when unusual activity is detected.</p>
+          <p>Your earnings are safe but cashouts will be paused until the review is complete. This typically takes 1–3 business days.</p>
+          <p>If you believe this is a mistake, please reply to this email.</p>
+          <p>— The ReadToEarn Team</p>`,
+        }),
+      });
+    }
   }
   // ── COMPETITION PATH ────────────────────────────────────────────────────────
   if (isCompetition) {
@@ -483,39 +537,6 @@ serve(async (req) => {
     status: payoutStatus,
     reason: "Bounty payout",
   });
-  if (profile.referred_by) {
-    const { data: referrer } = await adminClient
-      .from("profiles")
-      .select("id, available_balance, email, username")
-      .eq("referral_code", profile.referred_by)
-      .maybeSingle();
-    if (referrer) {
-      await adminClient
-        .from("profiles")
-        .update({ available_balance: (referrer.available_balance ?? 0) + 0.50 })
-        .eq("id", referrer.id);
-
-      // Email the referrer
-      const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
-      const FROM_EMAIL = Deno.env.get("FROM_EMAIL") ?? "notifications@joinreadtoearn.com";
-      if (referrer.email && RESEND_API_KEY) {
-        await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            from: FROM_EMAIL,
-            to: referrer.email,
-            subject: "💰 You earned a referral commission!",
-            html: `<p>Hi ${referrer.username || "there"},</p>
-            <p>Someone you referred just passed a quiz on ReadToEarn!</p>
-            <p>You've earned <strong>$0.50</strong> in referral commission, added to your balance.</p>
-            <p>Keep sharing your referral link to earn more every time they pass a quiz.</p>
-            <p>— The ReadToEarn Team</p>`,
-          }),
-        });
-      }
-    }
-  }
   return new Response(
     JSON.stringify({
       passed: true,
