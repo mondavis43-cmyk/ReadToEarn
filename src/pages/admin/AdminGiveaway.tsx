@@ -3,6 +3,10 @@ import { supabase } from '../../lib/supabase';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Trophy, Users, DollarSign, Gift, AlertCircle } from 'lucide-react';
 
+async function sendEmail(to: string, subject: string, html: string) {
+  await supabase.functions.invoke('send-email', { body: { to, subject, html } });
+}
+
 interface GiveawayResult {
   giveaway_id: string;
   subscriber_count: number;
@@ -72,10 +76,39 @@ export function AdminGiveaway() {
       return;
     }
 
-    setResult(data as GiveawayResult);
-    await fetchWinnerProfiles(data as GiveawayResult);
+    const res = data as GiveawayResult;
+    setResult(res);
+    await fetchWinnerProfiles(res);
     setRunning(false);
     setConfirmed(false);
+
+    // Email each winner
+    const places: Array<{ key: 'first' | 'second' | 'third'; label: string; pct: string }> = [
+      { key: 'first',  label: '1st place', pct: '50%' },
+      { key: 'second', label: '2nd place', pct: '30%' },
+      { key: 'third',  label: '3rd place', pct: '20%' },
+    ];
+    const { data: winnerProfiles } = await supabase
+      .from('profiles')
+      .select('id, email, username')
+      .in('id', [res.first_winner, res.second_winner, res.third_winner]);
+
+    for (const place of places) {
+      const winnerId = res[`${place.key}_winner` as keyof GiveawayResult] as string;
+      const prize = res[`${place.key}_prize` as keyof GiveawayResult] as number;
+      const profile = (winnerProfiles ?? []).find((p: any) => p.id === winnerId);
+      if (profile?.email) {
+        await sendEmail(
+          profile.email,
+          `🎉 You won the ReadToEarn Monthly Giveaway!`,
+          `<p>Hi ${profile.username || 'there'},</p>
+          <p>Congratulations — you finished <strong>${place.label}</strong> in this month's subscriber giveaway!</p>
+          <p>Your prize of <strong>$${Number(prize).toFixed(2)}</strong> (${place.pct} of the prize pool) has been credited to your ReadToEarn balance.</p>
+          <p>Thank you for being a subscriber. See you next month!</p>
+          <p>— The ReadToEarn Team</p>`
+        );
+      }
+    }
   };
 
   const prizePool    = subscriberCount ? Math.round(subscriberCount * 4.99 * 0.30 * 100) / 100 : 0;
