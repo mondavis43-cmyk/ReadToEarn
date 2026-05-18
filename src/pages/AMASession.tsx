@@ -3,6 +3,10 @@ import { useTheme } from '../contexts/ThemeContext';
 import { MessageSquare, Clock, Send, ChevronLeft, BookOpen, Lock, Bell } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
+async function sendEmail(to: string, subject: string, html: string) {
+  await supabase.functions.invoke('send-email', { body: { to, subject, html } });
+}
+
 type AMASession = {
   id: string;
   title: string;
@@ -179,6 +183,7 @@ export const AMASession = ({ sessionId }: { sessionId: string }) => {
     loadAll();
   }
 
+
   async function handleSubmitAnswer(questionId: string) {
     const text = answerText[questionId]?.trim();
     if (!text || !isAuthor) return;
@@ -188,7 +193,30 @@ export const AMASession = ({ sessionId }: { sessionId: string }) => {
       author_id: user.id,
       content: text,
     });
-    setAnswerText((prev) => ({ ...prev, [questionId]: '' }));
+
+    // Email the question asker
+    const question = questions.find((q) => q.id === questionId);
+    if (question?.user_id) {
+      const { data: asker } = await supabase
+        .from('profiles')
+        .select('email, username')
+        .eq('id', question.user_id)
+        .maybeSingle();
+      const authorName = session?.profiles?.username || session?.profiles?.display_name || 'The author';
+      if (asker?.email) {
+        await sendEmail(
+          asker.email,
+          `${authorName} answered your question!`,
+          `<p>Hi ${asker.username || 'there'},</p>
+          <p>${authorName} just answered your question in the <strong>${session?.title ?? 'AMA'}</strong> session:</p>
+          <blockquote style="border-left:3px solid #D4A843;padding-left:12px;margin:12px 0;color:#555;">${question.content}</blockquote>
+          <p><a href="https://joinreadtoearn.com">Read the answer on ReadToEarn →</a></p>
+          <p>— The ReadToEarn Team</p>`
+        );
+      }
+    }
+
+    setAnswerText((prev: any) => ({ ...prev, [questionId]: '' }));
     setSubmittingA(null);
     loadAll();
   }
