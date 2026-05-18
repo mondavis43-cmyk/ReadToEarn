@@ -61,15 +61,9 @@ export const Signup = () => {
   const [dobMonth, setDobMonth] = useState('');
   const [dobDay, setDobDay]     = useState('');
   const [dobYear, setDobYear]   = useState('');
-  const [isMinor, setIsMinor]   = useState(false);
 
   // User phone verifier
   const [userPhone, setUserPhone] = useState<PhoneVerifierState>(defaultVerifier());
-
-  // Parent phone verifier (minor only)
-  const [parentPhone, setParentPhone] = useState<PhoneVerifierState>(defaultVerifier());
-  const [consentTimestamp, setConsentTimestamp] = useState<string | null>(null);
-  const [parentConsent, setParentConsent]       = useState(false);
 
   // Country + ToS
   const [country, setCountry]       = useState('');
@@ -93,31 +87,8 @@ export const Signup = () => {
   };
 
   useEffect(() => {
-    if (dobMonth && dobDay && dobYear) {
-      const age = calculateAge(+dobMonth, +dobDay, +dobYear);
-      setIsMinor(age >= 13 && age < 18);
-    } else {
-      setIsMinor(false);
-    }
+    // no-op: age check handled at submit
   }, [dobMonth, dobDay, dobYear]);
-
-  // Reset parent phone if user is no longer minor
-  useEffect(() => {
-    if (!isMinor) {
-      setParentPhone(defaultVerifier());
-      setParentConsent(false);
-      setConsentTimestamp(null);
-    }
-  }, [isMinor]);
-
-  // Track consent timestamp
-  useEffect(() => {
-    if (parentConsent && !consentTimestamp) {
-      setConsentTimestamp(new Date().toISOString());
-    } else if (!parentConsent) {
-      setConsentTimestamp(null);
-    }
-  }, [parentConsent]);
 
   // ── Generic OTP sender ─────────────────────────────────────────────────────
   const sendOtp = async (
@@ -191,8 +162,8 @@ export const Signup = () => {
     }
 
     const age = calculateAge(+dobMonth, +dobDay, +dobYear);
-    if (age < 13) {
-      setError('You must be at least 13 years old to create an account.');
+    if (age < 18) {
+      setError('You must be at least 18 years old to create an account.');
       setLoading(false);
       return;
     }
@@ -223,28 +194,6 @@ export const Signup = () => {
       return;
     }
 
-    // Minor checks
-    if (isMinor) {
-      // Parent phone must be provided and verified
-      if (!parentPhone.verified) {
-        setError('A parent or guardian must verify their phone number to complete signup.');
-        setLoading(false);
-        return;
-      }
-      // Parent phone must differ from user phone
-      if (userPhone.phone.trim() === parentPhone.phone.trim()) {
-        setError('Parent phone number must be different from your phone number.');
-        setLoading(false);
-        return;
-      }
-      // Parent consent checkbox
-      if (!parentConsent) {
-        setError('A parent or guardian must check the consent box to continue.');
-        setLoading(false);
-        return;
-      }
-    }
-    
     // ── Create auth user ───────────────────────────────────────────────────
     const { data, error: signupError } = await supabase.auth.signUp({
       email,
@@ -278,7 +227,7 @@ export const Signup = () => {
 
     const profilePayload: Record<string, any> = {
       date_of_birth:   dob,
-      is_minor:        isMinor,
+      is_minor:        false,
       phone:           userPhone.phone.trim(),
       country,
       tos_accepted_at: new Date().toISOString(),
@@ -286,12 +235,6 @@ export const Signup = () => {
     };
 
     if (referredBy) profilePayload.referred_by = referredBy;
-    if (authorReferredBy) profilePayload.author_referred_by = authorReferredBy;
-
-    if (isMinor) {
-      profilePayload.parent_phone      = parentPhone.phone.trim();
-      profilePayload.parent_consent_at = consentTimestamp;
-    }
 
     // ── Write profile ──────────────────────────────────────────────────────
     const { error: profileError } = await supabase
@@ -411,11 +354,6 @@ export const Signup = () => {
           <p className={`text-sm mb-4 ${isDark ? 'text-gray-300' : 'text-[#6B7280]'}`}>
             We sent a confirmation link to <strong>{email}</strong>.
           </p>
-          {isMinor && (
-            <p className={`text-sm mb-4 px-4 py-3 rounded-xl ${isDark ? 'bg-yellow-900/20 text-yellow-300' : 'bg-yellow-50 text-yellow-700'}`}>
-              Because you're under 18, your account requires parental approval. Your parent's verified number has been recorded.
-            </p>
-          )}
           <button
             onClick={() => navigateTo('/auth')}
             className="w-full py-2.5 rounded-xl bg-[#D4A843] text-[#1B2A4A] font-semibold text-sm hover:bg-[#c49a3a] transition mb-3"
@@ -566,51 +504,6 @@ export const Signup = () => {
             </select>
           </div>
 
-          {/* Minor: parent phone + consent */}
-          {isMinor && (
-            <div className={`rounded-xl border p-4 space-y-4 ${isDark ? 'border-yellow-700 bg-yellow-900/20' : 'border-yellow-300 bg-yellow-50'}`}>
-              <div>
-                <p className={`text-xs font-semibold mb-1 ${isDark ? 'text-yellow-300' : 'text-yellow-700'}`}>
-                  Parental verification required
-                </p>
-                <p className={`text-xs ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`}>
-                  Because you're under 18, a parent or guardian must verify their phone number. It must be different from yours.
-                </p>
-              </div>
-
-              <PhoneVerifierBlock
-                label="Parent / Guardian Phone Number"
-                state={parentPhone}
-                setState={setParentPhone}
-              />
-
-              {/* Same-number warning */}
-              {parentPhone.phone.trim() &&
-               userPhone.phone.trim() &&
-               parentPhone.phone.trim() === userPhone.phone.trim() && (
-                <p className="text-xs text-red-500">
-                  Parent phone must be different from your phone number.
-                </p>
-              )}
-
-              {/* Parent consent checkbox — only show after parent is verified */}
-              {parentPhone.verified && (
-                <label className="flex items-start gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={parentConsent}
-                    onChange={(e) => setParentConsent(e.target.checked)}
-                    className="mt-0.5 accent-[#D4A843]"
-                  />
-                  <span className={`text-xs ${isDark ? 'text-gray-300' : 'text-[#6B7280]'}`}>
-                    I am the parent or legal guardian of this user. I consent to their participation in Read to Earn and agree to the{' '}
-                    <a href="/terms" className="text-[#D4A843] hover:underline">Terms of Service</a>.
-                  </span>
-                </label>
-              )}
-            </div>
-          )}
-
           {/* Terms of Service */}
           <label className="flex items-start gap-2 cursor-pointer">
             <input
@@ -622,7 +515,7 @@ export const Signup = () => {
             <span className={`text-xs ${isDark ? 'text-gray-300' : 'text-[#6B7280]'}`}>
               I agree to the{' '}
               <a href="/terms" className="text-[#D4A843] hover:underline">Terms of Service</a>{' '}
-              and confirm I am 13 or older.
+              and confirm I am 18 or older.
             </span>
           </label>
 
