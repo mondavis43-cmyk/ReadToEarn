@@ -142,6 +142,14 @@ export const Profile = () => {
     setSavingPayout(false);
   };
 
+  const handleCancelMembership = async () => {
+    if (!user) return;
+    if (!window.confirm('Cancel your membership? You will lose access to premium features immediately.')) return;
+    await supabase.from('profiles').update({ is_upgraded: false }).eq('id', user.id);
+    await supabase.from('subscriptions').update({ status: 'cancelled' }).eq('user_id', user.id).eq('status', 'active');
+    await loadProfile();
+  };
+
   const handleUpgrade = () => {
     sessionStorage.setItem('checkoutItem', JSON.stringify({
       type: 'subscription',
@@ -264,12 +272,19 @@ export const Profile = () => {
                   : 'Upgrade for $4.99/mo to unlock ad-free reading, priority survey queues, monthly giveaway entry, entry discounts, and more.'}
               </p>
             </div>
-            {!profile?.is_upgraded && (
+            {!profile?.is_upgraded ? (
               <button
                 onClick={handleUpgrade}
                 className="bg-[#1B2A4A] text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-black transition"
               >
                 Upgrade
+              </button>
+            ) : (
+              <button
+                onClick={handleCancelMembership}
+                className="text-xs text-red-400 hover:text-red-300 hover:underline transition"
+              >
+                Cancel
               </button>
             )}
           </div>
