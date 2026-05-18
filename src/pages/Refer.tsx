@@ -305,7 +305,7 @@ export const Refer = () => {
               ['Trigger',      'Referral must sign up and become a paid subscriber'],
               ['Recurring',    'Earnings continue each month they stay subscribed'],
               ['Cancellation', 'Earnings stop if the referred user cancels'],
-              ['Payout',       'Cash out via PayPal, Wise, or gift cards like normal earnings'],
+              ['Payout',       'Cash out via PayPal or Wise like normal earnings'],
               ['Cap',          'No cap — refer as many as you want'],
             ].map(([rule, detail], i) => (
               <div
