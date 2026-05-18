@@ -27,6 +27,7 @@ export function AdminPayouts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [runningReferralPayouts, setRunningReferralPayouts] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -178,8 +179,31 @@ export function AdminPayouts() {
     return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
   };
 
+  async function handleRunReferralPayouts() {
+    if (!window.confirm('Run monthly referral payouts now? This will credit $0.50 per active referral to all referrers and send email notifications.')) return;
+    setRunningReferralPayouts(true);
+    setError('');
+    setSuccess('');
+    const { data, error: fnError } = await supabase.functions.invoke('process-referral-payouts');
+    if (fnError) {
+      setError('Referral payout failed: ' + fnError.message);
+    } else {
+      setSuccess(`Referral payouts complete — ${data?.payouts ?? 0} referrer(s) paid.`);
+    }
+    setRunningReferralPayouts(false);
+  }
+
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <button
+          onClick={handleRunReferralPayouts}
+          disabled={runningReferralPayouts}
+          className="text-sm px-4 py-2 bg-[#D4A843] text-[#1B2A4A] font-bold rounded-lg hover:bg-[#c49a38] disabled:opacity-50 transition"
+        >
+          {runningReferralPayouts ? 'Running...' : '💰 Run Monthly Referral Payouts'}
+        </button>
+      </div>
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3 text-red-700 dark:text-red-400 text-sm flex items-center justify-between">
           {error}<button onClick={() => setError('')}><X size={14} /></button>
