@@ -229,7 +229,7 @@ export function AdminAMA() {
   }
 
   async function handleSave() {
-    if (!newSession.author_id || !newSession.title || !newSession.questions_close_at || !newSession.ama_start_date) {
+    if (!newSession.author_id || !newSession.title || !newSession.questions_close_at || !newSession.ama_starts_at) {
       setError('Author, title, and dates are required.');
       return;
     }
