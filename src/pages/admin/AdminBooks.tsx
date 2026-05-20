@@ -148,6 +148,7 @@ async function handleSaveBook() {
       author: newBook.author,
       cover_url: newBook.cover_url || null,
       page_count: parseInt(newBook.page_count),
+      bounty_amount: 0,
       description: newBook.description || null,
       geniuslink_url: newBook.geniuslink_url || null,
       book_type: newBook.book_type,
@@ -155,7 +156,12 @@ async function handleSaveBook() {
     })
     .select()
     .single();
-  if (bookErr || !bookData) { setError('Failed to save book.'); setSaving(false); return; }
+  if (bookErr || !bookData) {
+    setError('Failed to save book: ' + (bookErr?.message || 'Unknown error'));
+    console.error('[AdminBooks] Book insert error:', bookErr);
+    setSaving(false);
+    return;
+  }
   const questionsToInsert = questions.map((q) => ({ ...q, book_id: bookData.id }));
   const { error: qErr } = await supabase.from('questions').insert(questionsToInsert);
   if (qErr) { setError('Book saved but questions failed.'); setSaving(false); return; }
