@@ -149,6 +149,7 @@ async function handleSaveBook() {
       cover_url: newBook.cover_url || null,
       page_count: parseInt(newBook.page_count),
       bounty_amount: 0,
+      is_listed: true,
       description: newBook.description || null,
       geniuslink_url: newBook.geniuslink_url || null,
       book_type: newBook.book_type,
