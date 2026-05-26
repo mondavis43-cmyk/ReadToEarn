@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, Trash2, Pencil, X } from 'lucide-react';
+import { Plus, Trash2, Pencil, X, Search, Loader2 } from 'lucide-react';
 import { GENRES } from '../Admin';
 
 // ── Interfaces ──────────────────────────────────────────
@@ -36,6 +36,15 @@ description: string;
 geniuslink_url: string;
 book_type: 'standard' | 'bulletin_board';
 genres: string[];
+}
+
+interface GoogleBookResult {
+  id: string;
+  title: string;
+  authors: string[];
+  cover_url: string;
+  page_count: number;
+  description: string;
 }
 
 interface NewQuestion {
@@ -114,6 +123,45 @@ const [newBook, setNewBook] = useState<NewBook>(emptyBook);
 const [saving, setSaving] = useState(false);
 const [error, setError] = useState('');
 const [success, setSuccess] = useState('');
+const [bookSearch, setBookSearch] = useState('');
+const [searchResults, setSearchResults] = useState<GoogleBookResult[]>([]);
+const [searching, setSearching] = useState(false);
+const [showResults, setShowResults] = useState(false);
+const searchRef = useRef<HTMLDivElement>(null);
+
+async function searchGoogleBooks(query: string) {
+  if (!query.trim()) { setSearchResults([]); return; }
+  setSearching(true);
+  try {
+    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=6&langRestrict=en`);
+    const data = await res.json();
+    const results: GoogleBookResult[] = (data.items || []).map((item: any) => ({
+      id: item.id,
+      title: item.volumeInfo?.title || '',
+      authors: item.volumeInfo?.authors || [],
+      cover_url: item.volumeInfo?.imageLinks?.thumbnail?.replace('http://', 'https://') || '',
+      page_count: item.volumeInfo?.pageCount || 0,
+      description: item.volumeInfo?.description || '',
+    }));
+    setSearchResults(results);
+    setShowResults(true);
+  } catch { setSearchResults([]); }
+  setSearching(false);
+}
+
+function applyGoogleBook(book: GoogleBookResult) {
+  setNewBook(prev => ({
+    ...prev,
+    title: book.title,
+    author: book.authors.join(', '),
+    cover_url: book.cover_url,
+    page_count: book.page_count ? String(book.page_count) : '',
+    description: book.description,
+  }));
+  setBookSearch('');
+  setSearchResults([]);
+  setShowResults(false);
+}
 
 const inputClass =
   'w-full px-3 py-2 rounded-lg border border-[#e8e0d5] dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1B2A4A] dark:text-[#F5F0E8] text-sm focus:outline-none focus:ring-2 focus:ring-2';
@@ -351,6 +399,45 @@ return (
               <h2 className="font-semibold text-[#1B2A4A] dark:text-[#F5F0E8]">Add New Book</h2>
               <button onClick={() => setShowAddForm(false)} className="text-[#6B7280]"><X size={18} /></button>
             </div>
+
+            {/* Google Books Search */}
+            <div ref={searchRef} className="relative">
+              <label className="text-xs text-[#6B7280] dark:text-gray-400 mb-1 block">Search Google Books to auto-fill details</label>
+              <div className="relative">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]" />
+                <input
+                  className={`${inputClass} pl-9 pr-9`}
+                  placeholder="Search by title or author..."
+                  value={bookSearch}
+                  onChange={(e) => { setBookSearch(e.target.value); searchGoogleBooks(e.target.value); }}
+                />
+                {searching && <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B7280] animate-spin" />}
+              </div>
+              {showResults && searchResults.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-[#e8e0d5] dark:border-gray-700 rounded-lg shadow-xl overflow-hidden">
+                  {searchResults.map((result) => (
+                    <button
+                      key={result.id}
+                      type="button"
+                      onClick={() => applyGoogleBook(result)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[#F5F0E8] dark:hover:bg-gray-700 text-left transition-colors"
+                    >
+                      {result.cover_url ? (
+                        <img src={result.cover_url} alt={result.title} className="w-8 h-11 object-cover rounded flex-shrink-0" />
+                      ) : (
+                        <div className="w-8 h-11 bg-gray-200 dark:bg-gray-600 rounded flex-shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[#1B2A4A] dark:text-[#F5F0E8] truncate">{result.title}</p>
+                        <p className="text-xs text-[#6B7280] dark:text-gray-400 truncate">{result.authors.join(', ')}</p>
+                        {result.page_count > 0 && <p className="text-xs text-[#6B7280] dark:text-gray-500">{result.page_count} pages</p>}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <input className={inputClass} placeholder="Title" value={newBook.title} onChange={(e) => setNewBook({ ...newBook, title: e.target.value })} />
               <input className={inputClass} placeholder="Author" value={newBook.author} onChange={(e) => setNewBook({ ...newBook, author: e.target.value })} />
