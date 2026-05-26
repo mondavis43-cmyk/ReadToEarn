@@ -10,8 +10,14 @@ export const Cashout = () => {
   const { navigateTo } = useNavigate();
   const [balance, setBalance]             = useState(0);
   const [isUpgraded, setIsUpgraded]       = useState(false);
-  const [payoutType, setPayoutType]       = useState<'paypal' | 'wise'>('paypal');
+  const [payoutType, setPayoutType]       = useState<'wise' | 'bank_transfer' | 'paypal'>('wise');
   const [payoutDetails, setPayoutDetails] = useState('');
+  const [bankRegion, setBankRegion]       = useState<'us' | 'international'>('us');
+  const [routingNumber, setRoutingNumber] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [ibanNumber, setIbanNumber]       = useState('');
+  const [swiftCode, setSwiftCode]         = useState('');
+  const [accountName, setAccountName]     = useState('');
   const [loading, setLoading]             = useState(true);
   const [submitting, setSubmitting]       = useState(false);
   const [error, setError]                 = useState('');
@@ -55,8 +61,8 @@ export const Cashout = () => {
       setBalance(profileResult.data.available_balance);
       setIsUpgraded(profileResult.data.is_upgraded ?? false);
       if (profileResult.data.payout_email) setPayoutDetails(profileResult.data.payout_email);
-      if (profileResult.data.payout_method) {
-        setPayoutType(profileResult.data.payout_method as 'paypal' | 'wise');
+      if (profileResult.data.payout_method && profileResult.data.payout_method !== 'paypal') {
+        setPayoutType(profileResult.data.payout_method as 'wise' | 'bank_transfer');
       }
     }
     if (requestsResult.data) setPastRequests(requestsResult.data);
@@ -77,11 +83,20 @@ export const Cashout = () => {
       return;
     }
 
-    if (!payoutDetails.trim()) {
-      setError(
-        payoutType === 'paypal' ? 'Please enter your PayPal email.' : 'Please enter your Wise email.'
-      );
+    if (payoutType === 'wise' && !payoutDetails.trim()) {
+      setError('Please enter your Wise email.');
       return;
+    }
+    if (payoutType === 'bank_transfer') {
+      if (!accountName.trim()) { setError('Please enter the account holder name.'); return; }
+      if (bankRegion === 'us' && (!routingNumber.trim() || !accountNumber.trim())) {
+        setError('Please enter your routing number and account number.');
+        return;
+      }
+      if (bankRegion === 'international' && (!ibanNumber.trim() || !swiftCode.trim())) {
+        setError('Please enter your IBAN and SWIFT/BIC code.');
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -91,7 +106,11 @@ export const Cashout = () => {
       p_email:             user!.email ?? '',
       p_amount:            parsedAmount,
       p_payout_type:       payoutType,
-      p_payout_details:    payoutDetails,
+      p_payout_details:    payoutType === 'bank_transfer'
+        ? bankRegion === 'us'
+          ? `Name: ${accountName} | Routing: ${routingNumber} | Account: ${accountNumber}`
+          : `Name: ${accountName} | IBAN: ${ibanNumber} | SWIFT: ${swiftCode}`
+        : payoutDetails,
       p_gift_card_brand:   null,
     });
 
@@ -128,7 +147,7 @@ export const Cashout = () => {
             <p className="text-white text-2xl font-semibold mb-2">${parsedAmount.toFixed(2)}</p>
             <p className="text-gray-400 text-sm mb-6">
               has been submitted. You'll receive your{' '}
-              {payoutType === 'paypal' ? 'PayPal payment' : 'Wise payment'}{' '}
+              {payoutType === 'bank_transfer' ? 'bank transfer' : payoutType === 'wise' ? 'Wise payment' : 'PayPal payment'}{' '}
               within 1-3 business days.
             </p>
             <button
@@ -208,37 +227,40 @@ export const Cashout = () => {
               <label className="block text-sm font-medium text-gray-300 mb-3">
                 How would you like to be paid?
               </label>
-              <div className="grid grid-cols-2 gap-3">
-                {(['paypal', 'wise'] as const).map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => { setPayoutType(type); setPayoutDetails(''); }}
-                    className={`py-3 px-2 rounded-lg border text-sm font-medium transition ${
-                      payoutType === type
-                        ? 'bg-white text-black border-white'
-                        : 'bg-transparent text-gray-300 border-gray-700 hover:border-gray-500'
-                    }`}
-                  >
-                    {type === 'paypal' ? 'PayPal' : 'Wise'}
-                  </button>
-                ))}
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  disabled
+                  className="py-3 px-2 rounded-lg border text-sm font-medium bg-transparent text-gray-600 border-gray-800 cursor-not-allowed relative"
+                >
+                  PayPal
+                  <span className="block text-xs text-gray-600 mt-0.5">Unavailable</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setPayoutType('wise'); setPayoutDetails(''); }}
+                  className={`py-3 px-2 rounded-lg border text-sm font-medium transition ${
+                    payoutType === 'wise'
+                      ? 'bg-white text-black border-white'
+                      : 'bg-transparent text-gray-300 border-gray-700 hover:border-gray-500'
+                  }`}
+                >
+                  Wise
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setPayoutType('bank_transfer'); setPayoutDetails(''); }}
+                  className={`py-3 px-2 rounded-lg border text-sm font-medium transition ${
+                    payoutType === 'bank_transfer'
+                      ? 'bg-white text-black border-white'
+                      : 'bg-transparent text-gray-300 border-gray-700 hover:border-gray-500'
+                  }`}
+                >
+                  Bank Transfer
+                </button>
               </div>
             </div>
 
-            {payoutType === 'paypal' && (
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-300 mb-2">PayPal Email</label>
-                <input
-                  type="email"
-                  value={payoutDetails}
-                  onChange={(e) => setPayoutDetails(e.target.value)}
-                  placeholder="your@email.com"
-                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 transition"
-                  required
-                />
-              </div>
-            )}
 
             {payoutType === 'wise' && (
               <div className="mb-6">
@@ -249,7 +271,6 @@ export const Cashout = () => {
                   onChange={(e) => setPayoutDetails(e.target.value)}
                   placeholder="Email linked to your Wise account"
                   className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 transition"
-                  required
                 />
                 <p className="text-xs text-gray-500 mt-2">
                   You <strong className="text-gray-400">must have a free Wise account</strong> — enter the email registered to it.{' '}
@@ -258,6 +279,97 @@ export const Cashout = () => {
                     Create a free Wise account
                   </a>
                 </p>
+              </div>
+            )}
+
+            {payoutType === 'bank_transfer' && (
+              <div className="mb-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Account Holder Name</label>
+                  <input
+                    type="text"
+                    value={accountName}
+                    onChange={(e) => setAccountName(e.target.value)}
+                    placeholder="Full name on bank account"
+                    className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Account Type</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setBankRegion('us')}
+                      className={`py-2 px-3 rounded-lg border text-sm font-medium transition ${
+                        bankRegion === 'us'
+                          ? 'bg-white text-black border-white'
+                          : 'bg-transparent text-gray-300 border-gray-700 hover:border-gray-500'
+                      }`}
+                    >
+                      US Bank Account
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBankRegion('international')}
+                      className={`py-2 px-3 rounded-lg border text-sm font-medium transition ${
+                        bankRegion === 'international'
+                          ? 'bg-white text-black border-white'
+                          : 'bg-transparent text-gray-300 border-gray-700 hover:border-gray-500'
+                      }`}
+                    >
+                      International
+                    </button>
+                  </div>
+                </div>
+                {bankRegion === 'us' ? (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Routing Number</label>
+                      <input
+                        type="text"
+                        value={routingNumber}
+                        onChange={(e) => setRoutingNumber(e.target.value)}
+                        placeholder="9-digit routing number"
+                        maxLength={9}
+                        className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Account Number</label>
+                      <input
+                        type="text"
+                        value={accountNumber}
+                        onChange={(e) => setAccountNumber(e.target.value)}
+                        placeholder="Bank account number"
+                        className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 transition"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">IBAN</label>
+                      <input
+                        type="text"
+                        value={ibanNumber}
+                        onChange={(e) => setIbanNumber(e.target.value.toUpperCase())}
+                        placeholder="e.g. GB29NWBK60161331926819"
+                        className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">SWIFT / BIC Code</label>
+                      <input
+                        type="text"
+                        value={swiftCode}
+                        onChange={(e) => setSwiftCode(e.target.value.toUpperCase())}
+                        placeholder="e.g. NWBKGB2L"
+                        className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 transition"
+                      />
+                    </div>
+                  </>
+                )}
+                <p className="text-xs text-gray-500">Your bank details are stored securely and only used to process your payout.</p>
               </div>
             )}
 
@@ -294,7 +406,7 @@ export const Cashout = () => {
                 >
                   <div>
                     <p className="text-white text-sm font-medium">
-                      {req.payout_type === 'paypal' ? 'PayPal' : 'Wise'}
+                      {req.payout_type === 'bank_transfer' ? 'Bank Transfer' : req.payout_type === 'wise' ? 'Wise' : 'PayPal'}
                     </p>
                     <p className="text-gray-500 text-xs mt-0.5">
                       {new Date(req.created_at).toLocaleDateString()}
