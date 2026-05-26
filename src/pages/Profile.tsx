@@ -16,7 +16,7 @@ interface Profile {
   wins_count: number;
   completed_this_month: number;
   payout_email: string | null;
-  payout_method: 'paypal' | 'wise' | null;
+  payout_method: 'paypal' | 'wise' | 'bank_transfer' | null;
 }
 
 interface CompletedBook {
@@ -47,7 +47,7 @@ export const Profile = () => {
 
   // Payout state
   const [payoutEmail, setPayoutEmail]           = useState('');
-  const [payoutMethod, setPayoutMethod]         = useState<'paypal' | 'wise'>('paypal');
+  const [payoutMethod, setPayoutMethod]         = useState<'paypal' | 'wise' | 'bank_transfer'>('wise');
   const [savingPayout, setSavingPayout]         = useState(false);
   const [payoutSaved, setPayoutSaved]           = useState(false);
   const [payoutError, setPayoutError]           = useState('');
@@ -87,7 +87,7 @@ export const Profile = () => {
       setProfile(profileResult.data);
       if (profileResult.data.birthday) setBirthdayInput(profileResult.data.birthday);
       if (profileResult.data.payout_email)  setPayoutEmail(profileResult.data.payout_email);
-      if (profileResult.data.payout_method) setPayoutMethod(profileResult.data.payout_method);
+      if (profileResult.data.payout_method && profileResult.data.payout_method !== 'paypal') setPayoutMethod(profileResult.data.payout_method as 'wise' | 'bank_transfer');
     }
 
     if (completedResult.data) {
@@ -125,7 +125,7 @@ export const Profile = () => {
 
   const handleSavePayout = async () => {
     if (!user) return;
-    if (!payoutEmail.trim()) { setPayoutError('Please enter an email address.'); return; }
+    if (payoutMethod !== 'bank_transfer' && !payoutEmail.trim()) { setPayoutError('Please enter an email address.'); return; }
     setSavingPayout(true);
     setPayoutError('');
     const { error } = await supabase
@@ -300,22 +300,19 @@ export const Profile = () => {
           </p>
 
           {/* Method picker */}
-          <div className="flex gap-2 mb-4">
+          <div className="grid grid-cols-3 gap-2 mb-4">
             <button
-              onClick={() => setPayoutMethod('paypal')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition ${
-                payoutMethod === 'paypal'
-                  ? 'bg-[#FFC439] text-[#003087] border-[#FFC439]'
-                  : isDark
-                    ? 'bg-transparent text-white/50 border-white/10 hover:border-white/30'
-                    : 'bg-transparent text-black/40 border-black/10 hover:border-black/30'
+              disabled
+              className={`py-2.5 rounded-lg text-sm font-medium border cursor-not-allowed ${
+                isDark ? 'bg-transparent text-white/20 border-white/10' : 'bg-transparent text-black/20 border-black/10'
               }`}
             >
               🅿 PayPal
+              <span className="block text-xs opacity-60">Unavailable</span>
             </button>
             <button
               onClick={() => setPayoutMethod('wise')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition ${
+              className={`py-2.5 rounded-lg text-sm font-medium border transition ${
                 payoutMethod === 'wise'
                   ? 'bg-[#9FE870] text-[#163300] border-[#9FE870]'
                   : isDark
@@ -323,23 +320,40 @@ export const Profile = () => {
                     : 'bg-transparent text-black/40 border-black/10 hover:border-black/30'
               }`}
             >
-              🌍 Wise
+              � Wise
+            </button>
+            <button
+              onClick={() => setPayoutMethod('bank_transfer')}
+              className={`py-2.5 rounded-lg text-sm font-medium border transition ${
+                payoutMethod === 'bank_transfer'
+                  ? isDark ? 'bg-white text-black border-white' : 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                  : isDark
+                    ? 'bg-transparent text-white/50 border-white/10 hover:border-white/30'
+                    : 'bg-transparent text-black/40 border-black/10 hover:border-black/30'
+              }`}
+            >
+              � Bank Transfer
             </button>
           </div>
 
-          {/* Email input */}
-          <div className="mb-4">
-            <label className={`block text-xs font-medium ${subColor} mb-1.5`}>
-              {payoutMethod === 'paypal' ? 'PayPal Email' : 'Wise Email'}
-            </label>
-            <input
-              type="email"
-              value={payoutEmail}
-              onChange={(e) => { setPayoutEmail(e.target.value); setPayoutError(''); }}
-              placeholder={`Email linked to your ${payoutMethod === 'paypal' ? 'PayPal' : 'Wise'} account`}
-              className={`w-full p-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A843]/40 ${inputClass}`}
-            />
-          </div>
+          {/* Email input — only for Wise */}
+          {payoutMethod === 'wise' && (
+            <div className="mb-4">
+              <label className={`block text-xs font-medium ${subColor} mb-1.5`}>Wise Email</label>
+              <input
+                type="email"
+                value={payoutEmail}
+                onChange={(e) => { setPayoutEmail(e.target.value); setPayoutError(''); }}
+                placeholder="Email linked to your Wise account"
+                className={`w-full p-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A843]/40 ${inputClass}`}
+              />
+            </div>
+          )}
+          {payoutMethod === 'bank_transfer' && (
+            <div className={`mb-4 p-3 rounded-lg border ${isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-black/5'}`}>
+              <p className={`text-xs ${subColor}`}>Bank details (routing/account number or IBAN) are entered when you submit a cashout request — no need to save them here.</p>
+            </div>
+          )}
 
           {payoutError && <p className="text-red-400 text-xs mb-3">{payoutError}</p>}
 
@@ -353,7 +367,7 @@ export const Profile = () => {
 
           {payoutMethod === 'wise' && (
             <p className={`text-xs ${subColor} mt-2`}>
-              Wise is for international payouts. You <strong>must have a free Wise account</strong> — enter the email address registered to it.{' '}
+              You <strong>must have a free Wise account</strong> — enter the email address registered to it.{' '}
               Don't have one?{' '}
               <a href="https://wise.com/register" target="_blank" rel="noopener noreferrer" className="text-[#9FE870] underline hover:opacity-80">
                 Create a free Wise account
