@@ -137,11 +137,13 @@ useEffect(() => {
   }
   const timer = setTimeout(async () => {
     setSearching(true);
+    console.log('[AdminBooks] Searching for:', bookSearch.trim());
     try {
       const res = await fetch(
         `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(bookSearch.trim())}&maxResults=6&langRestrict=en`
       );
       const data = await res.json();
+      console.log('[AdminBooks] Google Books response:', data);
       const results: GoogleBookResult[] = (data.items || []).map((item: any) => ({
         id: item.id,
         title: item.volumeInfo?.title || '',
@@ -150,6 +152,7 @@ useEffect(() => {
         page_count: item.volumeInfo?.pageCount || 0,
         description: item.volumeInfo?.description || '',
       }));
+      console.log('[AdminBooks] Parsed results:', results);
       setSearchResults(results);
       setShowResults(true);
     } catch (e) {
