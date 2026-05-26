@@ -129,25 +129,37 @@ const [searching, setSearching] = useState(false);
 const [showResults, setShowResults] = useState(false);
 const searchRef = useRef<HTMLDivElement>(null);
 
-async function searchGoogleBooks(query: string) {
-  if (!query.trim()) { setSearchResults([]); return; }
-  setSearching(true);
-  try {
-    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=6&langRestrict=en`);
-    const data = await res.json();
-    const results: GoogleBookResult[] = (data.items || []).map((item: any) => ({
-      id: item.id,
-      title: item.volumeInfo?.title || '',
-      authors: item.volumeInfo?.authors || [],
-      cover_url: item.volumeInfo?.imageLinks?.thumbnail?.replace('http://', 'https://') || '',
-      page_count: item.volumeInfo?.pageCount || 0,
-      description: item.volumeInfo?.description || '',
-    }));
-    setSearchResults(results);
-    setShowResults(true);
-  } catch { setSearchResults([]); }
-  setSearching(false);
-}
+useEffect(() => {
+  if (bookSearch.trim().length < 3) {
+    setSearchResults([]);
+    setShowResults(false);
+    return;
+  }
+  const timer = setTimeout(async () => {
+    setSearching(true);
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(bookSearch.trim())}&maxResults=6&langRestrict=en`
+      );
+      const data = await res.json();
+      const results: GoogleBookResult[] = (data.items || []).map((item: any) => ({
+        id: item.id,
+        title: item.volumeInfo?.title || '',
+        authors: item.volumeInfo?.authors || [],
+        cover_url: item.volumeInfo?.imageLinks?.thumbnail?.replace('http://', 'https://') || '',
+        page_count: item.volumeInfo?.pageCount || 0,
+        description: item.volumeInfo?.description || '',
+      }));
+      setSearchResults(results);
+      setShowResults(true);
+    } catch (e) {
+      console.error('[AdminBooks] Google Books search error:', e);
+      setSearchResults([]);
+    }
+    setSearching(false);
+  }, 400);
+  return () => clearTimeout(timer);
+}, [bookSearch]);
 
 function applyGoogleBook(book: GoogleBookResult) {
   setNewBook(prev => ({
@@ -409,7 +421,7 @@ return (
                   className={`${inputClass} pl-9 pr-9`}
                   placeholder="Search by title or author..."
                   value={bookSearch}
-                  onChange={(e) => { setBookSearch(e.target.value); searchGoogleBooks(e.target.value); }}
+                  onChange={(e) => setBookSearch(e.target.value)}
                 />
                 {searching && <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B7280] animate-spin" />}
               </div>
