@@ -30,7 +30,7 @@ export const GENRES = [
 'Horror', 'LGBTQIA+', 'Literary Fiction', 'Magical Realism', 'Mystery', 'Noir',
 'Non-Fiction', 'Paranormal', 'Poetry', 'Religious', 'Romance', 'Romantasy / Romantic Fantasy',
 'Satire', 'Science Fiction', 'Self-Help', 'Short Stories', 'Space Opera', 'Sports',
-'Spy', 'Suspense', 'Thriller', 'True Crime', 'War & Military', 'Western', "Women's Fiction", 'Young Adult',
+'Spy', 'Suspense', 'Thriller', 'Tragedy', 'True Crime', 'War & Military', 'Western', "Women's Fiction", 'Young Adult',
 ];
 
 const ADMIN_EMAIL = 'mondavis43@gmail.com';
