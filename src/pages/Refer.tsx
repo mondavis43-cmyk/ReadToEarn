@@ -131,7 +131,7 @@ export const Refer = () => {
   const divider     = isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10';
 
   // ── COMING SOON GATE ─────────────────────────────────────────────────────────
-const FEATURE_HIDDEN = true;
+const FEATURE_HIDDEN = false;
 
 if (FEATURE_HIDDEN) {
   return (
