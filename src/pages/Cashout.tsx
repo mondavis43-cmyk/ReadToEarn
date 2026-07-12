@@ -38,7 +38,7 @@ export const Cashout = () => {
     const [profileResult, requestsResult] = await Promise.all([
       supabase
         .from('profiles')
-        .select('available_balance, is_upgraded, payout_email, payout_method')
+        .select('available_balance, is_upgraded, payout_email, payout_method, bank_region, bank_account_holder_name, bank_routing_number, bank_account_number, bank_iban, bank_swift')
         .eq('id', user.id)
         .single(),
       supabase
@@ -64,6 +64,13 @@ export const Cashout = () => {
       if (profileResult.data.payout_method && profileResult.data.payout_method !== 'paypal') {
         setPayoutType(profileResult.data.payout_method as 'wise' | 'bank_transfer');
       }
+      // Pre-fill bank details if saved
+      if (profileResult.data.bank_region) setBankRegion(profileResult.data.bank_region);
+      if (profileResult.data.bank_account_holder_name) setAccountName(profileResult.data.bank_account_holder_name);
+      if (profileResult.data.bank_routing_number) setRoutingNumber(profileResult.data.bank_routing_number);
+      if (profileResult.data.bank_account_number) setAccountNumber(profileResult.data.bank_account_number);
+      if (profileResult.data.bank_iban) setIbanNumber(profileResult.data.bank_iban);
+      if (profileResult.data.bank_swift) setSwiftCode(profileResult.data.bank_swift);
     }
     if (requestsResult.data) setPastRequests(requestsResult.data);
     setLoading(false);
