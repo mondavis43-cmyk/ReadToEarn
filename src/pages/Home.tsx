@@ -156,7 +156,7 @@ export const Home = () => {
         </div>
 
         <p className="text-xs" style={{ color: textMuted }}>
-          Payouts via bank transfers & Wise. Free users cash out at $10. Subscribers cash at $5.
+          Payouts via bank transfers & Wise. Free users cash out at $10. Subscribers cash out at $5.
         </p>
       </section>
 
