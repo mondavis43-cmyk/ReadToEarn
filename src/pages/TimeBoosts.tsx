@@ -50,6 +50,48 @@ export const TimeBoosts = () => {
   const textMuted   = isDark ? 'text-[#F5F0E8]/70' : 'text-[#1B2A4A]/70';
   const cardBg      = isDark ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20' : 'bg-white border-[#D4A843]/30';
 
+  // ── COMING SOON GATE ─────────────────────────────────────────────────────────
+const FEATURE_HIDDEN = true;
+
+if (FEATURE_HIDDEN) {
+  return (
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]'}`}>
+      <div className={`border-b transition-colors duration-300 ${isDark ? 'border-[#1B2A4A] bg-[#0f1623]' : 'border-[#D4A843]/30 bg-[#F5F0E8]'}`}>
+        <div className="max-w-3xl mx-auto px-4 py-4 flex justify-between items-center">
+          <button
+            onClick={() => navigateTo('/')}
+            className={`font-serif text-lg font-bold transition-colors ${isDark ? 'text-[#D4A843]' : 'text-[#1B2A4A]'}`}
+          >
+            Read to Earn
+          </button>
+          <button
+            onClick={toggleTheme}
+            className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
+              isDark
+                ? 'border-[#D4A843]/40 text-[#D4A843] hover:bg-[#D4A843]/10'
+                : 'border-[#1B2A4A]/30 text-[#1B2A4A] hover:bg-[#1B2A4A]/10'
+            }`}
+          >
+            {isDark ? '☀ Light' : '☾ Dark'}
+          </button>
+        </div>
+      </div>
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <div className="flex justify-center mb-6">
+          <div className="w-16 h-16 rounded-full bg-[#D4A843]/15 flex items-center justify-center">
+            <Zap className="text-[#D4A843] w-7 h-7" />
+          </div>
+        </div>
+        <h1 className={`font-serif text-4xl mb-3 ${textPrimary}`}>Time Boosts</h1>
+        <p className={`text-sm ${textMuted} max-w-sm mx-auto`}>
+          Running low on time during a quiz? Boosts add extra minutes instantly. Coming soon.
+        </p>
+        <p className={`text-xs mt-4 ${textMuted}`}>Stay tuned.</p>
+      </div>
+    </div>
+  );
+}
+
   const [userId, setUserId]               = useState<string | null>(null);
   const [boostBalance, setBoostBalance]   = useState<number | null>(null);
   const [loadingBalance, setLoadingBalance] = useState(true);
