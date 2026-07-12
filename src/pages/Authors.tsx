@@ -229,7 +229,7 @@ export const Authors = () => {
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className={`font-serif text-lg ${textPrimary}`}>Author AMA</h3>
                     <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#D4A843]/15 text-[#D4A843] border border-[#D4A843]/30">
-                      Free
+                      Coming Soon
                     </span>
                   </div>
                   <p className={`text-sm ${textMuted}`}>
