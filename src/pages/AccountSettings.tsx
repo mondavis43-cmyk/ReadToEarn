@@ -4,7 +4,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { User, Bell, Shield, CreditCard, FileText, Trash2, Eye, EyeOff, Check, X } from 'lucide-react';
 
-type Tab = 'payout' | 'tax' | 'account' | 'notifications' | 'danger';
+type Tab = 'tax' | 'account' | 'notifications' | 'danger';
 
 export const AccountSettings = () => {
   const { isDark, toggleTheme } = useTheme();
@@ -23,12 +23,6 @@ export const AccountSettings = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-
-  // Payout
-  const [payoutMethod, setPayoutMethod] = useState<'bank' | 'debit'>('bank');
-  const [routingNumber, setRoutingNumber] = useState('');
-  const [accountNumber, setAccountNumber] = useState('');
-  const [debitCard, setDebitCard] = useState('');
 
   // Tax
   const [taxIdType, setTaxIdType] = useState<'ssn' | 'ein'>('ssn');
