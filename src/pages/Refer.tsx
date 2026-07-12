@@ -130,6 +130,29 @@ export const Refer = () => {
   const bg          = isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]';
   const divider     = isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10';
 
+  // ── COMING SOON GATE ─────────────────────────────────────────────────────────
+const FEATURE_HIDDEN = true;
+
+if (FEATURE_HIDDEN) {
+  return (
+    <div className={`min-h-screen ${bg} flex items-center justify-center transition-colors duration-300`}>
+      <div className="max-w-md mx-auto px-4 text-center">
+        <div className="flex justify-center mb-6">
+          <div className="w-16 h-16 rounded-full bg-[#D4A843]/15 flex items-center justify-center">
+            <Gift className="text-[#D4A843] w-7 h-7" />
+          </div>
+        </div>
+        <h1 className={`font-serif text-4xl mb-3 ${textPrimary}`}>Refer a Friend</h1>
+        <p className={`text-sm ${textMuted}`}>
+          Our referral program is coming soon. Refer friends and earn $0.50/month
+          for every active subscriber you bring in — no cap.
+        </p>
+        <p className={`text-xs mt-4 ${textMuted}`}>Stay tuned.</p>
+      </div>
+    </div>
+  );
+}
+
   if (loading) {
     return (
       <div className={`min-h-screen ${bg} flex items-center justify-center`}>
