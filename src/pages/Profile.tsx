@@ -17,6 +17,12 @@ interface Profile {
   completed_this_month: number;
   payout_email: string | null;
   payout_method: 'paypal' | 'wise' | 'bank_transfer' | null;
+  bank_account_holder_name: string | null;
+  bank_routing_number: string | null;
+  bank_account_number: string | null;
+  bank_iban: string | null;
+  bank_swift: string | null;
+  bank_region: 'us' | 'international' | null;
 }
 
 interface CompletedBook {
@@ -40,10 +46,6 @@ export const Profile = () => {
   const [accuracyRate, setAccuracyRate]         = useState(0);
   const [completedBooks, setCompletedBooks]     = useState<CompletedBook[]>([]);
   const [loading, setLoading]                   = useState(true);
-  const [birthdayInput, setBirthdayInput]       = useState('');
-  const [savingBirthday, setSavingBirthday]     = useState(false);
-  const [birthdaySuccess, setBirthdaySuccess]   = useState(false);
-  const [birthdayError, setBirthdayError]       = useState('');
 
   // Payout state
   const [payoutEmail, setPayoutEmail]           = useState('');
@@ -51,6 +53,12 @@ export const Profile = () => {
   const [savingPayout, setSavingPayout]         = useState(false);
   const [payoutSaved, setPayoutSaved]           = useState(false);
   const [payoutError, setPayoutError]           = useState('');
+  const [bankRegion, setBankRegion]             = useState<'us' | 'international'>('us');
+  const [bankAccountName, setBankAccountName]   = useState('');
+  const [bankRoutingNumber, setBankRoutingNumber] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [bankIban, setBankIban]                 = useState('');
+  const [bankSwift, setBankSwift]               = useState('');
 
   const get1099Warning = () => {
     if (!profile) return null;
@@ -85,9 +93,14 @@ export const Profile = () => {
 
     if (profileResult.data) {
       setProfile(profileResult.data);
-      if (profileResult.data.birthday) setBirthdayInput(profileResult.data.birthday);
       if (profileResult.data.payout_email)  setPayoutEmail(profileResult.data.payout_email);
       if (profileResult.data.payout_method && profileResult.data.payout_method !== 'paypal') setPayoutMethod(profileResult.data.payout_method as 'wise' | 'bank_transfer');
+      if (profileResult.data.bank_region) setBankRegion(profileResult.data.bank_region);
+      if (profileResult.data.bank_account_holder_name) setBankAccountName(profileResult.data.bank_account_holder_name);
+      if (profileResult.data.bank_routing_number) setBankRoutingNumber(profileResult.data.bank_routing_number);
+      if (profileResult.data.bank_account_number) setBankAccountNumber(profileResult.data.bank_account_number);
+      if (profileResult.data.bank_iban) setBankIban(profileResult.data.bank_iban);
+      if (profileResult.data.bank_swift) setBankSwift(profileResult.data.bank_swift);
     }
 
     if (completedResult.data) {
@@ -107,30 +120,37 @@ export const Profile = () => {
     setLoading(false);
   };
 
-  const handleSaveBirthday = async () => {
-    if (!user || !birthdayInput) return;
-    setSavingBirthday(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ birthday: birthdayInput })
-      .eq('id', user.id);
-    if (!error) {
-      setBirthdaySuccess(true);
-      await loadProfile();
-    } else {
-      setBirthdayError('Could not save birthday.');
-    }
-    setSavingBirthday(false);
-  };
-
   const handleSavePayout = async () => {
     if (!user) return;
     if (payoutMethod !== 'bank_transfer' && !payoutEmail.trim()) { setPayoutError('Please enter an email address.'); return; }
+    if (payoutMethod === 'bank_transfer') {
+      if (!bankAccountName.trim()) { setPayoutError('Please enter the account holder name.'); return; }
+      if (bankRegion === 'us' && (!bankRoutingNumber.trim() || !bankAccountNumber.trim())) {
+        setPayoutError('Please enter your routing number and account number.');
+        return;
+      }
+      if (bankRegion === 'international' && (!bankIban.trim() || !bankSwift.trim())) {
+        setPayoutError('Please enter your IBAN and SWIFT/BIC code.');
+        return;
+      }
+    }
     setSavingPayout(true);
     setPayoutError('');
+    const updateData: any = {
+      payout_email: payoutEmail.trim(),
+      payout_method: payoutMethod,
+    };
+    if (payoutMethod === 'bank_transfer') {
+      updateData.bank_region = bankRegion;
+      updateData.bank_account_holder_name = bankAccountName.trim();
+      updateData.bank_routing_number = bankRoutingNumber.trim();
+      updateData.bank_account_number = bankAccountNumber.trim();
+      updateData.bank_iban = bankIban.trim();
+      updateData.bank_swift = bankSwift.trim();
+    }
     const { error } = await supabase
       .from('profiles')
-      .update({ payout_email: payoutEmail.trim(), payout_method: payoutMethod })
+      .update(updateData)
       .eq('id', user.id);
     if (!error) {
       setPayoutSaved(true);
@@ -350,8 +370,96 @@ export const Profile = () => {
             </div>
           )}
           {payoutMethod === 'bank_transfer' && (
-            <div className={`mb-4 p-3 rounded-lg border ${isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-black/5'}`}>
-              <p className={`text-xs ${subColor}`}>Bank details (routing/account number or IBAN) are entered when you submit a cashout request — no need to save them here.</p>
+            <div className="space-y-4 mb-4">
+              <div>
+                <label className={`block text-xs font-medium ${subColor} mb-1.5`}>Account Holder Name</label>
+                <input
+                  type="text"
+                  value={bankAccountName}
+                  onChange={(e) => { setBankAccountName(e.target.value); setPayoutError(''); }}
+                  placeholder="Full name on bank account"
+                  className={`w-full p-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A843]/40 ${inputClass}`}
+                />
+              </div>
+              <div>
+                <label className={`block text-xs font-medium ${subColor} mb-1.5`}>Account Type</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBankRegion('us')}
+                    className={`py-2 rounded-lg text-sm font-medium border transition ${
+                      bankRegion === 'us'
+                        ? 'bg-[#D4A843] text-[#1B2A4A] border-[#D4A843]'
+                        : isDark
+                          ? 'border-white/10 text-white/60'
+                          : 'border-black/10 text-black/60'
+                    }`}
+                  >
+                    US Bank Account
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBankRegion('international')}
+                    className={`py-2 rounded-lg text-sm font-medium border transition ${
+                      bankRegion === 'international'
+                        ? 'bg-[#D4A843] text-[#1B2A4A] border-[#D4A843]'
+                        : isDark
+                          ? 'border-white/10 text-white/60'
+                          : 'border-black/10 text-black/60'
+                    }`}
+                  >
+                    International
+                  </button>
+                </div>
+              </div>
+              {bankRegion === 'us' ? (
+                <>
+                  <div>
+                    <label className={`block text-xs font-medium ${subColor} mb-1.5`}>Routing Number</label>
+                    <input
+                      type="text"
+                      value={bankRoutingNumber}
+                      onChange={(e) => { setBankRoutingNumber(e.target.value); setPayoutError(''); }}
+                      placeholder="9-digit routing number"
+                      maxLength={9}
+                      className={`w-full p-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A843]/40 ${inputClass}`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-xs font-medium ${subColor} mb-1.5`}>Account Number</label>
+                    <input
+                      type="text"
+                      value={bankAccountNumber}
+                      onChange={(e) => { setBankAccountNumber(e.target.value); setPayoutError(''); }}
+                      placeholder="Bank account number"
+                      className={`w-full p-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A843]/40 ${inputClass}`}
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className={`block text-xs font-medium ${subColor} mb-1.5`}>IBAN</label>
+                    <input
+                      type="text"
+                      value={bankIban}
+                      onChange={(e) => { setBankIban(e.target.value); setPayoutError(''); }}
+                      placeholder="International Bank Account Number"
+                      className={`w-full p-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A843]/40 ${inputClass}`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-xs font-medium ${subColor} mb-1.5`}>SWIFT/BIC Code</label>
+                    <input
+                      type="text"
+                      value={bankSwift}
+                      onChange={(e) => { setBankSwift(e.target.value); setPayoutError(''); }}
+                      placeholder="Bank identification code"
+                      className={`w-full p-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A843]/40 ${inputClass}`}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -376,27 +484,6 @@ export const Profile = () => {
           )}
         </div>
 
-        {/* Birthday Bonus */}
-        <div className={`${cardBg} rounded-xl p-6 border ${cardBorder} text-center`}>
-          <h3 className={`text-sm font-bold ${headingColor} mb-4 flex items-center justify-center gap-2`}>
-            <Gift className="w-4 h-4 text-[#D4A843]" /> Birthday Bonus
-          </h3>
-          <input
-            type="date"
-            value={birthdayInput}
-            onChange={(e) => setBirthdayInput(e.target.value)}
-            className={`w-full mb-3 p-2 rounded border ${isDark ? 'bg-[#1B2A4A] border-white/10 text-white' : 'bg-gray-50 border-black/10'}`}
-          />
-          {birthdayError   && <p className="text-red-400 text-xs mb-2">{birthdayError}</p>}
-          {birthdaySuccess && <p className="text-green-400 text-xs mb-2">Birthday saved!</p>}
-          <button
-            onClick={handleSaveBirthday}
-            disabled={savingBirthday}
-            className="text-xs font-bold text-[#D4A843] hover:underline disabled:opacity-50"
-          >
-            {savingBirthday ? 'Saving...' : 'Update Birthday'}
-          </button>
-        </div>
 
       </div>
     </div>
