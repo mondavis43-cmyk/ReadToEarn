@@ -237,28 +237,6 @@ export const AMASession = ({ sessionId }: { sessionId: string }) => {
     loadAll();
   }
 
-  // ── COMING SOON GATE ─────────────────────────────────────────────────────────
-const FEATURE_HIDDEN = true;
-
-if (FEATURE_HIDDEN) {
-  return (
-    <div className={`min-h-screen ${bg} flex items-center justify-center transition-colors duration-300`}>
-      <div className="max-w-md mx-auto px-4 text-center">
-        <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 rounded-full bg-[#D4A843]/15 flex items-center justify-center">
-            <Gift className="text-[#D4A843] w-7 h-7" />
-          </div>
-        </div>
-        <h1 className={`font-serif text-4xl mb-3 ${textPrimary}`}>Author AMAs</h1>
-        <p className={`text-sm ${textMuted}`}>
-          Our AMAs are coming soon. Have authors answer your burning questions.
-        </p>
-        <p className={`text-xs mt-4 ${textMuted}`}>Stay tuned.</p>
-      </div>
-    </div>
-  );
-}
-
   if (loading) {
     return (
       <div className={`min-h-screen ${isDark ? 'bg-[#0F1923]' : 'bg-[#FAF8F5]'} flex items-center justify-center`}>
