@@ -16,7 +16,17 @@ interface CashoutRequest {
   status: 'pending' | 'approved' | 'paid' | 'rejected';
   requires_tax_review: boolean;
   created_at: string;
-  profiles: { email: string; username: string | null; available_balance: number } | null;
+  profiles: {
+    email: string;
+    username: string | null;
+    available_balance: number;
+    bank_account_holder_name: string | null;
+    bank_routing_number: string | null;
+    bank_account_number: string | null;
+    bank_iban: string | null;
+    bank_swift: string | null;
+    bank_region: 'us' | 'international' | null;
+  } | null;
 }
 
 type FilterStatus = 'all' | 'pending' | 'approved' | 'paid' | 'rejected' | 'tax_review';
@@ -35,7 +45,7 @@ export function AdminPayouts() {
     setLoading(true);
     const { data } = await supabase
       .from('cashout_requests')
-      .select('*, profiles(email, username, available_balance)')
+      .select('*, profiles(email, username, available_balance, bank_account_holder_name, bank_routing_number, bank_account_number, bank_iban, bank_swift, bank_region)')
       .order('created_at', { ascending: false });
     setRequests(data || []);
     setLoading(false);
@@ -291,14 +301,26 @@ export function AdminPayouts() {
                   </div>
 
                   {/* Payout Details - formatted for readability */}
-                  {req.payout_type !== 'gift_card' && req.payout_details && (
+                  {req.payout_type !== 'gift_card' && (
                     <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
                       <p className="text-xs font-medium text-[#6B7280] dark:text-gray-400 mb-1">Payout Details:</p>
                       {req.payout_type === 'bank_transfer' ? (
                         <div className="text-xs text-[#1B2A4A] dark:text-[#F5F0E8] space-y-0.5">
-                          {req.payout_details.split(' | ').map((part, i) => (
-                            <p key={i}>{part}</p>
-                          ))}
+                          {req.profiles?.bank_account_holder_name && <p>Name: {req.profiles.bank_account_holder_name}</p>}
+                          {req.profiles?.bank_region === 'us' ? (
+                            <>
+                              {req.profiles?.bank_routing_number && <p>Routing: {req.profiles.bank_routing_number}</p>}
+                              {req.profiles?.bank_account_number && <p>Account: {req.profiles.bank_account_number}</p>}
+                            </>
+                          ) : (
+                            <>
+                              {req.profiles?.bank_iban && <p>IBAN: {req.profiles.bank_iban}</p>}
+                              {req.profiles?.bank_swift && <p>SWIFT: {req.profiles.bank_swift}</p>}
+                            </>
+                          )}
+                          {!req.profiles?.bank_account_holder_name && req.payout_details && (
+                            <p className="text-gray-500 italic">{req.payout_details}</p>
+                          )}
                         </div>
                       ) : (
                         <p className="text-xs text-[#1B2A4A] dark:text-[#F5F0E8]">{req.payout_details}</p>
