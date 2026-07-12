@@ -280,11 +280,8 @@ export function AdminPayouts() {
                       ${req.amount.toFixed(2)}
                     </span>
                     <span className="text-[#6B7280] dark:text-gray-400 capitalize">
-                      via {req.payout_type === 'gift_card' ? `Gift Card (${req.gift_card_brand ?? 'Unknown'})` : req.payout_type}
+                      via {req.payout_type === 'gift_card' ? `Gift Card (${req.gift_card_brand ?? 'Unknown'})` : req.payout_type === 'bank_transfer' ? 'Bank Transfer' : req.payout_type}
                     </span>
-                    {req.payout_type !== 'gift_card' && req.payout_details && (
-                      <span className="text-[#6B7280] dark:text-gray-400">{req.payout_details}</span>
-                    )}
                     <span className="text-[#6B7280] dark:text-gray-400">
                       Balance: ${req.profiles?.available_balance?.toFixed(2) ?? '—'}
                     </span>
@@ -292,6 +289,22 @@ export function AdminPayouts() {
                       {new Date(req.created_at).toLocaleDateString()}
                     </span>
                   </div>
+
+                  {/* Payout Details - formatted for readability */}
+                  {req.payout_type !== 'gift_card' && req.payout_details && (
+                    <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                      <p className="text-xs font-medium text-[#6B7280] dark:text-gray-400 mb-1">Payout Details:</p>
+                      {req.payout_type === 'bank_transfer' ? (
+                        <div className="text-xs text-[#1B2A4A] dark:text-[#F5F0E8] space-y-0.5">
+                          {req.payout_details.split(' | ').map((part, i) => (
+                            <p key={i}>{part}</p>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-[#1B2A4A] dark:text-[#F5F0E8]">{req.payout_details}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <span className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 ${statusColor(req.status)}`}>
                   {req.status}
