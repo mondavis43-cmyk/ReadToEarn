@@ -82,7 +82,7 @@ interface AuthorProfile {
 }
 
 type EditTab = 'details' | 'quiz';
-type DashTab = 'books' | 'ama' | 'bounties' | 'competitions' | 'ambassador' | 'results';
+type DashTab = 'books' | 'amas (coming soon)' | 'bounties' | 'competitions' | 'ambassador' | 'results';
 type ResultTab = 'surveys' | 'beta' | 'sensitivity' | 'quick_tasks' | 'bounties' | 'competitions';
 interface ResultRow { [key: string]: any; }
 type ListingTier = 'single' | 'trilogy' | 'series' | 'catalog' | 'imprint';
