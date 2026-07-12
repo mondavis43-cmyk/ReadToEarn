@@ -30,6 +30,39 @@ export const AuthorAMA = () => {
     ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20'
     : 'bg-white border-[#D4A843]/30';
 
+  // ── COMING SOON GATE ─────────────────────────────────────────────────────────
+const FEATURE_HIDDEN = true;
+
+if (FEATURE_HIDDEN) {
+  return (
+    <div className={`min-h-screen ${isDark ? 'bg-[#0F1923]' : 'bg-[#FAF8F5]'}`}>
+      <div className={`border-b ${dividerColor} px-4 py-4 mb-8`}>
+        <div className="max-w-3xl mx-auto flex items-center gap-3">
+          <button
+            onClick={() => navigateTo('/')}
+            className={`${subColor} hover:text-[#D4A843] transition-colors`}
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h1 className={`font-serif text-3xl ${textPrimary}`}>Ask the Author</h1>
+        </div>
+      </div>
+      <div className="max-w-3xl mx-auto px-4 pb-12 text-center pt-16">
+        <div className="flex justify-center mb-6">
+          <div className="w-16 h-16 rounded-full bg-[#D4A843]/15 flex items-center justify-center">
+            <MessageSquare className="text-[#D4A843] w-7 h-7" />
+          </div>
+        </div>
+        <h2 className={`font-serif text-2xl mb-3 ${textPrimary}`}>Ask the Author</h2>
+        <p className={`text-sm ${textMuted} max-w-sm mx-auto`}>
+          Submit questions and get answers straight from the author. Live sessions coming soon.
+        </p>
+        <p className={`text-xs mt-4 ${textMuted}`}>Stay tuned.</p>
+      </div>
+    </div>
+  );
+}
+
   const [tab, setTab] = useState<Tab>('upcoming');
   const [sessions, setSessions] = useState<AMASession[]>([]);
   const [loading, setLoading] = useState(true);
