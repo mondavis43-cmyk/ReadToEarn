@@ -55,7 +55,7 @@ import SensitivityReaderPanel from '../pages/SensitivityReaderPanel';
 import { AdminFraudDashboard } from '../pages/admin/AdminFraudDashboard';
 import { CheckoutSuccess } from '../pages/CheckoutSuccess';
 
-const WAITLIST_MODE = true;
+const WAITLIST_MODE = false;
 
 export const Router = () => {
 const { user, loading } = useAuth();
