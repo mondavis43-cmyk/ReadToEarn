@@ -189,7 +189,7 @@ export const Home = () => {
               icon: <DollarSign className="w-5 h-5" style={{ color: gold }} />,
               step: '03',
               title: 'Collect Your Winnings',
-              body: 'Top performers split the prize pool (50% / 30% / 20%). Funds go to PayPal or Wise — your choice.',
+              body: 'Top performers split the prize pool (50% / 30% / 20%). Funds go to your bank account.',
             },
           ].map(({ icon, step, title, body }) => (
             <div
