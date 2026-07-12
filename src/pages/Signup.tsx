@@ -222,6 +222,7 @@ export const Signup = () => {
     // We only capture referred_by (who sent them) at signup.
     const urlParams  = new URLSearchParams(window.location.search);
     const referredBy = urlParams.get('ref') || null;
+    const authorReferredBy = urlParams.get('author_ref') || null;
 
     const dob = `${dobYear}-${String(dobMonth).padStart(2, '0')}-${String(dobDay).padStart(2, '0')}`;
 
@@ -235,6 +236,7 @@ export const Signup = () => {
     };
 
     if (referredBy) profilePayload.referred_by = referredBy;
+    if (authorReferredBy) profilePayload.author_referred_by = authorReferredBy;
 
     // ── Write profile ──────────────────────────────────────────────────────
     const { error: profileError } = await supabase
