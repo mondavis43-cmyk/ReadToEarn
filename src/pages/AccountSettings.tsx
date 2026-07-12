@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from '../hooks/useNavigate';
-import { User, Bell, Shield, CreditCard, FileText, Trash2, Eye, EyeOff, Check, X } from 'lucide-react';
+import { User, Bell, Shield, FileText, Trash2, Eye, EyeOff, Check, X } from 'lucide-react';
 
 type Tab = 'tax' | 'account' | 'notifications' | 'danger';
 
