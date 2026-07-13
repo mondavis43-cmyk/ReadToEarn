@@ -3,7 +3,15 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { ArrowLeft } from 'lucide-react';
-
+import { 
+  validateCashoutAmount, 
+  validateRoutingNumber, 
+  validateAccountNumber, 
+  validateIBAN, 
+  validateSWIFTCode,
+  sanitizeAmount 
+} from '../lib/security';
+import { logAudit } from '../lib/auditLog';
 
 export const Cashout = () => {
   const { user } = useAuth();
@@ -79,60 +87,108 @@ export const Cashout = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (balance < MIN_CASHOUT) {
-      setError(`You need at least $${MIN_CASHOUT.toFixed(2)} to cash out.`);
-      return;
-    }
-
-    if (!validAmount) {
-      setError(`Enter an amount between $${MIN_CASHOUT.toFixed(2)} and $${balance.toFixed(2)}.`);
-      return;
-    }
-
-    if (payoutType === 'wise' && !payoutDetails.trim()) {
-      setError('Please enter your Wise email.');
-      return;
-    }
-    if (payoutType === 'bank_transfer') {
-      if (!accountName.trim()) { setError('Please enter the account holder name.'); return; }
-      if (bankRegion === 'us' && (!routingNumber.trim() || !accountNumber.trim())) {
-        setError('Please enter your routing number and account number.');
-        return;
-      }
-      if (bankRegion === 'international' && (!ibanNumber.trim() || !swiftCode.trim())) {
-        setError('Please enter your IBAN and SWIFT/BIC code.');
-        return;
-      }
-    }
-
     setSubmitting(true);
 
-    const { error: rpcError } = await supabase.rpc('submit_cashout_request', {
-      p_user_id:           user!.id,
-      p_email:             user!.email ?? '',
-      p_amount:            parsedAmount,
-      p_payout_type:       payoutType,
-      p_payout_details:    payoutType === 'bank_transfer'
-        ? bankRegion === 'us'
-          ? `Name: ${accountName} | Routing: ${routingNumber} | Account: ${accountNumber}`
-          : `Name: ${accountName} | IBAN: ${ibanNumber} | SWIFT: ${swiftCode}`
-        : payoutDetails,
-      p_gift_card_brand:   null,
-    });
+    try {
+      // SECURITY FIX #8: Enhanced client-side validation
+      const validation = validateCashoutAmount(parsedAmount, balance, MIN_CASHOUT);
+      if (!validation.valid) {
+        setError(validation.error || 'Invalid amount');
+        setSubmitting(false);
+        return;
+      }
 
-    if (rpcError) {
-      setError(
-        rpcError.message.includes('Insufficient balance')
-          ? 'Your balance has changed. Please refresh and try again.'
-          : rpcError.message
-      );
+      // SECURITY FIX #12: Enhanced bank detail validation
+      if (payoutType === 'wise') {
+        const wiseEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!wiseEmailRegex.test(payoutDetails.trim())) {
+          setError('Please enter a valid email address for Wise.');
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      if (payoutType === 'bank_transfer') {
+        if (!accountName.trim()) {
+          setError('Please enter the account holder name.');
+          setSubmitting(false);
+          return;
+        }
+        if (bankRegion === 'us') {
+          if (!validateRoutingNumber(routingNumber)) {
+            setError('Routing number must be exactly 9 digits (e.g., 123456789).');
+            setSubmitting(false);
+            return;
+          }
+          if (!validateAccountNumber(accountNumber)) {
+            setError('Account number must be 8-17 digits.');
+            setSubmitting(false);
+            return;
+          }
+        }
+        if (bankRegion === 'international') {
+          if (!validateIBAN(ibanNumber)) {
+            setError('Invalid IBAN format (must be 15-34 characters, e.g., GB29NWBK60161331926819).');
+            setSubmitting(false);
+            return;
+          }
+          if (!validateSWIFTCode(swiftCode)) {
+            setError('Invalid SWIFT/BIC code (must be 8-11 characters, e.g., NWBKGB2L).');
+            setSubmitting(false);
+            return;
+          }
+        }
+      }
+
+      // SECURITY FIX #8: Sanitize amount to ensure it's safe
+      const safeAmount = sanitizeAmount(parsedAmount);
+
+      // SECURITY FIX #7: Call RPC that has server-side authorization checks
+      const { error: rpcError } = await supabase.rpc('submit_cashout_request', {
+        p_user_id: user!.id,
+        p_email: user!.email ?? '',
+        p_amount: safeAmount,
+        p_payout_type: payoutType,
+        p_payout_details: payoutType === 'bank_transfer'
+          ? bankRegion === 'us'
+            ? `Name: ${accountName} | Routing: ${routingNumber} | Account: ${accountNumber}`
+            : `Name: ${accountName} | IBAN: ${ibanNumber} | SWIFT: ${swiftCode}`
+          : payoutDetails,
+        p_gift_card_brand: null,
+      });
+
+      if (rpcError) {
+        await logAudit({
+          user_id: user!.id,
+          action: 'cashout_request',
+          details: { amount: safeAmount, payout_type: payoutType },
+          status: 'failure',
+          error_message: rpcError.message,
+        });
+
+        setError(
+          rpcError.message.includes('Insufficient balance')
+            ? 'Your balance has changed. Please refresh and try again.'
+            : rpcError.message
+        );
+        setSubmitting(false);
+        return;
+      }
+
+      await logAudit({
+        user_id: user!.id,
+        action: 'cashout_request',
+        details: { amount: safeAmount, payout_type: payoutType },
+        status: 'success',
+      });
+
+      setSuccess(true);
       setSubmitting(false);
-      return;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'An error occurred';
+      setError(msg);
+      setSubmitting(false);
     }
-
-    setSuccess(true);
-    setSubmitting(false);
   };
 
   if (loading) {
@@ -268,7 +324,6 @@ export const Cashout = () => {
               </div>
             </div>
 
-
             {payoutType === 'wise' && (
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-300 mb-2">Wise Email</label>
@@ -331,48 +386,79 @@ export const Cashout = () => {
                 {bankRegion === 'us' ? (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Routing Number</label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Routing Number (9 digits)</label>
                       <input
                         type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]{9}"
                         value={routingNumber}
-                        onChange={(e) => setRoutingNumber(e.target.value)}
-                        placeholder="9-digit routing number"
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '').slice(0, 9);
+                          setRoutingNumber(val);
+                        }}
+                        placeholder="123456789"
                         maxLength={9}
                         className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 transition"
                       />
+                      {routingNumber && !validateRoutingNumber(routingNumber) && (
+                        <p className="text-red-400 text-xs mt-1">Must be exactly 9 digits</p>
+                      )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Account Number</label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Account Number (8-17 digits)</label>
                       <input
                         type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]{8,17}"
                         value={accountNumber}
-                        onChange={(e) => setAccountNumber(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '').slice(0, 17);
+                          setAccountNumber(val);
+                        }}
                         placeholder="Bank account number"
+                        maxLength={17}
                         className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 transition"
                       />
+                      {accountNumber && !validateAccountNumber(accountNumber) && (
+                        <p className="text-red-400 text-xs mt-1">Must be 8-17 digits</p>
+                      )}
                     </div>
                   </>
                 ) : (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">IBAN</label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">IBAN (e.g., GB29NWBK60161331926819)</label>
                       <input
                         type="text"
                         value={ibanNumber}
-                        onChange={(e) => setIbanNumber(e.target.value.toUpperCase())}
-                        placeholder="e.g. GB29NWBK60161331926819"
+                        onChange={(e) => {
+                          const val = e.target.value.toUpperCase().replace(/\s/g, '');
+                          setIbanNumber(val);
+                        }}
+                        placeholder="GB29NWBK60161331926819"
+                        maxLength={34}
                         className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 transition"
                       />
+                      {ibanNumber && !validateIBAN(ibanNumber) && (
+                        <p className="text-red-400 text-xs mt-1">Invalid IBAN format</p>
+                      )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">SWIFT / BIC Code</label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">SWIFT / BIC Code (e.g., NWBKGB2L)</label>
                       <input
                         type="text"
                         value={swiftCode}
-                        onChange={(e) => setSwiftCode(e.target.value.toUpperCase())}
-                        placeholder="e.g. NWBKGB2L"
+                        onChange={(e) => {
+                          const val = e.target.value.toUpperCase().replace(/\s/g, '');
+                          setSwiftCode(val);
+                        }}
+                        placeholder="NWBKGB2L"
+                        maxLength={11}
                         className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500 transition"
                       />
+                      {swiftCode && !validateSWIFTCode(swiftCode) && (
+                        <p className="text-red-400 text-xs mt-1">Invalid SWIFT/BIC code</p>
+                      )}
                     </div>
                   </>
                 )}

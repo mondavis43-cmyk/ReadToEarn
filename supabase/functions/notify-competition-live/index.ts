@@ -1,12 +1,22 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 );
 
 serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   try {
     const { competition_id, sprint_id, readathon_id } = await req.json();
 
@@ -14,6 +24,9 @@ serve(async (req) => {
     let userIds: string[] = [];
     let title = '';
     let body = '';
+
+    // SECURITY FIX #13: Only notify recent pre-registrations (within 4 weeks)
+    const fourWeeksAgo = new Date(Date.now() - 4 * 7 * 24 * 60 * 60 * 1000).toISOString();
 
     if (competition_id) {
       const { data: comp } = await supabase
@@ -26,7 +39,8 @@ serve(async (req) => {
         .from('elimination_pre_registrations')
         .select('user_id')
         .eq('competition_id', competition_id)
-        .eq('converted', false);
+        .eq('converted', false)
+        .gte('created_at', fourWeeksAgo); // Only recent pre-regs
 
       userIds = (preRegs ?? []).map((r) => r.user_id);
       title = '🏆 Your bracket is live!';
@@ -43,7 +57,8 @@ serve(async (req) => {
         .from('sprint_pre_registrations')
         .select('user_id')
         .eq('sprint_id', sprint_id)
-        .eq('converted', false);
+        .eq('converted', false)
+        .gte('created_at', fourWeeksAgo);
 
       userIds = (preRegs ?? []).map((r) => r.user_id);
       title = '⚡ Your sprint is live!';
@@ -60,7 +75,8 @@ serve(async (req) => {
         .from('readathon_pre_registrations')
         .select('user_id')
         .eq('readathon_id', readathon_id)
-        .eq('converted', false);
+        .eq('converted', false)
+        .gte('created_at', fourWeeksAgo);
 
       userIds = (preRegs ?? []).map((r) => r.user_id);
       title = '📚 Your read-a-thon is live!';
@@ -80,43 +96,32 @@ serve(async (req) => {
     // Bulk insert notifications
     const notifications = userIds.map((user_id) => ({
       user_id,
-      type: 'competition_live',
       title,
       body,
       read: false,
     }));
 
-    const { error } = await supabase.from('notifications').insert(notifications);
+    const { error: notifyError } = await supabase
+      .from('notifications')
+      .insert(notifications);
 
-    if (error) throw error;
-
-    // Mark pre-registrants as notified
-    if (competition_id) {
-      await supabase
-        .from('elimination_pre_registrations')
-        .update({ notified_at: new Date().toISOString() })
-        .eq('competition_id', competition_id)
-        .eq('converted', false);
-    } else if (sprint_id) {
-      await supabase
-        .from('sprint_pre_registrations')
-        .update({ notified_at: new Date().toISOString() })
-        .eq('sprint_id', sprint_id)
-        .eq('converted', false);
-    } else if (readathon_id) {
-      await supabase
-        .from('readathon_pre_registrations')
-        .update({ notified_at: new Date().toISOString() })
-        .eq('readathon_id', readathon_id)
-        .eq('converted', false);
+    if (notifyError) {
+      console.error('Failed to create notifications:', notifyError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to send notifications' }),
+        { status: 500 }
+      );
     }
 
     return new Response(
       JSON.stringify({ success: true, notified: userIds.length }),
       { status: 200 }
     );
-
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    console.error('Error:', err);
+    return new Response(
+      JSON.stringify({ error: 'Internal server error' }),
+      { status: 500 }
+    );
   }
 });
