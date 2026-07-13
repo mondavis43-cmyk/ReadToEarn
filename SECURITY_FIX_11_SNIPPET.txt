@@ -1,0 +1,35 @@
+// SECURITY FIX #11: Update pre-registration conversion with error handling
+// File: src/pages/CompetitionDetail.tsx
+// Lines: ~228-234 (in the handleEnter function)
+
+// BEFORE:
+/*
+if (preReg) {
+  await supabase
+    .from(preRegTable)
+    .update({ converted: true })
+    .eq('id', preReg.id);
+}
+*/
+
+// AFTER:
+if (preReg) {
+  // SECURITY FIX #11: Ensure conversion flag update succeeds
+  const { error: updateError } = await supabase
+    .from(preRegTable)
+    .update({
+      converted: true,
+      converted_at: new Date().toISOString(),
+    })
+    .eq('id', preReg.id);
+
+  if (updateError) {
+    console.error(
+      `[CompetitionDetail] Failed to mark pre-registration as converted: ${updateError.message}`
+    );
+    // Don't proceed with payment if we can't mark the pre-reg
+    throw new Error(
+      'Failed to process pre-registration. Please try again.'
+    );
+  }
+}
