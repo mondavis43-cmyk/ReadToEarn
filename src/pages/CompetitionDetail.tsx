@@ -221,12 +221,19 @@ export const CompetitionDetail = () => {
     }));
 
     if (preReg) {
-      // Fix #4: update converted flag in type-specific table
-      await supabase
-        .from(preRegTable)
-        .update({ converted: true })
-        .eq('id', preReg.id);
-    }
+  const { error: updateError } = await supabase
+    .from(preRegTable)
+    .update({
+      converted: true,
+      converted_at: new Date().toISOString(),
+    })
+    .eq('id', preReg.id);
+
+  if (updateError) {
+    console.error(`[CompetitionDetail] Failed to mark pre-registration as converted: ${updateError.message}`);
+    throw new Error('Failed to process pre-registration. Please try again.');
+  }
+}
 
     window.history.pushState({}, '', '/checkout');
     window.dispatchEvent(new PopStateEvent('popstate'));
