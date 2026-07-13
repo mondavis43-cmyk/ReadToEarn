@@ -36,7 +36,7 @@ import { Elimination } from '../pages/Elimination';
 import { Earn } from '../pages/Earn';
 import { AuthorAMA } from '../pages/AuthorAMA';
 import { AMASession } from '../pages/AMASession';
-import Checkout from '../pages/Checkout';
+import { Checkout } from '../pages/Checkout';
 import { CompetitionDetail } from '../pages/CompetitionDetail';
 import { TimeBoosts } from '../pages/TimeBoosts';
 import { Leaderboard } from '../pages/Leaderboard';
