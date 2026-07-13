@@ -25,7 +25,14 @@ export const Waitlist = () => {
   const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
-    setHasAccess(checkBetaAccess());
+    const access = checkBetaAccess();
+    setHasAccess(access);
+    if (access) {
+      setTimeout(() => {
+        window.history.replaceState({}, '', '/');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }, 500);
+    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,11 +58,13 @@ export const Waitlist = () => {
     setLoading(false);
   };
 
-  // ── BETA ACCESS GRANTED — redirect to app ─────────────────────────────────
+  // ── BETA ACCESS GRANTED ───────────────────────────────────────────────────
   if (hasAccess) {
-    window.history.replaceState({}, '', '/');
-    window.dispatchEvent(new PopStateEvent('popstate'));
-    return null;
+    return (
+      <div className="min-h-screen bg-[#F5F0E8] dark:bg-[#0f0f0f] flex items-center justify-center">
+        <p className="font-serif text-2xl text-[#1B2A4A] dark:text-[#F5F0E8]">Welcome. Taking you in...</p>
+      </div>
+    );
   }
 
   // ── WAITLIST (default) ────────────────────────────────────────────────────
