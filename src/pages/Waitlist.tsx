@@ -1,15 +1,32 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { BookOpen, DollarSign, Brain, ArrowRight } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { Sun, Moon } from 'lucide-react';
+
+// ── BETA ACCESS ───────────────────────────────────────────────────────────────
+const BETA_PASSWORD = 'readtoearn2026'; // change this to whatever you want
+
+const checkBetaAccess = () => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('beta') === BETA_PASSWORD) {
+    sessionStorage.setItem('beta_access', 'true');
+    return true;
+  }
+  return sessionStorage.getItem('beta_access') === 'true';
+};
 
 export const Waitlist = () => {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [hasAccess, setHasAccess] = useState(false);
   const { theme, toggleTheme } = useTheme();
+
+  useEffect(() => {
+    setHasAccess(checkBetaAccess());
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +51,14 @@ export const Waitlist = () => {
     setLoading(false);
   };
 
+  // ── BETA ACCESS GRANTED — redirect to app ─────────────────────────────────
+  if (hasAccess) {
+    window.history.replaceState({}, '', '/');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    return null;
+  }
+
+  // ── WAITLIST (default) ────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#F5F0E8] dark:bg-[#0f0f0f] flex flex-col transition-colors duration-200">
 
