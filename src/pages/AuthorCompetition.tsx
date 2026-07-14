@@ -97,11 +97,46 @@ export const AuthorCompetition = () => {
     : 'bg-[#D4A843]/10 border-[#D4A843]/40 text-[#92700a]';
 
   const handleCheckout = () => {
-    if (!isFormValid()) {
-      setError('Please fill in all required fields and select a book from the dropdown.');
-      return;
-    }
-    setError('');
+  if (!isFormValid()) {
+    setError('Please fill in all required fields and select a book from the dropdown.');
+    return;
+  }
+  setError('');
+
+  const titlesForSubmission = isElimination
+    ? bookTitles.join(', ')
+    : bookTitle;
+
+  sessionStorage.setItem('checkoutItem', JSON.stringify({
+    type:   'competition_sponsored',
+    label:  `${selectedTier.label} ${selectedType} — "${isElimination ? bookTitles[0] : bookTitle}${bookTitles.length > 1 ? ` +${bookTitles.length - 1} more` : ''}"`,
+    amount: selectedTier.cents,
+    metadata: {
+      tier:             selectedTier.label,
+      competition_type: selectedType,
+      prize_pool:       selectedTier.prizePool,
+    },
+  }));
+
+  sessionStorage.setItem('pendingSubmission', JSON.stringify({
+    table: 'author_competition_submissions',
+    data: {
+      author_name:      authorName.trim(),
+      email:            email.trim(),
+      book_titles:      titlesForSubmission,
+      tier_label:       selectedTier.label,
+      price:            selectedTier.price,
+      platform_fee:     selectedTier.platformFee,
+      prize_pool:       selectedTier.prizePool,
+      competition_type: selectedType,
+      notes:            notes.trim() || null,
+      status:           'pending_payment',
+    },
+  }));
+
+  window.history.pushState({}, '', '/checkout');
+  window.dispatchEvent(new PopStateEvent('popstate'));
+};
 
     const titlesForSubmission = isElimination
       ? bookTitles.join(', ')
