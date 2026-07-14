@@ -12,20 +12,54 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 );
 
+// Rate limit: 10 requests per IP per hour
+// Higher than the others since this is an admin-triggered bulk action
+const RATE_LIMIT = 10;
+const WINDOW_SECONDS = 60 * 60;
+
+async function checkRateLimit(ip: string): Promise<boolean> {
+  const windowStart = new Date(Date.now() - WINDOW_SECONDS * 1000).toISOString();
+  const { count } = await supabase
+    .from('rate_limit_log')
+    .select('*', { count: 'exact', head: true })
+    .eq('ip', ip)
+    .eq('endpoint', 'notify-competition-live')
+    .gte('created_at', windowStart);
+  return (count ?? 0) < RATE_LIMIT;
+}
+
+async function logRequest(ip: string) {
+  await supabase
+    .from('rate_limit_log')
+    .insert({ ip, endpoint: 'notify-competition-live', created_at: new Date().toISOString() });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
+    // Rate limiting
+    const ip =
+      req.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
+      req.headers.get('x-real-ip') ??
+      'unknown';
+
+    const allowed = await checkRateLimit(ip);
+    if (!allowed) {
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded. Try again later.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { competition_id, sprint_id, readathon_id } = await req.json();
 
-    // Determine format and fetch pre-registrants
     let userIds: string[] = [];
     let title = '';
     let body = '';
 
-    // SECURITY FIX #13: Only notify recent pre-registrations (within 4 weeks)
     const fourWeeksAgo = new Date(Date.now() - 4 * 7 * 24 * 60 * 60 * 1000).toISOString();
 
     if (competition_id) {
@@ -40,7 +74,7 @@ serve(async (req) => {
         .select('user_id')
         .eq('competition_id', competition_id)
         .eq('converted', false)
-        .gte('created_at', fourWeeksAgo); // Only recent pre-regs
+        .gte('created_at', fourWeeksAgo);
 
       userIds = (preRegs ?? []).map((r) => r.user_id);
       title = '🏆 Your bracket is live!';
@@ -93,7 +127,9 @@ serve(async (req) => {
       return new Response(JSON.stringify({ message: 'No pre-registrants to notify' }), { status: 200 });
     }
 
-    // Bulk insert notifications
+    // Log after validation, before bulk insert
+    await logRequest(ip);
+
     const notifications = userIds.map((user_id) => ({
       user_id,
       title,
