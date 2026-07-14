@@ -118,6 +118,7 @@ const StripeCardForm = ({ item }: { item: CheckoutItem }) => {
               email,
               user_id: user.id,
               payment_method_id: paymentMethod!.id,
+              billing: item.metadata?.plan ?? 'monthly',
             },
           }
         );
