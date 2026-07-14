@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { FEATURES } from '../config/features';
 import { supabase } from '../lib/supabase';
 import { loadStripe } from "@stripe/stripe-js";
 import {
@@ -16,7 +15,6 @@ async function sendEmail(to: string, subject: string, html: string) {
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
-// Validate sessionStorage data shape
 function isValidCheckoutItem(obj: unknown): obj is CheckoutItem {
   if (!obj || typeof obj !== 'object') return false;
   const item = obj as Record<string, unknown>;
@@ -96,13 +94,72 @@ const StripeCardForm = ({ item }: { item: CheckoutItem }) => {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) throw new Error("You must be logged in to checkout.");
 
+      const email = user.email;
+      if (!email) throw new Error("No email found on your account.");
+
+      // ── Subscription flow ──────────────────────────────────────────────────
+      if (item.type === 'subscription') {
+        const cardElement = elements.getElement(CardElement);
+        if (!cardElement) throw new Error("Card element not found.");
+
+        // Create a payment method first
+        const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({
+          type: 'card',
+          card: cardElement,
+          billing_details: { email },
+        });
+        if (pmError) throw new Error(pmError.message);
+
+        // Call create-subscription edge function
+        const { data: subData, error: subError } = await supabase.functions.invoke(
+          'create-subscription',
+          {
+            body: {
+              email,
+              user_id: user.id,
+              payment_method_id: paymentMethod!.id,
+            },
+          }
+        );
+
+        if (subError || !subData) throw new Error(subError?.message || "Failed to create subscription.");
+
+        // Handle 3D Secure / additional auth if needed
+        if (subData.status === 'incomplete' && subData.client_secret) {
+          const { error: confirmError } = await stripe.confirmCardPayment(subData.client_secret);
+          if (confirmError) throw new Error(confirmError.message);
+        }
+
+        // Log payment
+        await supabase.from("payments").insert({
+          user_id: user.id,
+          stripe_payment_intent_id: subData.subscription_id || 'sub_pending',
+          amount: item.amount,
+          payment_type: item.type,
+          label: item.label,
+          metadata: { email, ...item.metadata },
+          status: "succeeded",
+        });
+
+        setLoading(false);
+        window.history.pushState({}, '', '/checkout-success');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+        return;
+      }
+
+      // ── One-time payment flow (all other types) ────────────────────────────
       const { data, error: fnError } = await supabase.functions.invoke(
         "create-payment-intent",
         {
           body: {
             amount: item.amount,
             currency: "usd",
-            metadata: { user_id: user.id, type: item.type, ...item.metadata },
+            metadata: {
+              user_id: user.id,
+              email,
+              type: item.type,
+              ...item.metadata,
+            },
           },
         }
       );
@@ -114,7 +171,7 @@ const StripeCardForm = ({ item }: { item: CheckoutItem }) => {
 
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
         data.clientSecret,
-        { payment_method: { card: cardElement } }
+        { payment_method: { card: cardElement, billing_details: { email } } }
       );
 
       if (stripeError) throw new Error(stripeError.message);
@@ -126,7 +183,7 @@ const StripeCardForm = ({ item }: { item: CheckoutItem }) => {
           amount: item.amount,
           payment_type: item.type,
           label: item.label,
-          metadata: item.metadata || {},
+          metadata: { email, ...item.metadata },
           status: "succeeded",
         });
         if (payErr) console.error("[Checkout] payment log error:", payErr);
@@ -184,20 +241,17 @@ const PayPalButton = ({ item }: { item: CheckoutItem }) => {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) throw new Error("You must be logged in to checkout.");
 
-      // SECURITY FIX #9: Generate idempotency key to prevent duplicate orders
       const idempotencyKey = generateIdempotencyKey('paypal', {
         user_id: user.id,
         amount: item.amount,
         type: item.type,
-        timestamp: Math.floor(Date.now() / 1000), // Round to nearest second
+        timestamp: Math.floor(Date.now() / 1000),
       });
 
-      // Check if we already have a pending order for this session
       const existingOrderKey = `paypal_order_${idempotencyKey}`;
       const cachedOrderId = sessionStorage.getItem(existingOrderKey);
 
       if (cachedOrderId) {
-        // Use existing order instead of creating a new one
         const approvalUrl = `https://www.paypal.com/checkoutnow?token=${cachedOrderId}`;
         window.location.href = approvalUrl;
         return;
@@ -206,13 +260,11 @@ const PayPalButton = ({ item }: { item: CheckoutItem }) => {
       const { data: order, error: fnError } = await supabase.functions.invoke(
         "create-paypal-order",
         {
-          headers: {
-            'Idempotency-Key': idempotencyKey,
-          },
+          headers: { 'Idempotency-Key': idempotencyKey },
           body: {
             amount: item.amount,
             description: item.label,
-            metadata: { user_id: user.id, type: item.type, ...item.metadata },
+            metadata: { user_id: user.id, email: user.email, type: item.type, ...item.metadata },
           },
         }
       );
@@ -222,10 +274,8 @@ const PayPalButton = ({ item }: { item: CheckoutItem }) => {
       const approvalUrl = order.links?.find((l: any) => l.rel === "approve")?.href;
       if (!approvalUrl) throw new Error("No PayPal approval URL returned.");
 
-      // Cache the order ID to prevent duplicate creation on refresh
       sessionStorage.setItem(existingOrderKey, order.id);
-      sessionStorage.setItem(`${existingOrderKey}_expires`, String(Date.now() + 30 * 60 * 1000)); // 30 min
-
+      sessionStorage.setItem(`${existingOrderKey}_expires`, String(Date.now() + 30 * 60 * 1000));
       sessionStorage.setItem("paypalItemType", item.type);
       window.location.href = approvalUrl;
     } catch (err: unknown) {
