@@ -7,8 +7,7 @@ async function sendEmail(to: string, subject: string, html: string) {
   await supabase.functions.invoke('send-email', { body: { to, subject, html } });
 }
 
-// Validate sessionStorage data shape
-function isValidCheckoutItem(obj: unknown): obj is { type: string; amount: number; label: string } {
+function isValidCheckoutItem(obj: unknown): obj is { type: string; amount: number; label: string; metadata?: Record<string, string | number> } {
   if (!obj || typeof obj !== 'object') return false;
   const item = obj as Record<string, unknown>;
   return (
@@ -34,6 +33,7 @@ const REDIRECT_MAP: Record<string, string> = {
   sensitivity_reader: '/author-dashboard',
   subscription: '/profile',
   time_boost: '/profile',
+  sponsored_pin: '/bulletin-board',
   competition_entry: FEATURES.elimination ? '/elimination' : '/sprints',
   tournament_entry: FEATURES.elimination ? '/elimination' : '/sprints',
   sprint_entry: '/sprints',
@@ -57,12 +57,11 @@ export const CheckoutSuccess = () => {
 
   async function handleCapture() {
     try {
-      // 1. Get PayPal order ID from URL (?token=XXXX)
       const params = new URLSearchParams(window.location.search);
-      const orderId = params.get('token');
-      if (!orderId) throw new Error('No PayPal order ID found in URL.');
+      const paypalOrderId = params.get('token');
+      const isPayPal = !!paypalOrderId;
 
-      // 2. Get logged-in user — wait up to 5s for session to restore after redirect
+      // Get logged-in user — wait up to 5s for session to restore after redirect
       let user = null;
       for (let i = 0; i < 10; i++) {
         const { data } = await supabase.auth.getUser();
@@ -71,22 +70,24 @@ export const CheckoutSuccess = () => {
       }
       if (!user) throw new Error('You must be logged in.');
 
-      // 3. Capture the PayPal order via edge function
-      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/capture-paypal-order`;
-      const captureRes = await fetch(fnUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ order_id: orderId }),
-      });
-      const capture = await captureRes.json();
-      if (!captureRes.ok) throw new Error(capture?.error || 'Capture request failed.');
-      if (capture?.status !== 'COMPLETED') throw new Error(`Payment not completed (status: ${capture?.status ?? 'unknown'}).`);
+      // ── PayPal: capture the order first ───────────────────────────────────
+      if (isPayPal) {
+        const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/capture-paypal-order`;
+        const captureRes = await fetch(fnUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ order_id: paypalOrderId }),
+        });
+        const capture = await captureRes.json();
+        if (!captureRes.ok) throw new Error(capture?.error || 'Capture request failed.');
+        if (capture?.status !== 'COMPLETED') throw new Error(`Payment not completed (status: ${capture?.status ?? 'unknown'}).`);
+      }
 
-      // 4. Pull item + pending submission from sessionStorage (with validation)
+      // ── Both flows: read sessionStorage ───────────────────────────────────
       const rawItem = JSON.parse(sessionStorage.getItem('checkoutItem') ?? 'null');
       const rawPending = JSON.parse(sessionStorage.getItem('pendingSubmission') ?? 'null');
       const item = isValidCheckoutItem(rawItem) ? rawItem : null;
@@ -94,39 +95,47 @@ export const CheckoutSuccess = () => {
 
       if (!item) throw new Error('Checkout item missing or invalid in session.');
 
-      // 5. Log payment to DB
+      // ── Log payment ───────────────────────────────────────────────────────
       const { error: paymentLogError } = await supabase.from('payments').insert({
         user_id: user.id,
-        paypal_order_id: orderId,
+        ...(isPayPal ? { paypal_order_id: paypalOrderId } : {}),
         amount: item.amount,
         payment_type: item.type,
         label: item.label,
-        metadata: { ...(item.metadata ?? {}), is_late: pending?.is_late ?? false },
+        metadata: { ...(item.metadata ?? {}), is_late: (rawPending as any)?.is_late ?? false },
         status: 'succeeded',
       });
       if (paymentLogError) console.error('[CheckoutSuccess] payments log error:', paymentLogError);
 
-      // Subscription welcome email
-      if (item.type === 'subscription' && user.email) {
-        const plan = (item as any).metadata?.plan === 'annual' ? 'Annual' : 'Monthly';
-        const amount = (item.amount / 100).toFixed(2);
-        await sendEmail(
-          user.email,
-          'Welcome to ReadToEarn Premium! 🎉',
-          `<p>Hi there,</p>
-          <p>Your <strong>${plan} subscription</strong> is now active. You paid <strong>$${amount}</strong>.</p>
-          <p>You now have access to:</p>
-          <ul>
-            <li>Early access to new bounties (2 hours before free members)</li>
-            <li>Entry into the monthly subscriber giveaway</li>
-            <li>Access to exclusive sprints and competitions</li>
-          </ul>
-          <p><a href="https://joinreadtoearn.com">Head to ReadToEarn to start earning →</a></p>
-          <p>— The ReadToEarn Team</p>`
-        );
+      // ── Subscription: flip is_upgraded + welcome email ────────────────────
+      if (item.type === 'subscription') {
+        const { error: upgradeError } = await supabase
+          .from('profiles')
+          .update({ is_upgraded: true })
+          .eq('id', user.id);
+        if (upgradeError) console.error('[CheckoutSuccess] is_upgraded flip error:', upgradeError);
+
+        if (user.email) {
+          const plan = item.metadata?.plan === 'annual' ? 'Annual' : 'Monthly';
+          const amount = (item.amount / 100).toFixed(2);
+          await sendEmail(
+            user.email,
+            'Welcome to ReadToEarn Premium! 🎉',
+            `<p>Hi there,</p>
+            <p>Your <strong>${plan} subscription</strong> is now active. You paid <strong>$${amount}</strong>.</p>
+            <p>You now have access to:</p>
+            <ul>
+              <li>Early access to new bounties (2 hours before free members)</li>
+              <li>Entry into the monthly subscriber giveaway</li>
+              <li>Access to exclusive sprints and competitions</li>
+            </ul>
+            <p><a href="https://joinreadtoearn.com">Head to ReadToEarn to start earning →</a></p>
+            <p>— The ReadToEarn Team</p>`
+          );
+        }
       }
 
-      // 6. Insert pending submission
+      // ── Insert pending submission ─────────────────────────────────────────
       if (pending) {
         if (item.type === 'listing') {
           const { error } = await supabase.from('author_submissions').insert(pending);
@@ -153,34 +162,21 @@ export const CheckoutSuccess = () => {
             }
           }
 
-          // Trigger ambassador payout (25% commission to referrer)
           const tierMap: Record<number, string> = {
-            1: 'single',
-            3: 'trilogy',
-            5: 'series',
-            10: 'catalog',
-            25: 'imprint',
+            1: 'single', 3: 'trilogy', 5: 'series', 10: 'catalog', 25: 'imprint',
           };
           const tier = tierMap[bundleSize] || 'single';
 
-          // SECURITY FIX #18: Track ambassador payout retry status
           const { error: ambError } = await supabase.functions.invoke(
             'process-ambassador-payout',
-            {
-              body: { buyer_id: user.id, listing_tier: tier },
-            }
+            { body: { buyer_id: user.id, listing_tier: tier } }
           );
-
           if (ambError) {
-            // Mark payment as needing ambassador retry
             await supabase
               .from('payments')
               .update({
                 status: 'succeeded_needs_ambassador_retry',
-                error_details: {
-                  error: ambError.message,
-                  attempted_at: new Date().toISOString(),
-                },
+                error_details: { error: ambError.message, attempted_at: new Date().toISOString() },
               })
               .eq('id', paymentLogError?.hint || '');
             console.warn('[CheckoutSuccess] Ambassador payout pending retry:', ambError.message);
@@ -195,21 +191,15 @@ export const CheckoutSuccess = () => {
           });
           if (error) console.error('[CheckoutSuccess] readathon_entry insert error:', error);
 
-          // SECURITY FIX #5: Use atomic RPC to increment prize pool
           const entryFee = item.amount / 100;
           const readerShare = entryFee - entryFee * 0.25;
-
           const { error: poolError } = await supabase.rpc('increment_prize_pool', {
             p_readathon_id: pending.readathon_id,
             p_sprint_id: null,
             p_competition_id: null,
             p_amount: readerShare,
           });
-
-          if (poolError) {
-            console.error('[CheckoutSuccess] Failed to increment readathon prize pool:', poolError);
-            throw new Error('Failed to process prize pool update: ' + poolError.message);
-          }
+          if (poolError) throw new Error('Failed to process prize pool update: ' + poolError.message);
 
         } else if (item.type === 'sprint_entry') {
           const { error } = await supabase.from('sprint_entries').insert({
@@ -220,21 +210,15 @@ export const CheckoutSuccess = () => {
           });
           if (error) console.error('[CheckoutSuccess] sprint_entry insert error:', error);
 
-          // SECURITY FIX #5: Use atomic RPC to increment prize pool
           const entryFee = item.amount / 100;
           const readerShare = entryFee - entryFee * 0.25;
-
           const { error: poolError } = await supabase.rpc('increment_prize_pool', {
             p_sprint_id: pending.sprint_id,
             p_readathon_id: null,
             p_competition_id: null,
             p_amount: readerShare,
           });
-
-          if (poolError) {
-            console.error('[CheckoutSuccess] Failed to increment sprint prize pool:', poolError);
-            throw new Error('Failed to process prize pool update: ' + poolError.message);
-          }
+          if (poolError) throw new Error('Failed to process prize pool update: ' + poolError.message);
 
         } else if (item.type === 'competition_entry') {
           const { error } = await supabase.from('competition_entries').insert({
@@ -247,21 +231,15 @@ export const CheckoutSuccess = () => {
           });
           if (error) console.error('[CheckoutSuccess] competition_entry insert error:', error);
 
-          // SECURITY FIX #5: Use atomic RPC to increment prize pool
           const entryFee = item.amount / 100;
           const readerShare = entryFee - entryFee * 0.25;
-
           const { error: poolError } = await supabase.rpc('increment_prize_pool', {
             p_competition_id: pending.competition_id,
             p_sprint_id: null,
             p_readathon_id: null,
             p_amount: readerShare,
           });
-
-          if (poolError) {
-            console.error('[CheckoutSuccess] Failed to increment competition prize pool:', poolError);
-            throw new Error('Failed to process prize pool update: ' + poolError.message);
-          }
+          if (poolError) throw new Error('Failed to process prize pool update: ' + poolError.message);
 
         } else if (item.type === 'time_boost') {
           const boostCount = pending.boosts ?? item.metadata?.boosts ?? 0;
@@ -282,29 +260,20 @@ export const CheckoutSuccess = () => {
           }
 
         } else if (item.type === 'beta_reader' || item.type === 'sensitivity_reader') {
-          // SECURITY FIX #6: Validate submission data structure
           const ALLOWED_TABLES = ['author_beta_reader_submissions', 'author_sensitivity_submissions'];
           if (!pending?.table || !ALLOWED_TABLES.includes(pending.table)) {
-            console.error('[CheckoutSuccess] Invalid table name:', pending?.table);
             throw new Error('Invalid submission table');
           }
-
-          // Validate data shape
           if (!pending.data || typeof pending.data !== 'object') {
             throw new Error('Invalid submission data');
           }
-
           const { error: insertError } = await supabase.from(pending.table).insert({
             ...pending.data,
             status: 'active',
           });
-          if (insertError) {
-            console.error('[CheckoutSuccess] Insert error:', insertError);
-            throw new Error('Failed to insert submission: ' + insertError.message);
-          }
+          if (insertError) throw new Error('Failed to insert submission: ' + insertError.message);
 
         } else if (pending.table) {
-          // SECURITY FIX #6: Strict whitelist validation for all table insertions
           const ALLOWED_TABLES = [
             'author_bounty_submissions',
             'author_competition_submissions',
@@ -318,19 +287,13 @@ export const CheckoutSuccess = () => {
             'tournament_participants',
           ];
           if (!ALLOWED_TABLES.includes(pending.table)) {
-            console.error('[CheckoutSuccess] Invalid table name:', pending.table);
             throw new Error('Invalid submission table: ' + pending.table);
           }
-
-          // Validate data is an object
           if (!pending.data || typeof pending.data !== 'object') {
             throw new Error('Invalid submission data');
           }
-
           const { error } = await supabase.from(pending.table).insert(pending.data);
           if (error) console.error('[CheckoutSuccess] generic table insert error:', error);
-        } else if (import.meta.env.DEV) {
-          console.warn('[CheckoutSuccess] No handler for item.type:', item.type);
         }
 
         sessionStorage.removeItem('pendingSubmission');
@@ -338,7 +301,6 @@ export const CheckoutSuccess = () => {
         sessionStorage.removeItem('paypalItemType');
       }
 
-      // Log successful checkout
       await logAudit({
         user_id: user.id,
         action: 'payment_success',
@@ -346,7 +308,6 @@ export const CheckoutSuccess = () => {
         status: 'success',
       });
 
-      // 7. Done
       setStatus('success');
       setMessage('Payment confirmed!');
       setTimeout(() => goTo(REDIRECT_MAP[item.type] ?? '/profile'), 2500);
@@ -355,7 +316,6 @@ export const CheckoutSuccess = () => {
       const msg = err instanceof Error ? err.message : 'Something went wrong.';
       console.error('[CheckoutSuccess] Error:', msg, err);
 
-      // Log failed payment
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -385,7 +345,6 @@ export const CheckoutSuccess = () => {
             <p className="text-gray-400">{message}</p>
           </>
         )}
-
         {status === 'success' && (
           <>
             <div className="text-6xl mb-4">🎉</div>
@@ -393,7 +352,6 @@ export const CheckoutSuccess = () => {
             <p className="text-gray-500">Redirecting you now...</p>
           </>
         )}
-
         {status === 'error' && (
           <>
             <div className="text-6xl mb-4">❌</div>
