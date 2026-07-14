@@ -68,12 +68,21 @@ export const Sprints = () => {
     if (userId) fetchPreRegs();
   }, [userId]);
 
+  // Runs when selected or userId changes (normal flow)
   useEffect(() => {
-    if (selected) {
+    if (selected && userId) {
       checkEntry();
       if (tab === 'active') loadLeaderboard();
     }
   }, [selected, userId]);
+
+  // Force re-check on mount — catches the case where user returns from
+  // /checkout-success and selected hasn't changed so the above effect skips
+  useEffect(() => {
+    if (selected && userId) {
+      checkEntry();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchSprints = async () => {
     setLoading(true);
@@ -88,7 +97,6 @@ export const Sprints = () => {
     setSprints(list);
     setSelected(list[0] ?? null);
 
-    // fetch pre-reg counts for upcoming
     if (tab === 'upcoming' && list.length > 0) {
       const ids = list.map((s) => s.id);
       const { data: counts } = await supabase
@@ -161,17 +169,16 @@ export const Sprints = () => {
     if (sprint.is_sponsored) {
       supabase.from('sprint_entries').insert({
         sprint_id: sprint.id,
+        user_id: userId,
         paid_at: new Date().toISOString(),
         status: 'active',
       }).then(() => navigateTo('/sprints'));
       return;
     }
-    // Check if within 48hr window (active status = window is open)
-    // Late fee applies if notified_at + 24hrs has passed -- handled server-side
-    // For now, pass entry_fee; Edge Function determines if late fee applies
     sessionStorage.setItem('pendingSubmission', JSON.stringify({
-      type: 'sprint_entry',
+      table: 'sprint_entries',       // required by isValidPendingSubmission
       sprint_id: sprint.id,
+      user_id: userId,
       entry_fee: sprint.entry_fee,
     }));
     sessionStorage.setItem('checkoutItem', JSON.stringify({
@@ -187,6 +194,7 @@ export const Sprints = () => {
     if (sprint.is_sponsored) {
       supabase.from('sprint_entries').insert({
         sprint_id: sprint.id,
+        user_id: userId,
         paid_at: new Date().toISOString(),
         status: 'active',
       }).then(() => navigateTo('/sprints'));
@@ -194,8 +202,9 @@ export const Sprints = () => {
     }
     const lateFee = sprint.entry_fee * 2;
     sessionStorage.setItem('pendingSubmission', JSON.stringify({
-      type: 'sprint_entry',
+      table: 'sprint_entries',       // required by isValidPendingSubmission
       sprint_id: sprint.id,
+      user_id: userId,
       entry_fee: lateFee,
       is_late: true,
     }));
@@ -217,7 +226,6 @@ export const Sprints = () => {
   const rankLabel = (i: number) => ['🥇', '🥈', '🥉'][i] ?? `#${i + 1}`;
 
   const isWithin48HrWindow = (sprint: Sprint) => {
-    // Active sprint within 24hrs of start_date = normal entry fee
     const start = new Date(sprint.start_date).getTime();
     const now = Date.now();
     return now <= start + 24 * 60 * 60 * 1000;
