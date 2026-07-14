@@ -22,6 +22,7 @@ function isValidCheckoutItem(obj: unknown): obj is CheckoutItem {
     'listing', 'bounty', 'competition_sponsored', 'quick_task', 'survey',
     'beta_reader', 'sensitivity_reader', 'subscription', 'time_boost',
     'competition_entry', 'tournament_entry', 'sprint_entry', 'readathon_entry'
+    'sponsored_pin'
   ];
   return (
     typeof item.type === 'string' && validTypes.includes(item.type) &&
@@ -50,7 +51,8 @@ export type CheckoutItem = {
   | "competition_entry"
   | "tournament_entry"
   | "sprint_entry"
-  | "readathon_entry";
+  | "readathon_entry"
+  | "sponsored_pin";
   label: string;
   amount: number;
   metadata?: Record<string, string | number>;
