@@ -41,6 +41,12 @@ const emptyQuestion = (): Question => ({
   question: '', correct: '', wrong1: '', wrong2: '', wrong3: '',
 });
 
+// Capture author_ref from URL or sessionStorage
+const urlParams = new URLSearchParams(window.location.search);
+const urlRef = urlParams.get('author_ref');
+if (urlRef) sessionStorage.setItem('author_ref', urlRef);
+const authorRef = urlRef || sessionStorage.getItem('author_ref');
+
 export const AuthorSubmit = () => {
   const { navigateTo } = useNavigate();
   const [submitted, setSubmitted] = useState(false);
@@ -111,7 +117,6 @@ export const AuthorSubmit = () => {
       setError(`Please fill out all required fields including all ${questions.length} questions.`);
       return;
     }
-    // Prevent race condition: wait for credit check to complete
     if (checkingCredits) {
       setError('Please wait - verifying your credits...');
       return;
@@ -137,6 +142,7 @@ export const AuthorSubmit = () => {
           bundle_size: 1,
           amount_paid: 0,
           status: 'paid',
+          referred_by: authorRef || null,
         });
 
       if (insertError) {
@@ -158,6 +164,9 @@ export const AuthorSubmit = () => {
           .eq('email', email);
       }
 
+      // Clear referral code after use
+      sessionStorage.removeItem('author_ref');
+
       setSubmitted(true);
       setLoading(false);
       return;
@@ -178,6 +187,7 @@ export const AuthorSubmit = () => {
       bundle_size: selectedBundle.books,
       amount_paid: selectedBundle.total,
       status: 'paid',
+      referred_by: authorRef || null,
     }));
 
     sessionStorage.setItem('checkoutItem', JSON.stringify({
@@ -188,6 +198,7 @@ export const AuthorSubmit = () => {
         bundle: selectedBundle.label,
         books: selectedBundle.books,
         email,
+        referred_by: authorRef || '',
       },
     }));
 
