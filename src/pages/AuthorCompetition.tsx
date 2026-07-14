@@ -51,13 +51,13 @@ const COMPETITION_TYPES = [
 ];
 
 export const AuthorCompetition = () => {
-  const { navigateTo }  = useNavigate();
-  const { isDark }      = useTheme();
+  const { navigateTo } = useNavigate();
+  const { isDark }     = useTheme();
 
-  const [error, setError]           = useState('');
-  const [authorName, setAuthorName] = useState('');
-  const [email, setEmail]           = useState('');
-  const [notes, setNotes]           = useState('');
+  const [error, setError]               = useState('');
+  const [authorName, setAuthorName]     = useState('');
+  const [email, setEmail]               = useState('');
+  const [notes, setNotes]               = useState('');
   const [selectedTier, setSelectedTier] = useState(COMPETITION_TIERS[0]);
   const [selectedType, setSelectedType] = useState(COMPETITION_TYPES[0]);
 
@@ -90,60 +90,22 @@ export const AuthorCompetition = () => {
       ? 'bg-[#1B2A4A]/40 border-[#D4A843]/20 text-[#F5F0E8] focus:border-[#D4A843]/60 placeholder:text-[#F5F0E8]/30'
       : 'bg-white border-[#1B2A4A]/20 text-[#1B2A4A] focus:border-[#D4A843] placeholder:text-[#1B2A4A]/30'
   }`;
-  const divider = isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10';
-  const bg      = isDark ? 'bg-[#0f1623]'        : 'bg-[#F5F0E8]';
-  const calloutBg = isDark
-    ? 'bg-[#D4A843]/10 border-[#D4A843]/30 text-[#D4A843]'
-    : 'bg-[#D4A843]/10 border-[#D4A843]/40 text-[#92700a]';
+  const divider   = isDark ? 'border-[#F5F0E8]/10' : 'border-[#1B2A4A]/10';
+  const bg        = isDark ? 'bg-[#0f1623]'        : 'bg-[#F5F0E8]';
 
   const handleCheckout = () => {
-  if (!isFormValid()) {
-    setError('Please fill in all required fields and select a book from the dropdown.');
-    return;
-  }
-  setError('');
-
-  const titlesForSubmission = isElimination
-    ? bookTitles.join(', ')
-    : bookTitle;
-
-  sessionStorage.setItem('checkoutItem', JSON.stringify({
-    type:   'competition_sponsored',
-    label:  `${selectedTier.label} ${selectedType} — "${isElimination ? bookTitles[0] : bookTitle}${bookTitles.length > 1 ? ` +${bookTitles.length - 1} more` : ''}"`,
-    amount: selectedTier.cents,
-    metadata: {
-      tier:             selectedTier.label,
-      competition_type: selectedType,
-      prize_pool:       selectedTier.prizePool,
-    },
-  }));
-
-  sessionStorage.setItem('pendingSubmission', JSON.stringify({
-    table: 'author_competition_submissions',
-    data: {
-      author_name:      authorName.trim(),
-      email:            email.trim(),
-      book_titles:      titlesForSubmission,
-      tier_label:       selectedTier.label,
-      price:            selectedTier.price,
-      platform_fee:     selectedTier.platformFee,
-      prize_pool:       selectedTier.prizePool,
-      competition_type: selectedType,
-      notes:            notes.trim() || null,
-      status:           'pending_payment',
-    },
-  }));
-
-  window.history.pushState({}, '', '/checkout');
-  window.dispatchEvent(new PopStateEvent('popstate'));
-};
+    if (!isFormValid()) {
+      setError('Please fill in all required fields and select a book from the dropdown.');
+      return;
+    }
+    setError('');
 
     const titlesForSubmission = isElimination
       ? bookTitles.join(', ')
       : bookTitle;
 
     sessionStorage.setItem('checkoutItem', JSON.stringify({
-      type:   'author_competition',
+      type:   'competition_sponsored',
       label:  `${selectedTier.label} ${selectedType} — "${isElimination ? bookTitles[0] : bookTitle}${bookTitles.length > 1 ? ` +${bookTitles.length - 1} more` : ''}"`,
       amount: selectedTier.cents,
       metadata: {
@@ -216,7 +178,9 @@ export const AuthorCompetition = () => {
           <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>How It Works</h2>
           <ol className="space-y-3">
             {[
-              COMPETITION_TYPES.length > 1 ? 'Choose a competition format — Sprint, Read-A-Thon, or Elimination Bracket.' : 'Your book will be featured in a Sprint competition.',
+              COMPETITION_TYPES.length > 1
+                ? 'Choose a competition format — Sprint, Read-A-Thon, or Elimination Bracket.'
+                : 'Your book will be featured in a Sprint competition.',
               'Select a tier — this sets your platform fee and the reader prize pool.',
               'We schedule and run the event. Readers compete for the prize pool.',
               'You get visibility, quiz engagement, and real reader data.',
@@ -232,38 +196,40 @@ export const AuthorCompetition = () => {
         </div>
 
         {/* Competition format — only show picker when multiple formats exist */}
-        {COMPETITION_TYPES.length > 1 && <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
-          <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Competition Format</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-            {COMPETITION_TYPES.map(type => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => {
-                  setSelectedType(type);
-                  setBookTitle(''); setBookId('');
-                  setBookTitles([]); setBookIds([]);
-                }}
-                className={`p-4 rounded-xl border text-left transition-colors ${
-                  selectedType === type
-                    ? 'border-[#D4A843] bg-[#D4A843]/10'
-                    : isDark
-                      ? 'border-[#F5F0E8]/10 hover:border-[#D4A843]/40'
-                      : 'border-[#1B2A4A]/10 hover:border-[#D4A843]/40'
-                }`}
-              >
-                <p className={`font-semibold text-sm ${textPrimary}`}>{type}</p>
-                <p className={`text-xs mt-1 ${textMuted}`}>
-                  {type === 'Sprint'
-                    ? 'Readers quiz only on your book within a set time window.'
-                    : type === 'Read-A-Thon'
-                      ? 'A 4×4 bingo card of books by genre. Your book is guaranteed a square. Readers pass quizzes to complete rows and score Bingos.'
-                      : 'A three round bracket. If you have one listing, your book will be the featured book in one of the rounds. If you have at least three listings, the entire competition can revolve around those three books.'}
-                </p>
-              </button>
-            ))}
+        {COMPETITION_TYPES.length > 1 && (
+          <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
+            <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Competition Format</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+              {COMPETITION_TYPES.map(type => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => {
+                    setSelectedType(type);
+                    setBookTitle(''); setBookId('');
+                    setBookTitles([]); setBookIds([]);
+                  }}
+                  className={`p-4 rounded-xl border text-left transition-colors ${
+                    selectedType === type
+                      ? 'border-[#D4A843] bg-[#D4A843]/10'
+                      : isDark
+                        ? 'border-[#F5F0E8]/10 hover:border-[#D4A843]/40'
+                        : 'border-[#1B2A4A]/10 hover:border-[#D4A843]/40'
+                  }`}
+                >
+                  <p className={`font-semibold text-sm ${textPrimary}`}>{type}</p>
+                  <p className={`text-xs mt-1 ${textMuted}`}>
+                    {type === 'Sprint'
+                      ? 'Readers quiz only on your book within a set time window.'
+                      : type === 'Read-A-Thon'
+                        ? 'A 4×4 bingo card of books by genre. Your book is guaranteed a square. Readers pass quizzes to complete rows and score Bingos.'
+                        : 'A three round bracket. If you have one listing, your book will be the featured book in one of the rounds. If you have at least three listings, the entire competition can revolve around those three books.'}
+                  </p>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>}
+        )}
 
         {/* Tier picker */}
         <div className={`rounded-xl border p-6 mb-6 ${cardBg}`}>
@@ -301,13 +267,13 @@ export const AuthorCompetition = () => {
           <h2 className={`font-serif text-xl mb-4 ${textPrimary}`}>Competition Summary</h2>
           <div className="space-y-2">
             {[
-              ['Tier',          selectedTier.label],
-              ['Format',        isReadAThon
+              ['Tier',         selectedTier.label],
+              ['Format',       isReadAThon
                 ? 'Book Bingo — your book is guaranteed to be a featured square on the 4×4 card'
                 : selectedType],
-              ['Price',         `$${selectedTier.price}`],
-              ['Platform Fee',  `$${selectedTier.platformFee}`],
-              ['Prize Pool',    `$${selectedTier.prizePool}`],
+              ['Price',        `$${selectedTier.price}`],
+              ['Platform Fee', `$${selectedTier.platformFee}`],
+              ['Prize Pool',   `$${selectedTier.prizePool}`],
             ].map(([label, val]) => (
               <div key={label} className="flex justify-between items-start gap-4">
                 <span className={`text-sm flex-shrink-0 ${textMuted}`}>{label}</span>
