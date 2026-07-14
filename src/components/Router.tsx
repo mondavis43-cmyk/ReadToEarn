@@ -100,7 +100,7 @@ if (route === '/admin/book-listings') return <AdminRoute><AdminBookListings /></
 if (route === '/reset-password') return <ResetPassword />;
 if (route === '/terms') return <TermsOfService />;
 if (route === '/privacy') return <PrivacyPolicy />;
-if (route === '/checkout/success') return <CheckoutSuccess />;  
+if (route === '/checkout-success') return <CheckoutSuccess />;  
 
 if (route === '/ama') return <AuthorAMA />;
 if (route === '/ama-request') return <AMARequest />;
@@ -164,7 +164,7 @@ const KNOWN_ROUTES = [
   '/surveys',
   '/beta-reader-panels',
   '/sensitivity-reader-panels',
-  '/checkout/success',
+  '/checkout-success',
 ];
 
 const isKnownRoute =
