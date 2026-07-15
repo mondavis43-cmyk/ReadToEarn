@@ -309,12 +309,60 @@ const maybeCreateBounty = async (id: string) => {
   if (error) { alert('Bounty create error (insert): ' + error.message); return; }
 };
 
+  const maybeCreateBetaPanel = async (id: string) => {
+  if (activeTab !== 'beta') return;
+  const submission = submissions.find(s => s.id === id);
+  if (!submission) return;
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('email', submission.email)
+    .maybeSingle();
+
+  const readers = parseInt(submission.readers, 10) || 1;
+  const price = parseFloat(submission.price) || 0;
+  const payoutPerResponse = Math.round((price / readers) * 100) / 100;
+
+  let questions = [];
+  try {
+    const raw = typeof submission.custom_questions === 'string'
+      ? JSON.parse(submission.custom_questions)
+      : submission.custom_questions;
+    if (Array.isArray(raw)) {
+      questions = raw.map((q: any, idx: number) => ({
+        question_text: q.question || q.question_text || '',
+        required: q.required ?? false,
+        order_index: idx,
+      }));
+    }
+  } catch { /* leave empty */ }
+
+  const { error } = await supabase.from('beta_panels').insert({
+    author_id:           profile?.id ?? null,
+    author_name:         submission.author_name,
+    title:               submission.book_title,
+    genre:               submission.genre,
+    excerpt:             submission.excerpt,
+    chapter_text:        submission.excerpt,
+    additional_notes:    submission.blurb || submission.notes || null,
+    max_responses:       readers,
+    payout_per_response: payoutPerResponse,
+    responses_count:     0,
+    status:              'active',
+    questions,
+  });
+
+  if (error) alert('Beta panel create error: ' + error.message);
+};
+
 const updateStatus = async (id: string, status: SubmissionStatus) => {
   const table = TAB_TABLES[activeTab];
 
   if (status === 'approved' || status === 'active') {
     await maybeWritePayoutPerResponse(id);
     await maybeCreateBounty(id);
+    await maybeCreateBetaPanel(id);
   }
 
   const { error } = await supabase.from(table).update({ status }).eq('id', id);
