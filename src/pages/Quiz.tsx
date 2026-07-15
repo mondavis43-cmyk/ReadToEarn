@@ -816,7 +816,7 @@ return (
       {alreadyCompleted && (
         <div className={`${cardBg} border ${cardBorder} rounded-xl p-4 flex items-start gap-3`}>
           <AlertCircle size={18} className="text-amber-400 mt-0.5 shrink-0" />
-          <p className={`text-sm ${subColor}`}>You've already taken the quiz for this book. You can review the questions, but you won't be able to earn from it again.</p>
+          <p className={`text-sm ${subColor}`}>You've already taken the quiz for this book. You cannot earn from it again at this time.</p>
         </div>
       )}
 
