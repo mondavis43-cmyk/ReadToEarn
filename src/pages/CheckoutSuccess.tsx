@@ -275,17 +275,18 @@ export const CheckoutSuccess = () => {
 
         } else if (pending.table) {
           const ALLOWED_TABLES = [
-            'author_bounty_submissions',
-            'author_competition_submissions',
-            'author_quick_task_submissions',
-            'author_survey_submissions',
-            'author_sensitivity_submissions',
-            'sponsored_pins',
-            'subscriptions',
-            'profiles',
-            'user_boost_purchases',
-            'tournament_participants',
-          ];
+  'author_bounty_submissions',
+  'author_beta_reader_submissions',
+  'author_competition_submissions',
+  'author_quick_task_submissions',
+  'author_survey_submissions',
+  'author_sensitivity_submissions',
+  'sponsored_pins',
+  'subscriptions',
+  'profiles',
+  'user_boost_purchases',
+  'tournament_participants',
+];
           if (!ALLOWED_TABLES.includes(pending.table)) {
             throw new Error('Invalid submission table: ' + pending.table);
           }
