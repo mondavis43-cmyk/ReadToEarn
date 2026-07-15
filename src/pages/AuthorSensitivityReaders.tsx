@@ -152,7 +152,7 @@ const handleCheckout = () => {
   );
 
   sessionStorage.setItem('checkoutItem', JSON.stringify({
-    type: 'sensitivity_readers',
+    type: 'competition_sponsored',
     label: `Sensitivity Readers — ${selectedPackage.label} (${selectedPackage.readers} readers) — ${bookTitle}`,
     amount: selectedPackage.cents,
     metadata: {
