@@ -101,7 +101,7 @@ sensitivity: [
 ],
 };
 
-const EDITABLE_FIELDS: Record<Tab, { key: string; label: string; type: 'input' | 'textarea' }[]> = {
+const EDITABLE_FIELDS: Record<Tab, { key: string; label: string; type: 'input' | 'textarea' | 'datetime' }[]> = {
 bounties: [
   { key: 'pool_size',         label: 'Pool Size ($)',    type: 'input'    },
   { key: 'platform_fee',      label: 'Platform Fee ($)', type: 'input'    },
@@ -115,6 +115,8 @@ competitions: [
   { key: 'platform_fee',     label: 'Platform Fee ($)', type: 'input'    },
   { key: 'prize_pool',       label: 'Prize Pool ($)',   type: 'input'    },
   { key: 'competition_type', label: 'Type',             type: 'input'    },
+  { key: 'start_date',       label: 'Start Date/Time',  type: 'input'    },
+  { key: 'end_date',         label: 'End Date/Time',    type: 'input'    },
   { key: 'notes',            label: 'Notes',            type: 'textarea' },
 ],
 quick_tasks: [
@@ -642,20 +644,31 @@ return (
                                 {field.label}
                               </label>
                               {field.type === 'textarea' ? (
-                                <textarea
-                                  rows={3}
-                                  value={editDraft[field.key] ?? ''}
-                                  onChange={e => setEditDraft(prev => ({ ...prev, [field.key]: e.target.value }))}
-                                  className={`${inputCls} resize-none`}
+                              <textarea 
+                                rows={3}
+                                value={editDraft[field.key] ?? ''}
+                                onChange={e => setEditDraft(prev => ({ ...prev, [field.key]: e.target.value }))}
+                                className={`${inputCls} resize-none`}
+                              />
+                            ) : field.type === 'datetime' ? (
+                              <input
+                                type="datetime-local"
+                                value={
+                                  editDraft[field.key]
+                                    ? new Date(editDraft[field.key]).toISOString().slice(0, 16)
+                                    : ''
+                                }
+                                onChange={e => setEditDraft(prev => ({ ...prev, [field.key]: e.target.value }))}
+                                className={inputCls}
+                              />
+                            ) : (
+                              <input
+                                type="text"
+                                value={editDraft[field.key] ?? ''}
+                                onChange={e => setEditDraft(prev => ({ ...prev, [field.key]: e.target.value }))}
+                                className={inputCls}
                                 />
-                              ) : (
-                                <input
-                                  type="text"
-                                  value={editDraft[field.key] ?? ''}
-                                  onChange={e => setEditDraft(prev => ({ ...prev, [field.key]: e.target.value }))}
-                                  className={inputCls}
-                                />
-                              )}
+                            )}
                             </div>
                           ))}
                         </div>
