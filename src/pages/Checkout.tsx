@@ -325,6 +325,7 @@ async function handlePostPayment(
     } else if (pending.table) {
       const ALLOWED_TABLES = [
         'author_bounty_submissions',
+        'author_beta_reader_submissions',
         'author_competition_submissions',
         'author_quick_task_submissions',
         'author_survey_submissions',
