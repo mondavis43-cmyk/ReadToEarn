@@ -313,6 +313,8 @@ const maybeCreateBounty = async (id: string) => {
   if (activeTab !== 'beta') return;
   const submission = submissions.find(s => s.id === id);
   if (!submission) return;
+    
+  console.log('[BetaPanel] submission data:', submission);
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -353,6 +355,7 @@ const maybeCreateBounty = async (id: string) => {
     questions,
   });
 
+  console.log('[BetaPanel] insert result:', { error });
   if (error) alert('Beta panel create error: ' + error.message);
 };
 
