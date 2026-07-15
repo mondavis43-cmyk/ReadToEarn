@@ -653,7 +653,7 @@ const renderResult = () => {
               <AlertCircle size={40} className="text-red-400 mx-auto" />
               <h2 className={`text-2xl font-bold ${headingColor}`}>Quiz Failed</h2>
               <p className={subColor}>Score: {score}/{questions.length} -- need {STANDARD_PASS_THRESHOLD} to pass</p>
-              <p className={`text-sm ${subColor}`}>You can retake the quiz to improve your score and time.</p>
+              <p className={`text-sm ${subColor}`}>See if your score was high enough to rank.</p>
             </>
           )}
           <div className="flex gap-3 mt-4">
