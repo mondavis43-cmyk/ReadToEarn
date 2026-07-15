@@ -309,7 +309,7 @@ const maybeCreateBounty = async (id: string) => {
   if (error) { alert('Bounty create error (insert): ' + error.message); return; }
 };
 
-  const maybeCreateBetaPanel = async (id: string) => {
+const maybeCreateBetaPanel = async (id: string) => {
   if (activeTab !== 'beta') return;
   const submission = submissions.find(s => s.id === id);
   if (!submission) return;
