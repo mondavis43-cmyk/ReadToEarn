@@ -115,8 +115,8 @@ competitions: [
   { key: 'platform_fee',     label: 'Platform Fee ($)', type: 'input'    },
   { key: 'prize_pool',       label: 'Prize Pool ($)',   type: 'input'    },
   { key: 'competition_type', label: 'Type',             type: 'input'    },
-  { key: 'start_date',       label: 'Start Date/Time',  type: 'input'    },
-  { key: 'end_date',         label: 'End Date/Time',    type: 'input'    },
+  { key: 'start_date',       label: 'Start Date/Time',  type: 'datetime'    },
+  { key: 'end_date',         label: 'End Date/Time',    type: 'datetime'    },
   { key: 'notes',            label: 'Notes',            type: 'textarea' },
 ],
 quick_tasks: [
