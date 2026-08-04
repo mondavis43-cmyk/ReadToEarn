@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
-import { Check, Sun, Moon, ChevronDown, Search, X, Lock } from 'lucide-react';
+import { Check, Sun, Moon, ChevronDown, Search, X } from 'lucide-react';
 import { GENRES } from './Admin';
 
 interface Book {
@@ -20,10 +20,6 @@ interface Book {
 interface ActiveBounty {
   book_id: string;
   per_pass_amount: number;
-}
-
-interface ActiveCompetition {
-  book_ids: string[];
 }
 
 interface Trope {
@@ -53,7 +49,6 @@ export const Library = () => {
 
   const [books, setBooks] = useState<Book[]>([]);
   const [activeBounties, setActiveBounties] = useState<ActiveBounty[]>([]);
-  const [activeCompetitionBookIds, setActiveCompetitionBookIds] = useState<Set<string>>(new Set());
   const [completedBookIds, setCompletedBookIds] = useState<Set<string>>(new Set());
   const [allTropes, setAllTropes] = useState<Trope[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,10 +100,6 @@ export const Library = () => {
         .from('bounties')
         .select('book_id, per_pass_amount')
         .eq('status', 'active'),
-      supabase
-        .from('competitions')
-        .select('book_ids')
-        .eq('status', 'active'),
       supabase.from('tropes').select('*').order('name'),
       user
         ? supabase.from('quiz_attempts').select('book_id').eq('user_id', user.id)
@@ -118,7 +109,6 @@ export const Library = () => {
     const [
       { data: booksData },
       { data: bountiesData },
-      { data: compsData },
       { data: tropesData },
       { data: attemptsData },
     ] = await Promise.all(queries);
@@ -128,13 +118,6 @@ export const Library = () => {
     setAllTropes(tropesData || []);
     setCompletedBookIds(new Set((attemptsData ?? []).map((a: { book_id: string }) => a.book_id)));
 
-    // Flatten competition book_ids into a set
-    const compBookIds = new Set<string>();
-    (compsData || []).forEach((c: ActiveCompetition) => {
-      (c.book_ids || []).forEach((id: string) => compBookIds.add(id));
-    });
-    setActiveCompetitionBookIds(compBookIds);
-
     setLoading(false);
   }, [user]);
 
@@ -143,9 +126,6 @@ export const Library = () => {
   // Helpers
   const getActiveBounty = (bookId: string) =>
     activeBounties.find((b) => b.book_id === bookId);
-
-  const isQuizUnlocked = (bookId: string) =>
-    !!getActiveBounty(bookId) || activeCompetitionBookIds.has(bookId);
 
   // Filter + sort
   const filtered = books
@@ -205,7 +185,7 @@ export const Library = () => {
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-[#1B2A4A] dark:text-[#F5F0E8]">Book Library</h2>
           <p className="text-sm text-[#6B7280] dark:text-gray-400 mt-1">
-            Browse books, take quizzes, and earn from active bounties and competitions.
+            Browse books, take quizzes, and earn from active bounties.
           </p>
         </div>
 
@@ -363,9 +343,7 @@ export const Library = () => {
         {!loading && filtered.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
             {filtered.map((book) => {
-              const unlocked = isQuizUnlocked(book.id);
               const bounty = getActiveBounty(book.id);
-              const inCompetition = activeCompetitionBookIds.has(book.id);
 
               return (
                 <div
@@ -394,24 +372,10 @@ export const Library = () => {
                       </div>
                     )}
 
-                    {/* Competition badge */}
-                    {!bounty && inCompetition && (
-                      <div className="absolute top-2 right-2 bg-[#1B2A4A] text-[#F5F0E8] text-xs font-bold px-2 py-1 rounded-full shadow">
-                        Competition
-                      </div>
-                    )}
-
                     {/* Done badge */}
                     {completedBookIds.has(book.id) && (
                       <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-green-600 text-white text-xs font-semibold px-2 py-1 rounded-full shadow">
                         <Check size={10} /> Done
-                      </div>
-                    )}
-
-                    {/* Locked overlay */}
-                    {!unlocked && !completedBookIds.has(book.id) && (
-                      <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
-                        <Lock size={10} /> Quiz locked
                       </div>
                     )}
 
