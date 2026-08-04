@@ -95,7 +95,7 @@ export const Home = () => {
 
         <p className="text-lg max-w-xl mx-auto mb-8" style={{ color: textMuted }}>
           Authors need real feedback. You get paid for your time. Complete quick tasks,
-          take surveys, join panels, and earn — no competition required.
+          take surveys, join panels, and earn.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
@@ -219,21 +219,21 @@ export const Home = () => {
             },
             {
               icon: <BookOpen className="w-5 h-5" />,
-              title: 'Panels',
-              time: '15–20 min',
+              title: 'Beta Panels',
+              time: '10–20 min',
               body: 'Read a first chapter or sample, answer structured questions, and earn. Get recruited for beta reading off-platform.',
             },
             {
               icon: <DollarSign className="w-5 h-5" />,
               title: 'Author Bounties',
               time: 'per quiz',
-              body: 'Pass a book quiz on a Wide author\'s title and earn from their bounty pool. No competition — just read and pass.',
+              body: 'Pass a book quiz on a Wide author\'s title and earn from their bounty pool. Funds only available until the pool runs dry.',
             },
             {
               icon: <Users className="w-5 h-5" />,
               title: 'Sensitivity Panels',
               time: '15–20 min',
-              body: 'Authors with specific identity/experience needs pay for matched reader feedback on sample chapters. $10 per panel.',
+              body: 'Authors with specific identity/experience needs pay for matched reader feedback on sample chapters. If you\'re interested in reading more, you may be recruited to read the full manuscript.',
             },
           ].map(({ icon, title, time, body }) => (
             <div
@@ -270,7 +270,7 @@ export const Home = () => {
               Are You an Author?
             </h2>
             <p className="text-lg max-w-xl mx-auto" style={{ color: textMuted }}>
-              Get real reader feedback before you publish. Test covers, blurbs, hooks, and concepts — or pay for verified quiz passes.
+              Get real reader feedback before you publish. Test covers, blurbs, hooks, and concepts, or pay for verified quiz passes.
             </p>
           </div>
 
@@ -279,7 +279,7 @@ export const Home = () => {
               {
                 icon: <ClipboardList className="w-5 h-5" style={{ color: gold }} />,
                 title: 'Research Marketplace',
-                body: 'Quick Tasks, Surveys, and Panels give you real reader data on your packaging, positioning, and samples.',
+                body: 'Quick Tasks, Surveys, and Panels give you real reader data on your packaging, positioning, samples, and more.',
               },
               {
                 icon: <BookOpen className="w-5 h-5" style={{ color: gold }} />,
@@ -288,8 +288,8 @@ export const Home = () => {
               },
               {
                 icon: <DollarSign className="w-5 h-5" style={{ color: gold }} />,
-                title: 'Bounties (Wide)',
-                body: 'Fund a quiz-pass bounty pool. Pay only for results — readers earn when they pass your book quiz.',
+                title: 'Bounties (Wide Authors Only)',
+                body: 'Fund a quiz-pass bounty pool. Readers earn when they pass your book quiz until the pool runs dry.',
               },
             ].map(({ icon, title, body }) => (
               <div
