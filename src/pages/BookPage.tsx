@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
-import { ArrowLeft, Check, ExternalLink, Trophy, Zap, Bell, BellOff } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Zap, Bell, BellOff } from 'lucide-react';
 
 interface Book {
   id: string;
@@ -11,7 +11,7 @@ interface Book {
   author: string;
   cover_url: string | null;
   page_count: number;
-  book_type: 'platform' | 'sponsored';
+  book_type: 'standard' | 'bulletin_board';
   description: string | null;
   genre: string | null;
   geniuslink_url: string | null;
@@ -32,16 +32,6 @@ interface TropeSuggestion {
   id: string;
   suggested_name: string;
   status: string;
-}
-
-interface Competition {
-  id: string;
-  title: string;
-  format: string;
-  entry_fee: number;
-  prize_pool: number;
-  status: string;
-  ends_at: string | null;
 }
 
 interface Bounty {
@@ -67,16 +57,11 @@ export const BookPage = () => {
   const [tropeMessage, setTropeMessage] = useState('');
 
   const [activeBounty, setActiveBounty] = useState<Bounty | null>(null);
-  const [activeCompetitions, setActiveCompetitions] = useState<Competition[]>([]);
-  const [pastCompetitions, setPastCompetitions] = useState<Competition[]>([]);
   const [isNotified, setIsNotified] = useState(false);
   const [notifyLoading, setNotifyLoading] = useState(false);
 
   const bookId = window.location.pathname.split('/').pop();
   const isAdmin = user?.email === 'mondavis43@gmail.com';
-
-  // Quiz is unlocked only when there's an active bounty or active competition
-  const quizUnlocked = !!activeBounty || activeCompetitions.length > 0;
 
   // Theme helpers
   const bg = isDark ? 'bg-[#0f1623]' : 'bg-[#F5F0E8]';
@@ -136,30 +121,14 @@ export const BookPage = () => {
   const loadEarningEvents = async () => {
     if (!book) return;
 
-    const [bountyResult, activeCompResult, pastCompResult] = await Promise.all([
-      supabase
-        .from('bounties')
-        .select('id, pool_size, per_pass_amount, status')
-        .eq('book_id', book.id)
-        .eq('status', 'active')
-        .maybeSingle(),
-      supabase
-        .from('competitions')
-        .select('id, title, type, entry_fee, prize_pool, status, ends_at')
-        .contains('book_ids', [book.id])
-        .eq('status', 'active'),
-      supabase
-        .from('competitions')
-        .select('id, title, type, entry_fee, prize_pool, status, ends_at')
-        .contains('book_ids', [book.id])
-        .eq('status', 'completed')
-        .order('ends_at', { ascending: false })
-        .limit(3),
-    ]);
+    const { data: bountyResult } = await supabase
+      .from('bounties')
+      .select('id, pool_size, per_pass_amount, status')
+      .eq('book_id', book.id)
+      .eq('status', 'active')
+      .maybeSingle();
 
-    if (bountyResult.data) setActiveBounty(bountyResult.data);
-    if (activeCompResult.data) setActiveCompetitions(activeCompResult.data);
-    if (pastCompResult.data) setPastCompetitions(pastCompResult.data);
+    if (bountyResult) setActiveBounty(bountyResult);
   };
 
   const loadNotifyStatus = async () => {
@@ -238,23 +207,6 @@ export const BookPage = () => {
     }
   };
 
-  const formatCompFormat = (format: string) => {
-    if (format === 'sprint') return 'Sprint';
-    if (format === 'readathon') return 'Read-A-Thon';
-    if (format === 'elimination') return 'Elimination Bracket';
-    return format;
-  };
-
-  const formatTimeLeft = (endsAt: string | null) => {
-    if (!endsAt) return null;
-    const diff = new Date(endsAt).getTime() - Date.now();
-    if (diff <= 0) return 'Ending soon';
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(hours / 24);
-    if (days > 0) return `${days}d left`;
-    return `${hours}h left`;
-  };
-
   if (loading) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${bg}`}>
@@ -277,12 +229,12 @@ export const BookPage = () => {
       {/* Header */}
       <header className={`border-b ${borderFaint}`}>
         <div className="max-w-5xl mx-auto px-4 py-6 flex items-center gap-4">
-<button
-  onClick={() => window.history.back()}
-  className={`transition ${textFaint} hover:${textPrimary}`}
->
-  <ArrowLeft className="w-5 h-5" />
-</button>
+          <button
+            onClick={() => window.history.back()}
+            className={`transition ${textFaint} hover:${textPrimary}`}
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
           <h1 className={`font-serif text-3xl ${textPrimary}`}>Book Details</h1>
         </div>
       </header>
@@ -360,64 +312,22 @@ export const BookPage = () => {
                 </div>
               )}
 
-              {/* Active Competitions */}
-              {activeCompetitions.length > 0 && (
-                <div className={`rounded-xl border p-4 ${cardBg}`}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Trophy className="w-4 h-4 text-[#D4A843]" />
-                    <span className="text-xs font-semibold uppercase tracking-wide text-[#D4A843]">
-                      Featured in {activeCompetitions.length === 1 ? 'a Competition' : `${activeCompetitions.length} Competitions`}
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    {activeCompetitions.map((comp) => (
-                      <div key={comp.id} className="flex items-center justify-between text-sm">
-                        <div>
-                          <span className={`font-medium ${textPrimary}`}>{comp.title}</span>
-                          <span className={`ml-2 text-xs ${textFaint}`}>{formatCompFormat(comp.format)}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[#D4A843] font-semibold">
-                            ${comp.prize_pool.toFixed(0)} pool
-                          </span>
-                          {comp.ends_at && (
-                            <span className={`text-xs ${textFaint}`}>{formatTimeLeft(comp.ends_at)}</span>
-                          )}
-                          <button
-                            onClick={() => navigateTo(`/competition/${comp.id}`)}
-                            className={`text-xs px-3 py-1 rounded-full border transition ${
-                              isDark
-                                ? 'border-[#D4A843]/30 text-[#D4A843] hover:bg-[#D4A843]/10'
-                                : 'border-[#D4A843]/50 text-[#D4A843] hover:bg-[#D4A843]/10'
-                            }`}
-                          >
-                            Enter
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Take Quiz — always available */}
+              <button
+                onClick={() => navigateTo(`/quiz/${book.id}`)}
+                className="w-full py-3 rounded-xl bg-[#D4A843] hover:bg-[#D4A843]/90 text-[#1B2A4A] font-semibold text-sm transition"
+              >
+                Take Quiz
+              </button>
 
-              {/* Quiz unlocked — Take Quiz button */}
-              {quizUnlocked && (
-                <button
-                  onClick={() => navigateTo(`/quiz/${book.id}`)}
-                  className="w-full py-3 rounded-xl bg-[#D4A843] hover:bg-[#D4A843]/90 text-[#1B2A4A] font-semibold text-sm transition"
-                >
-                  Take Quiz
-                </button>
-              )}
-
-              {/* Quiz locked state */}
-              {!quizUnlocked && (
-                <div className={`rounded-xl border p-5 ${isDark ? 'bg-[#1B2A4A]/30 border-[#F5F0E8]/10' : 'bg-[#1B2A4A]/5 border-[#1B2A4A]/10'}`}>
+              {/* Bounty notification */}
+              {!activeBounty && (
+                <div className={`rounded-xl border p-4 ${isDark ? 'bg-[#1B2A4A]/30 border-[#F5F0E8]/10' : 'bg-[#1B2A4A]/5 border-[#1B2A4A]/10'}`}>
                   <p className={`text-sm font-medium mb-1 ${textPrimary}`}>
-                    Quiz unlocks when this book enters a competition or bounty.
+                    No active bounty on this book yet.
                   </p>
-                  <p className={`text-xs mb-4 ${textFaint}`}>
-                    Get notified the moment this book goes live for earning.
+                  <p className={`text-xs mb-3 ${textFaint}`}>
+                    Get notified the moment an author adds a bounty here.
                   </p>
                   <button
                     onClick={handleToggleNotify}
@@ -453,21 +363,6 @@ export const BookPage = () => {
               <div className="mb-8">
                 <h3 className={`font-medium mb-2 ${textPrimary}`}>About this book</h3>
                 <p className={`leading-relaxed ${textMuted}`}>{book.description}</p>
-              </div>
-            )}
-
-            {/* Past Competitions */}
-            {pastCompetitions.length > 0 && (
-              <div className={`mb-8 pt-6 border-t ${borderFaint}`}>
-                <h3 className={`font-medium mb-3 ${textPrimary}`}>Past Competitions</h3>
-                <div className="space-y-2">
-                  {pastCompetitions.map((comp) => (
-                    <div key={comp.id} className={`flex items-center justify-between text-sm ${textMuted}`}>
-                      <span>{comp.title}</span>
-                      <span className={`text-xs ${textFaint}`}>{formatCompFormat(comp.format)}</span>
-                    </div>
-                  ))}
-                </div>
               </div>
             )}
 
@@ -576,20 +471,6 @@ export const BookPage = () => {
                 </div>
               )}
             </div>
-
-            {/* Completed badge — removed */}
-            {false && (
-              <div
-                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg border ${
-                  isDark
-                    ? 'bg-[#D4A843]/10 border-[#D4A843]/30 text-[#D4A843]'
-                    : 'bg-[#D4A843]/15 border-[#D4A843]/40 text-[#D4A843]'
-                }`}
-              >
-                <Check className="w-4 h-4" />
-                Completed
-              </div>
-            )}
           </div>
         </div>
       </main>
