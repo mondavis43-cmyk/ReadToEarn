@@ -110,17 +110,19 @@ export const AuthorBounty = () => {
             <h1 className={`font-serif text-4xl ${textPrimary}`}>Author Bounty</h1>
           </div>
           <p className={`text-sm leading-relaxed ${textMuted}`}>
-            Fund a reader pool for your book. Readers earn a payout for every quiz they pass — you set the per-pass amount.
+            Fund a reader pool for your book. Readers earn a payout for every quiz they pass. You set the per-pass amount.
           </p>
         </div>
 
-        {/* Overlap warning */}
+        {/* Wide-only notice */}
         <div className={`rounded-xl border p-4 mb-6 flex items-start gap-3 ${
           isDark ? 'bg-amber-900/20 border-amber-500/40' : 'bg-amber-50 border-amber-400/60'
         }`}>
-          <span className="text-lg flex-shrink-0 mt-0.5">⚠️</span>
+          <span className="text-lg flex-shrink-0 mt-0.5">📘</span>
           <p className={`text-sm leading-relaxed ${isDark ? 'text-amber-200' : 'text-amber-900'}`}>
-            <strong>Bounties and sponsored competitions cannot run at the same time on the same book.</strong> Once a reader takes a quiz for your book — whether through a bounty or a competition — they cannot earn from it again. To maximize reach, leave a gap between your bounty and any competition so a fresh pool of readers can engage with each.
+            <strong>Wide authors only.</strong> Bounties are not available for KU-enrolled books. 
+            Amazon KDP Select rules restrict compensation tied to KU-enrolled books. 
+            If your book is enrolled in KU/KDP Select, you cannot purchase a bounty.
           </p>
         </div>
 
@@ -133,6 +135,7 @@ export const AuthorBounty = () => {
               'Set a per-pass payout — readers earn this for every quiz they pass.',
               'We keep 20% as a platform fee. The rest goes to readers.',
               'Your bounty runs until the pool is empty.',
+              'Unspent funds may be refunded after 1 year upon request.',
             ].map((step, i) => (
               <li key={i} className="flex items-start gap-3">
                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#D4A843]/20 text-[#D4A843] text-xs font-bold flex items-center justify-center mt-0.5">
