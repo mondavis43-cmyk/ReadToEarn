@@ -5,7 +5,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { assignAuthorReferralCode } from '../lib/generateReferralCode';
 import {
   BookOpen, Users, DollarSign, ArrowLeft, Edit2, Pin, PinOff,
-  MessageSquare, Trophy, Upload, Check, Search, X, Star, BarChart2, Download, ChevronDown, ChevronUp
+  MessageSquare, Upload, Check, Search, X, Star, BarChart2, Download, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -47,16 +47,6 @@ interface BountyRow {
   books?: { title: string } | null;
 }
 
-interface CompetitionRow {
-  id: string;
-  title: string;
-  type: string;
-  start_date: string | null;
-  end_date: string | null;
-  book_title: string | null;
-  status: string;
-}
-
 interface ClaimableBook {
   id: string;
   title: string;
@@ -82,8 +72,8 @@ interface AuthorProfile {
 }
 
 type EditTab = 'details' | 'quiz';
-type DashTab = 'books' | 'amas (coming soon)' | 'bounties' | 'competitions' | 'ambassador' | 'results';
-type ResultTab = 'surveys' | 'beta' | 'sensitivity' | 'quick_tasks' | 'bounties' | 'competitions';
+type DashTab = 'books' | 'amas (coming soon)' | 'bounties' | 'ambassador' | 'results';
+type ResultTab = 'surveys' | 'beta' | 'sensitivity' | 'quick_tasks' | 'bounties';
 interface ResultRow { [key: string]: any; }
 type ListingTier = 'single' | 'trilogy' | 'series' | 'catalog' | 'imprint';
 
@@ -123,7 +113,6 @@ export const AuthorDashboard = () => {
 
   const [amaSessions,  setAmaSessions]  = useState<AMASessionRow[]>([]);
   const [bounties,     setBounties]     = useState<BountyRow[]>([]);
-  const [competitions, setCompetitions] = useState<CompetitionRow[]>([]);
 
   const [authorProfile,      setAuthorProfile]      = useState<AuthorProfile | null>(null);
   const [ambassadorPayouts,  setAmbassadorPayouts]  = useState<AmbassadorPayout[]>([]);
@@ -189,7 +178,6 @@ export const AuthorDashboard = () => {
       loadBooks(user.id),
       loadAMA(user.id),
       loadBounties(user.id),
-      loadCompetitions(user.id),
       loadAmbassador(user.id),
     ]);
 
@@ -287,14 +275,6 @@ export const AuthorDashboard = () => {
         return { ...s, _responses: attempts };
       }));
       setResultRows(rows);
-
-    } else if (tab === 'competitions') {
-      const { data: subs } = await supabase
-        .from('author_competition_submissions')
-        .select('id, book_titles, competition_type, tier_label, prize_pool, status, created_at')
-        .eq('email', authorEmail)
-        .order('created_at', { ascending: false });
-      setResultRows(subs ?? []);
     }
 
     setResultLoading(false);
@@ -316,7 +296,7 @@ export const AuthorDashboard = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${(sub.book_title ?? sub.book_titles ?? 'results').replace(/[^a-z0-9]/gi, '_')}_${resultTab}.csv`;
+    a.download = `${(sub.book_title ?? 'results').replace(/[^a-z0-9]/gi, '_')}_${resultTab}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -366,15 +346,6 @@ export const AuthorDashboard = () => {
     setBounties(data || []);
   }
 
-  async function loadCompetitions(uid: string) {
-    const { data } = await supabase
-      .from('competitions')
-      .select('id,title,type,start_date,end_date,book_title,status')
-      .eq('author_id', uid)
-      .order('start_date', { ascending: false });
-    setCompetitions(data || []);
-  }
-
   async function loadAmbassador(uid: string) {
     let { data: p } = await supabase
       .from('profiles')
@@ -382,7 +353,6 @@ export const AuthorDashboard = () => {
       .eq('id', uid)
       .single();
 
-    // Auto-generate code if missing
     if (!p?.author_referral_code) {
       const newCode = await assignAuthorReferralCode(uid);
       p = { author_referral_code: newCode };
@@ -566,7 +536,6 @@ export const AuthorDashboard = () => {
     { key: 'books',        label: 'My Books',     icon: BookOpen      },
     { key: 'ama',          label: 'AMAs',          icon: MessageSquare },
     { key: 'bounties',     label: 'Bounties',      icon: DollarSign    },
-    { key: 'competitions', label: 'Competitions',  icon: Trophy        },
     { key: 'ambassador',   label: 'Ambassador',    icon: Star          },
     { key: 'results',      label: 'Results',       icon: BarChart2     },
   ];
@@ -577,7 +546,6 @@ export const AuthorDashboard = () => {
     { key: 'sensitivity',  label: 'Sensitivity'  },
     { key: 'quick_tasks',  label: 'Quick Tasks'  },
     { key: 'bounties',     label: 'Bounties'     },
-    { key: 'competitions', label: 'Competitions' },
   ];
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -791,40 +759,6 @@ export const AuthorDashboard = () => {
         )}
 
         {/* ══════════════════════════════════════════════════════════════════
-            COMPETITIONS TAB
-        ══════════════════════════════════════════════════════════════════ */}
-        {dashTab === 'competitions' && (
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className={`font-semibold ${textPrimary}`}>My Competitions</h2>
-              <p className={`text-xs ${textMuted}`}>Managed by the admin team.</p>
-            </div>
-            {competitions.length === 0 ? (
-              <div className="text-center py-16">
-                <Trophy size={36} className="mx-auto text-[#D4A843]/30 mb-3" />
-                <p className={`text-sm ${textMuted}`}>No competitions yet.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {competitions.map((c) => (
-                  <div key={c.id} className={`rounded-2xl border ${cardBg} p-4`}>
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className={`font-semibold text-sm ${textPrimary}`}>{c.title}</h3>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-[#D4A843]/10 text-[#D4A843]">{c.format}</span>
-                    </div>
-                    <p className="text-xs text-[#D4A843] mb-2">{c.book_title}</p>
-                    <p className={`text-xs ${textMuted}`}>
-                      {new Date(c.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –{' '}
-                      {fmt(c.end_date)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════
             RESULTS TAB
         ══════════════════════════════════════════════════════════════════ */}
         {dashTab === 'results' && (
@@ -866,7 +800,6 @@ export const AuthorDashboard = () => {
                 {/* ── DRILLDOWN STYLE: surveys, beta, sensitivity, quick_tasks ── */}
                 {(['surveys', 'beta', 'sensitivity', 'quick_tasks'] as ResultTab[]).includes(resultTab) && resultRows.map(sub => (
                   <div key={sub.id} className={`rounded-2xl border ${cardBg} overflow-hidden`}>
-                    {/* Submission header */}
                     <div className="p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -907,7 +840,6 @@ export const AuthorDashboard = () => {
                       </div>
                     </div>
 
-                    {/* Expanded responses */}
                     {expandedId === sub.id && (
                       <div className={`border-t ${divider}`}>
                         {(sub._responses ?? []).length === 0 ? (
@@ -920,7 +852,6 @@ export const AuthorDashboard = () => {
                                   <span>Response #{i + 1}</span>
                                   <span>{r.created_at ? new Date(r.created_at).toLocaleDateString() : ''}</span>
                                 </div>
-                                {/* Survey answers */}
                                 {r.answers && (
                                   <div className="space-y-2">
                                     {(Array.isArray(r.answers) ? r.answers : Object.entries(r.answers)).map((a: any, ai: number) => (
@@ -933,7 +864,6 @@ export const AuthorDashboard = () => {
                                     ))}
                                   </div>
                                 )}
-                                {/* Beta responses */}
                                 {r.responses && (
                                   <div className="space-y-2">
                                     {(Array.isArray(r.responses) ? r.responses : []).map((resp: any, ri: number) => (
@@ -944,13 +874,11 @@ export const AuthorDashboard = () => {
                                     ))}
                                   </div>
                                 )}
-                                {/* Sensitivity */}
                                 {r.selected_identities && (
                                   <div className={`text-xs ${textMuted} mb-2`}>
                                     Identities: {Array.isArray(r.selected_identities) ? r.selected_identities.join(', ') : r.selected_identities}
                                   </div>
                                 )}
-                                {/* Quick task */}
                                 {r.response != null && (
                                   <p className={`text-xs p-2.5 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-50'} ${textPrimary}`}>
                                     {typeof r.response === 'object' ? JSON.stringify(r.response) : String(r.response)}
@@ -968,7 +896,7 @@ export const AuthorDashboard = () => {
                   </div>
                 ))}
 
-                {/* ── DATA TABLE STYLE: bounties, competitions ── */}
+                {/* ── DATA TABLE STYLE: bounties ── */}
                 {resultTab === 'bounties' && resultRows.map(sub => (
                   <div key={sub.id} className={`rounded-2xl border ${cardBg} overflow-hidden`}>
                     <div className="p-4 flex items-start justify-between gap-3">
@@ -1017,28 +945,6 @@ export const AuthorDashboard = () => {
                   </div>
                 ))}
 
-                {resultTab === 'competitions' && resultRows.map(sub => (
-                  <div key={sub.id} className={`rounded-2xl border ${cardBg} p-4`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className={`font-semibold text-sm ${textPrimary}`}>{sub.book_titles}</h3>
-                        <div className={`flex flex-wrap gap-x-4 text-xs ${textMuted} mt-1`}>
-                          <span>{sub.competition_type}</span>
-                          <span>Tier: {sub.tier_label}</span>
-                          <span>Prize pool: ${sub.prize_pool}</span>
-                          <span className={`px-1.5 py-0.5 rounded-full ${
-                            sub.status === 'active' || sub.status === 'approved'
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                              : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-                          }`}>{sub.status}</span>
-                        </div>
-                      </div>
-                      <span className={`text-xs ${textMuted} shrink-0`}>{new Date(sub.created_at).toLocaleDateString()}</span>
-                    </div>
-                    <p className={`text-xs ${textMuted} mt-3 italic`}>Competition results will be shown once the competition completes.</p>
-                  </div>
-                ))}
-
               </div>
             )}
           </div>
@@ -1056,7 +962,6 @@ export const AuthorDashboard = () => {
               </p>
             </div>
 
-            {/* Tier table */}
             <div className={`rounded-2xl border ${cardBg} p-4 mb-6`}>
               <p className={`text-xs font-semibold ${textMuted} uppercase tracking-wide mb-3`}>Listing Tiers & Your Cut</p>
               <div className="grid grid-cols-5 gap-2">
@@ -1071,7 +976,6 @@ export const AuthorDashboard = () => {
               </div>
             </div>
 
-            {/* Referral code */}
             <div className={`rounded-2xl border ${cardBg} p-5 mb-6`}>
               <p className={`text-xs font-semibold ${textMuted} uppercase tracking-wide mb-3`}>Your Referral Code</p>
               {authorProfile?.author_referral_code ? (
@@ -1115,7 +1019,6 @@ export const AuthorDashboard = () => {
               )}
             </div>
 
-            {/* Earnings summary */}
             {ambassadorPayouts.length > 0 && (
               <div className="grid grid-cols-3 gap-3 mb-6">
                 {[
@@ -1137,7 +1040,6 @@ export const AuthorDashboard = () => {
               </div>
             )}
 
-            {/* Referral history */}
             <div>
               <p className={`text-xs font-semibold ${textMuted} uppercase tracking-wide mb-3`}>Referral History</p>
               {ambassadorPayouts.length === 0 ? (
