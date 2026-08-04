@@ -1,5 +1,4 @@
 import { useTheme } from '../contexts/ThemeContext';
-import { FEATURES } from '../config/features';
 
 export const TermsOfService = () => {
   const { isDark } = useTheme();
@@ -32,11 +31,11 @@ You are responsible for maintaining the security of your account credentials. Re
     },
     {
       title: '4. Earning & Cashouts',
-      body: `ReadToEarn allows users to earn rewards through the following activities: passing book quizzes (bounties and competitions), completing quick tasks, completing surveys, participating as a beta reader or sensitivity reader, and earning affiliate referral credits.
+      body: `ReadToEarn allows users to earn rewards through the following activities: passing book quizzes during active bounties, completing quick tasks, completing surveys, and participating as a beta reader or sensitivity reader.
 
 Earnings are subject to the following rules:
-• Minimum cashout threshold: $10
-• Payment methods: PayPal (US residents), Wise (international)
+• Minimum cashout threshold: $10 ($5 for paid subscribers)
+• Payment methods: Wise (international), bank transfer
 • Earnings are credited only after verification and approval
 • We reserve the right to withhold or reverse earnings obtained through fraudulent activity, cheating, or abuse of the Platform
 
@@ -49,40 +48,30 @@ Tax compliance:
     },
     {
       title: '5. Bounties',
-      body: `Authors may fund a bounty pool to pay readers for passing a book's quiz. The platform retains 20% of the bounty pool as a distribution fee; 80% is distributed to readers who pass the quiz.
+      body: `Wide authors may fund a bounty pool to pay readers for passing a book's quiz. The platform retains 20% of the bounty pool as a distribution fee; 80% is distributed to readers who pass the quiz.
 
-The minimum bounty pool is $25. Authors set the pool size and the per-pass payout amount. Bounty pools are non-refundable once activated. Readers are paid only for verified quiz passes during the active bounty period. The quiz for a book is only unlocked when a bounty or competition is active for that book.`,
+The minimum bounty pool is $25. Authors set the pool size and the per-pass payout amount. Bounty pools are non-refundable once activated. Readers are paid only for verified quiz passes during the active bounty period. When the pool is exhausted, the quiz remains available for fun.
+
+Bounties are available for Wide books only. Books enrolled in Amazon KDP Select / Kindle Unlimited are not eligible for bounties.`,
     },
     {
-      title: '6. Competitions',
-      body: `ReadToEarn hosts reader competitions${FEATURES.readathon || FEATURES.elimination ? ' in three formats: Sprint, Read-A-Thon, and Elimination Bracket' : ' in one format: Sprint'}. Competitions may be platform-run (funded by reader entry fees) or author-sponsored.
-
-Platform-run competitions: 75% of entry fees go to the winner(s); 25% is retained by the platform.
-
-Author-sponsored competitions: Authors pay a sponsorship fee to make their book the required read. Sponsorship tiers range from $60 (Spark) to $500+ (Grand). The platform retains a percentage of the sponsorship fee based on tier; the remainder funds the prize pool.
-
-Entry fees are charged within a 48-hour pre-registration window before a competition launches. Failure to complete payment within this window forfeits your registration spot. Entry fees are non-refundable once a competition has launched.
-
-${FEATURES.tournaments ? 'User-created tournaments require a minimum of 10 participants for prize pool payouts. The platform retains 25% of user-created tournament entry fees.' : ''}`,
-    },
-    {
-      title: '7. Quick Tasks, Surveys, Beta Reading & Sensitivity Reading',
-      body: `Authors may purchase reader tasks including cover art voting, title testing, blurb testing, surveys, beta reader acquisition, and sensitivity reader sessions. Readers who complete these tasks earn the stated per-completion amount.
+      title: '6. Quick Tasks, Surveys, Beta Reading & Sensitivity Reading',
+      body: `Authors may purchase reader feedback through quick tasks, surveys, beta reader panels, and sensitivity reader panels. Readers who complete these tasks earn the stated per-completion amount.
 
 Task and survey completions are verified before earnings are credited. Readers must meet any eligibility criteria specified by the author (e.g., identity criteria for sensitivity reading). Submitting false or misleading responses to tasks or surveys is a violation of these Terms and may result in account termination and forfeiture of earnings.
 
-Author fees for tasks and surveys are non-refundable once a task has been activated and completions have begun.`,
+Author fees for tasks, surveys, and panels are non-refundable once a task has been activated and completions have begun.
+
+These services are framed as research and feedback, not as paid full-book reading. No Amazon review requirement is created by any purchase. Authors remain responsible for their own Amazon / KDP compliance.`,
     },
     {
-      title: '8. Subscriptions',
-      body: `Reader subscriptions are available at $4.99/month or $49.90/year. Subscription benefits include an ad-free experience, priority survey queue, early competition registration, profile customization, one monthly competition entry at 30% off, and access to subscribers-only mini-competitions.
+      title: '7. Subscriptions',
+      body: `Reader subscriptions are available at $4.99/month or $49.90/year. Subscription benefits include an ad-free experience, priority access to limited-earning opportunities (such as surveys and beta panels with capped reader slots), monthly subscriber bonus draws, and a reduced $5 cashout minimum.
 
-Subscriptions are billed in advance. Cancellation takes effect at the end of the current billing period — benefits are honored through that date. No partial refunds are issued for mid-period cancellations.
-
-Referral codes are generated only for active paid subscribers. Referral earnings ($0.50/month per referred subscriber) begin after the referred user has maintained an active paid subscription for 30 days and continue monthly as long as the referred user remains subscribed.`,
+Subscriptions are billed in advance. Cancellation takes effect at the end of the current billing period — benefits are honored through that date. No partial refunds are issued for mid-period cancellations.`,
     },
     {
-      title: '9. Affiliate & Ambassador Programs',
+      title: '8. Affiliate & Ambassador Programs',
       body: `Reader Affiliate Program: Available to paid subscribers only. Earn $0.50/month for each friend who subscribes using your referral link and remains an active paid subscriber. A 30-day fraud protection hold applies before the first credit is issued. Earnings stop when the referred user cancels. There is no cap on referrals.
 
 Author Ambassador Program: Authors earn 25% of a referred author's first listing purchase. Credits are applied after the referred author completes their first purchase.
@@ -90,22 +79,22 @@ Author Ambassador Program: Authors earn 25% of a referred author's first listing
 Referral earnings obtained through fraudulent means (e.g., self-referral, fake accounts) will be forfeited and may result in account termination.`,
     },
     {
-      title: '10. Author Listings',
+      title: '9. Author Listings',
       body: `Authors may submit books for listing on the Platform subject to applicable fees:
 • Single book: $7 | Trilogy (3): $18 | Series (5): $30 | Catalog (10): $50 | Imprint (25): $100
 
-Listing fees are non-refundable once a listing is approved and published. A listing grants the book a permanent page on the Platform, quiz eligibility, competition eligibility, and community visibility. ReadToEarn reserves the right to remove any listing that violates our content policies. Authors are responsible for ensuring they hold all rights to any content they submit.
+Listing fees are non-refundable once a listing is approved and published. A listing grants the book a permanent page on the Platform, an always-available quiz, and community visibility. ReadToEarn reserves the right to remove any listing that violates our content policies. Authors are responsible for ensuring they hold all rights to any content they submit.
 
-By submitting a listing, authors acknowledge that their books may be included in platform-run competitions${FEATURES.tournaments ? ' and user-created tournaments' : ''} as permitted by these Terms.`,
+By submitting a listing, authors acknowledge that their book may be eligible for platform features or spotlights. Authors are responsible for their own Amazon / KDP / retailer compliance. KU-enrolled books cannot purchase bounties while enrolled in KDP Select.`,
     },
     {
-      title: '11. Bulletin Board & Author AMAs',
+      title: '10. Bulletin Board & Author AMAs',
       body: `Authors may post free promotional content to the Bulletin Board. Sponsored pinned posts are available for $50/month flat fee. Bulletin Board posts are subject to content review and may be removed for policy violations.
 
 Author AMAs (Ask Me Anything sessions) are free and open to all listed authors. AMA content is public and subject to our community guidelines.`,
     },
     {
-      title: '12. Prohibited Conduct',
+      title: '11. Prohibited Conduct',
       body: `You agree not to:
 • Use bots, scripts, AI tools, or automated methods to complete quizzes, tasks, or surveys
 • Create multiple accounts to circumvent earning limits or verification requirements
@@ -113,16 +102,20 @@ Author AMAs (Ask Me Anything sessions) are free and open to all listed authors. 
 • Submit false, misleading, or fabricated responses to any task, survey, or quiz
 • Upload content you do not own or have rights to
 • Attempt to reverse-engineer, exploit, or interfere with the Platform
-• Engage in any activity designed to manipulate competition outcomes or referral earnings
+• Engage in any activity designed to manipulate earnings, referrals, or the Platform's systems
 
 Violations may result in immediate account termination, forfeiture of all pending earnings, and reporting to relevant authorities where applicable.`,
     },
     {
-      title: '14. Intellectual Property',
+      title: '12. Intellectual Property',
       body: `All content on ReadToEarn, including but not limited to the name, logo, design, and software, is the property of ReadToEarn and protected by applicable intellectual property laws. Book content, quizzes, and author-submitted materials remain the property of the respective authors. By submitting content to the Platform, authors grant ReadToEarn a non-exclusive license to display that content on the Platform for the purpose of operating the service.`,
     },
     {
-      title: '15. Termination',
+      title: '13. Independent Contractor Status',
+      body: `Readers who complete tasks, surveys, panels, or quizzes on the Platform are independent contractors, not employees of ReadToEarn. Readers are free to choose which tasks to complete, when to complete them, and whether to use the Platform at all. Readers provide their own devices and internet access. Nothing in these Terms creates an employment, partnership, or agency relationship between readers and ReadToEarn or between readers and authors using the Platform.`,
+    },
+    {
+      title: '14. Termination',
       body: `We reserve the right to suspend or terminate your account at any time for violation of these Terms, fraudulent activity, or any other reason at our sole discretion.
 
 Upon termination:
@@ -132,19 +125,19 @@ Upon termination:
 • Author listing fees are non-refundable upon termination`,
     },
     {
-      title: '16. Disclaimer of Warranties',
+      title: '15. Disclaimer of Warranties',
       body: `ReadToEarn is provided "as is" without warranties of any kind. We do not guarantee uninterrupted access, error-free operation, or that earnings will meet any particular amount. Technical failures are reviewed case-by-case within 72 hours. Use of the Platform is at your own risk.`,
     },
     {
-      title: '17. Limitation of Liability',
+      title: '16. Limitation of Liability',
       body: `To the fullest extent permitted by law, ReadToEarn shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the Platform, including but not limited to lost earnings, data loss, or service interruptions.`,
     },
     {
-      title: '18. Governing Law',
+      title: '17. Governing Law',
       body: `These Terms are governed by the laws of the State of Tennessee, without regard to conflict of law principles. Any disputes shall be resolved in the courts of Shelby County, Tennessee.`,
     },
     {
-      title: '19. Contact',
+      title: '18. Contact',
       body: `Questions about these Terms? Contact us at info@joinreadtoearn.com.`,
     },
   ];
@@ -156,7 +149,7 @@ Upon termination:
           Terms of Service
         </h1>
         <p className="text-center text-sm mb-10" style={{ color: textSecondary }}>
-          Last updated: April 24, 2026
+          Last updated: August 4, 2026
         </p>
 
         <div
