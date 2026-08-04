@@ -19,7 +19,6 @@ import { Authors } from '../pages/Authors';
 import { AuthorDashboard } from '../pages/AuthorDashboard';
 import { AuthorSubmit } from '../pages/AuthorSubmit';
 import { AuthorBounty } from '../pages/AuthorBounty';
-import { AuthorCompetition } from '../pages/AuthorCompetition';
 import { AuthorQuickTasks } from '../pages/AuthorQuickTasks';
 import { AuthorSurvey } from '../pages/AuthorSurvey';
 import { AuthorBetaReaders } from '../pages/AuthorBetaReaders';
@@ -32,22 +31,14 @@ import { PrivacyPolicy } from '../pages/PrivacyPolicy';
 import { BulletinBoard } from '../pages/BulletinBoard';
 import { BulletinSubmit } from '../pages/BulletinSubmit';
 import { HowItWorks } from '../pages/HowItWorks';
-import { Elimination } from '../pages/Elimination';
 import { Earn } from '../pages/Earn';
 import { AuthorAMA } from '../pages/AuthorAMA';
 import { AMASession } from '../pages/AMASession';
 import { Checkout } from '../pages/Checkout';
-import { CompetitionDetail } from '../pages/CompetitionDetail';
-import { TimeBoosts } from '../pages/TimeBoosts';
-import { Leaderboard } from '../pages/Leaderboard';
 import { AccountSettings } from '../pages/AccountSettings';
-import { Tournaments } from '../pages/Tournaments';
-import { TournamentDetail } from '../pages/TournamentDetail';
 import { AMARequest } from '../pages/AMARequest';
 import { AdminRoute } from './AdminRoute';
-import { Readathon } from '../pages/Readathon';
 import { FEATURES } from '../config/features';
-import { Sprints } from '../pages/Sprints';
 import QuickTasks from '../pages/QuickTasks';
 import SurveyFeed from '../pages/SurveyFeed';
 import BetaReaderPanel from '../pages/BetaReaderPanel';
@@ -118,18 +109,6 @@ export const Router = () => {
   if (route === '/checkout') return <Checkout />;
 
   // Dynamic routes — no NavBar
-  if (route.startsWith('/competition/')) {
-    const competitionId = route.replace('/competition/', '');
-    return <CompetitionDetail competitionId={competitionId} />;
-  }
-
-  if (FEATURES.tournaments && route.startsWith('/tournament/')) {
-    const tournamentId = route.replace('/tournament/', '');
-    return <TournamentDetail tournamentId={tournamentId} />;
-  }
-
-  if (FEATURES.tournaments && route === '/tournaments/create') return <Tournaments />;
-
   if (route === '/admin/fraud-dashboard') return <AdminRoute><AdminFraudDashboard /></AdminRoute>;
   if (route === '/admin/book-listings') return <AdminRoute><AdminBookListings /></AdminRoute>;
 
@@ -147,7 +126,6 @@ export const Router = () => {
     '/authors',
     '/author-submit',
     '/author-bounty',
-    '/author-competition',
     '/author-quick-tasks',
     '/author-survey',
     '/author-beta-readers',
@@ -157,13 +135,9 @@ export const Router = () => {
     '/faq',
     '/checkout',
     '/checkout-success',
-    '/time-boosts',
-    '/leaderboard',
     '/account-settings',
-    ...(FEATURES.tournaments ? ['/tournaments/create'] : []),
     '/ama-request',
     '/author-dashboard',
-    '/sprints',
     '/quick-tasks',
     '/surveys',
     '/beta-reader-panels',
@@ -173,9 +147,7 @@ export const Router = () => {
   const isKnownRoute =
     KNOWN_ROUTES.includes(route) ||
     route.startsWith('/quiz/') ||
-    route.startsWith('/book/') ||
-    route.startsWith('/competition/') ||
-    (FEATURES.tournaments && route.startsWith('/tournament/'));
+    route.startsWith('/book/');
 
   return (
     <>
@@ -183,7 +155,6 @@ export const Router = () => {
       {(route === '/' || route === '/home') && <Home />}
       {route === '/library' && <Library />}
       {route === '/how-it-works' && <HowItWorks />}
-      {FEATURES.elimination && route === '/elimination' && <Elimination />}
       {route === '/earn' && <Earn />}
       {route === '/profile' && <Profile />}
       {route === '/cashout' && <Cashout />}
@@ -194,15 +165,10 @@ export const Router = () => {
       {route === '/author-dashboard' && <AuthorDashboard />}
       {route === '/author-submit' && <AuthorSubmit />}
       {route === '/author-bounty' && <AuthorBounty />}
-      {route === '/author-competition' && <AuthorCompetition />}
       {route === '/author-quick-tasks' && <AuthorQuickTasks />}
       {route === '/author-survey' && <AuthorSurvey />}
       {route === '/author-beta-readers' && <AuthorBetaReaders />}
       {route === '/author-sensitivity-readers' && <AuthorSensitivityReaders />}
-      {route === '/time-boosts' && <TimeBoosts />}
-      {route === '/leaderboard' && <Leaderboard />}
-      {FEATURES.readathon && route === '/readathon' && <Readathon />}
-      {route === '/sprints' && <Sprints />}
       {route === '/bulletin-board' && <BulletinBoard />}
       {route === '/bulletin-submit' && <BulletinSubmit />}
       {route === '/account-settings' && <AccountSettings />}
@@ -211,14 +177,7 @@ export const Router = () => {
       {route === '/beta-reader-panels' && <BetaReaderPanel />}
       {route === '/sensitivity-reader-panels' && <SensitivityReaderPanel />}
       {route === '/pricing' && <Pricing />}
-      {route.startsWith('/quiz/') && (() => {
-        const bookId = route.split('/')[2]?.split('?')[0];
-        const params = new URLSearchParams(window.location.search);
-        const competitionId = params.get('competition') ?? undefined;
-        const competitionRound = params.get('round') ? Number(params.get('round')) : undefined;
-        const sprintId = params.get('sprint') ?? undefined;
-        return <Quiz bookId={bookId} competitionId={competitionId} competitionRound={competitionRound} sprintId={sprintId} />;
-      })()}
+      {route.startsWith('/quiz/') && <Quiz />}
       {route.startsWith('/book/') && <BookPage />}
       {!isKnownRoute && <Home />}
     </>
