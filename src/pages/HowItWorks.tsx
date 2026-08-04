@@ -1,7 +1,6 @@
 import { useTheme } from '../contexts/ThemeContext';
-import { FEATURES } from '../config/features';
 import { useNavigate } from '../hooks/useNavigate';
-import { Zap, BookOpen, Trophy, ArrowRight, Shield, DollarSign, BarChart2, AlertCircle } from 'lucide-react';
+import { ClipboardList, MessageSquare, BookOpen, ArrowRight, Shield, DollarSign, Eye, AlertCircle } from 'lucide-react';
 
 export const HowItWorks = () => {
   const { isDark, toggleTheme } = useTheme();
@@ -42,24 +41,26 @@ export const HowItWorks = () => {
         {/* Hero */}
         <div className="text-center mb-16">
           <h1 className={`font-serif text-4xl md:text-5xl mb-6 ${textPrimary}`}>
-            Here's Exactly How It Works
+            How It Works
           </h1>
           <p className={`text-base max-w-2xl mx-auto leading-relaxed ${textMuted}`}>
-            ReadToEarn is a reading competition platform where your knowledge of books becomes your competitive edge. Whether you read the book last week or last year, the quiz is the only thing that counts. Every dollar in the prize pool comes from reader entry fees or authors who want their books read. We keep our cut and you earn yours — no gimmicks.
+            ReadToEarn is an author research marketplace. Authors pay for real reader feedback 
+            through quick tasks, surveys, and panels. Readers get paid for their time. 
+            Wide authors can also fund bounty pools for verified quiz passes.
           </p>
         </div>
 
-        {/* The Basics */}
+        {/* For Readers */}
         <div className="mb-16">
-          <h2 className={`font-serif text-3xl mb-8 ${textPrimary}`}>The Basics</h2>
+          <h2 className={`font-serif text-3xl mb-8 ${textPrimary}`}>For Readers</h2>
           <div className="space-y-4">
             {[
-              'A book (or books) is announced for an upcoming competition.',
-              'A registration window opens. Pre-register for free to express your interest and get notified when it goes live.',
-              'When the quiz goes live, you can still enter, but after the first 24 hours, a late entry fee (2×) applies.',
-              'You take the 10-question quiz during the competition window. You have 8 minutes. Auto-submits when time is up.',
-              'Scores are ranked. Top performers earn from the prize pool.',
-              'Winners are reviewed within 24–48 hours, then prizes are released.',
+              'Sign up for a free account. Verify your email and phone number (18+ only).',
+              'Browse the Earn page for open Quick Tasks, Surveys, and Panels.',
+              'Complete a task — vote on a cover, answer survey questions, or read a sample chapter and give feedback.',
+              'Get paid per completed task. Earnings go to your account balance instantly.',
+              'Cash out via bank transfer or Wise once you hit $10.',
+              'Wide authors may also fund bounty pools where you can pass their book quiz and earn from the pool.',
             ].map((step, i) => (
               <div key={i} className={`rounded-xl border p-5 flex items-start gap-4 transition-colors ${cardBg}`}>
                 <span className="text-[#D4A843] font-serif text-xl font-bold shrink-0 w-6 text-center">{i + 1}</span>
@@ -69,139 +70,137 @@ export const HowItWorks = () => {
           </div>
         </div>
 
-        {/* Three Formats */}
+        {/* Ways to Earn */}
         <div className="mb-16">
-          <h2 className={`font-serif text-3xl mb-8 ${textPrimary}`}>{FEATURES.readathon || FEATURES.elimination ? 'The Three Formats' : 'The Format'}</h2>
+          <h2 className={`font-serif text-3xl mb-8 ${textPrimary}`}>Ways to Earn</h2>
           <div className="space-y-6">
 
-            {/* Sprint */}
-            {FEATURES.readathon || FEATURES.elimination ? (
-              <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
-                <div className="flex items-center gap-3 mb-3">
-                  <Zap className="text-[#D4A843] shrink-0" size={22} />
-                  <h3 className={`font-serif text-xl ${textPrimary}`}>The Sprint</h3>
-                  <span className={`text-xs ${textMuted} italic`}>— "A Race to the Finish Line"</span>
-                </div>
-                <p className={`text-sm mb-4 ${textMuted}`}>
-                  One book. One quiz. Score + speed decide the winner. One question answered wrong can knock you down the leaderboard. If it's a tie on score, whoever submitted faster wins. There are 4 sprints every month — each with a different book. All four books are announced at the start of the month so you can plan ahead.
-                </p>
-                <div className={`text-xs rounded-lg p-3 mb-4 ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#D4A843]/10'}`}>
-                  <p className="text-[#D4A843] font-semibold mb-1">Scoring</p>
-                  <p className={textMuted}>Top 3 split the prize pool: 1st gets 50%, 2nd gets 30%, 3rd gets 20%. Accuracy first, speed second. Tied scores are broken by who submitted fastest.</p>
-                </div>
-                <div className={`text-xs rounded-lg p-3 mb-4 ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#D4A843]/10'}`}>
-                  <p className="text-[#D4A843] font-semibold mb-1">Entry &amp; Late Fee</p>
-                  <p className={textMuted}>Pre-register free before the quiz goes live. Once live, enter at the standard fee for the first 24 hours. After that, a late fee (2×) applies until the sprint closes.</p>
-                </div>
-                <div className={`text-xs rounded-lg p-3 border-l-2 border-[#D4A843] ${isDark ? 'bg-[#1B2A4A]/60' : 'bg-[#F5F0E8]'}`}>
-                  <p className={`font-semibold mb-1 ${textPrimary}`}>Example</p>
-                  <p className={textMuted}>Sprint 1 goes live on Day 6. Entry fee: $5. After Day 7, late fee kicks in at $10. Sprint closes Day 8 — payouts same day. You score 10/10 in 4:12, your opponent scores 10/10 in 3:55. They take 1st (50%), you take 2nd (30%). That's the game.</p>
-                </div>
-                <p className={`text-xs mt-3 ${textMuted}`}>Each sprint runs ~2 days. Four sprints per month.</p>
+            {/* Quick Tasks */}
+            <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
+              <div className="flex items-center gap-3 mb-3">
+                <ClipboardList className="text-[#D4A843] shrink-0" size={22} />
+                <h3 className={`font-serif text-xl ${textPrimary}`}>Quick Tasks</h3>
+                <span className={`text-xs ${textMuted} italic`}>— 1–3 minutes</span>
               </div>
-            ) : (
-              <div className={`rounded-xl border p-8 transition-colors ${cardBg}`}>
-                <div className="flex items-center gap-3 mb-4">
-                  <Zap className="text-[#D4A843] shrink-0" size={26} />
-                  <h3 className={`font-serif text-2xl ${textPrimary}`}>The Sprint</h3>
-                  <span className={`text-xs ${textMuted} italic`}>— "A Race to the Finish Line"</span>
-                </div>
-                <p className={`text-base mb-6 leading-relaxed ${textMuted}`}>
-                  One book. One quiz. Score + speed decide the winner. One question answered wrong can knock you down the leaderboard. If it's a tie on score, whoever submitted faster wins. There are 4 sprints every month. All four books are announced at the start of the month so you can plan ahead.
-                </p>
-                <div className={`text-sm rounded-lg p-4 mb-4 ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#D4A843]/10'}`}>
-                  <p className={`font-semibold mb-2 ${textPrimary}`}>Entry &amp; Late Fee</p>
-                  <p className={textMuted}>Pre-register free before the quiz goes live. Once live, enter at the standard fee for the first 24 hours. After that, a late fee (2×) applies until the sprint closes.</p>
-                </div>
-                <div className={`text-sm rounded-lg p-4 border-l-2 border-[#D4A843] ${isDark ? 'bg-[#1B2A4A]/60' : 'bg-[#F5F0E8]'}`}>
-                  <p className={`font-semibold mb-2 ${textPrimary}`}>Example</p>
-                  <p className={textMuted}>"Gone Girl — Sprint. Entry fee: $5." You get 10/10 in 4:12. Your opponent gets 10/10 in 3:55. They take 1st (50%), you take 2nd (30%), third place takes 20%. That's the game.</p>
-                </div>
+              <p className={`text-sm mb-4 ${textMuted}`}>
+                Fast gut-check decisions for authors. Vote on cover art, test a title, rate a blurb, or 
+                compare hook options. Tasks are short, fill fast, and pay $0.35–$0.42 on completion.
+              </p>
+              <div className={`text-xs rounded-lg p-3 border-l-2 border-[#D4A843] ${isDark ? 'bg-[#1B2A4A]/60' : 'bg-[#F5F0E8]'}`}>
+                <p className={`font-semibold mb-1 ${textPrimary}`}>Example</p>
+                <p className={textMuted}>An author uploads two cover options. You pick your favorite and rate them. 30 seconds, $0.38. Done.</p>
               </div>
-            )}
+            </div>
 
-            {/* Read-A-Thon */}
-            {FEATURES.readathon && <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
+            {/* Surveys */}
+            <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
+              <div className="flex items-center gap-3 mb-3">
+                <MessageSquare className="text-[#D4A843] shrink-0" size={22} />
+                <h3 className={`font-serif text-xl ${textPrimary}`}>Surveys</h3>
+                <span className={`text-xs ${textMuted} italic`}>— 5–15 minutes</span>
+              </div>
+              <p className={`text-sm mb-4 ${textMuted}`}>
+                Deeper insight on packaging, positioning, and audience fit. Authors test blurbs, tropes, 
+                hooks, comp titles, and concepts. $1.00 per survey.
+              </p>
+              <div className={`text-xs rounded-lg p-3 border-l-2 border-[#D4A843] ${isDark ? 'bg-[#1B2A4A]/60' : 'bg-[#F5F0E8]'}`}>
+                <p className={`font-semibold mb-1 ${textPrimary}`}>Example</p>
+                <p className={textMuted}>An author asks: "Which trope combo appeals to you more — enemies-to-lovers + forced proximity, or grumpy/sunshine + marriage of convenience?" You answer 10 questions, earn $1.00.</p>
+              </div>
+            </div>
+
+            {/* Beta Panels */}
+            <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
               <div className="flex items-center gap-3 mb-3">
                 <BookOpen className="text-[#D4A843] shrink-0" size={22} />
-                <h3 className={`font-serif text-xl ${textPrimary}`}>The Read-A-Thon</h3>
-                <span className={`text-xs ${textMuted} italic`}>— "Book Bingo"</span>
+                <h3 className={`font-serif text-xl ${textPrimary}`}>Beta Reader Panels</h3>
+                <span className={`text-xs ${textMuted} italic`}>— 15–20 minutes</span>
               </div>
               <p className={`text-sm mb-4 ${textMuted}`}>
-                A 4×4 bingo card of books organized by genre — one genre per row, four books per row. Pass the quiz on a book to complete that square. Complete all four books in a row to score a Bingo. The first three players to score a Bingo win from the prize pool. You don't need to read all 16 books — just one full row.
+                Authors upload the first chapter of their unpublished book. You read it, answer structured 
+                questions, and optionally leave your email if you're interested in full beta reading off-platform. 
+                $1.50 per panel.
               </p>
-              <div className={`text-xs rounded-lg p-3 mb-4 ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#D4A843]/10'}`}>
-                <p className="text-[#D4A843] font-semibold mb-1">Scoring</p>
-                <p className={textMuted}>First to complete a full row scores a Bingo. 1st Bingo takes 50%, 2nd takes 30%, 3rd takes 20%. Ties broken by who completed the row fastest.</p>
-              </div>
               <div className={`text-xs rounded-lg p-3 border-l-2 border-[#D4A843] ${isDark ? 'bg-[#1B2A4A]/60' : 'bg-[#F5F0E8]'}`}>
                 <p className={`font-semibold mb-1 ${textPrimary}`}>Example</p>
-                <p className={textMuted}>"October Book Bingo" — 4×4 card. Row 1: Fantasy. Row 2: Mystery. Row 3: Thriller. Row 4: Romance. Entry fee: $7. You focus on the Mystery row — pass all four quizzes before anyone else completes a full row. You score the 1st Bingo and take 50% of the prize pool.</p>
+                <p className={textMuted}>An author uploads their opening chapter. You read it, rate the hook, and answer 5 questions about pacing and character introduction. 15 minutes, $1.50.</p>
               </div>
-              <p className={`text-xs mt-3 ${textMuted}`}>Duration: A weekend to a full week</p>
-            </div>}
+            </div>
 
-            {/* Elimination */}
-            {FEATURES.elimination && <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
+            {/* Sensitivity Panels */}
+            <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
               <div className="flex items-center gap-3 mb-3">
-                <Trophy className="text-[#D4A843] shrink-0" size={22} />
-                <h3 className={`font-serif text-xl ${textPrimary}`}>The Elimination Bracket</h3>
-                <span className={`text-xs ${textMuted} italic`}>— "A Spelling Bee for Readers"</span>
+                <Eye className="text-[#D4A843] shrink-0" size={22} />
+                <h3 className={`font-serif text-xl ${textPrimary}`}>Sensitivity Reader Panels</h3>
+                <span className={`text-xs ${textMuted} italic`}>— 15–20 minutes</span>
               </div>
               <p className={`text-sm mb-4 ${textMuted}`}>
-                Multiple rounds. Each round, you need to hit a higher score to survive. Miss the threshold and you're out. Last readers standing compete in a final harder quiz. Each round uses a different book. Finals use a 20-question Master Quiz.
+                Authors with diverse stories need readers from specific backgrounds. You read a sample 
+                chapter and answer structured questions about representation, accuracy, and authenticity. 
+                $10.00 per panel. Your lived experience is the qualification.
               </p>
-              <div className={`text-xs rounded-lg p-3 mb-4 ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#D4A843]/10'}`}>
-                <p className="text-[#D4A843] font-semibold mb-1">Scoring</p>
-                <p className={textMuted}>Pass/Fail per round. Finals ranked by score. Same finals score = that place split.</p>
-              </div>
               <div className={`text-xs rounded-lg p-3 border-l-2 border-[#D4A843] ${isDark ? 'bg-[#1B2A4A]/60' : 'bg-[#F5F0E8]'}`}>
                 <p className={`font-semibold mb-1 ${textPrimary}`}>Example</p>
-                <p className={textMuted}>Round 1 — 80 enter. Read Book A. Need 8/10 to advance. 55 pass. Round 2 — 55 survivors. Read Book B. Need 9/10. 20 pass. Finals — 20 survivors take the Master Quiz. Highest score wins. 2nd & 3rd place earn smaller payouts.</p>
+                <p className={textMuted}>An author writing a story with a Deaf protagonist wants feedback from Deaf readers. Qualified readers review a chapter and answer questions about authenticity. 15 minutes, $10.00.</p>
               </div>
-              <p className={`text-xs mt-3 ${textMuted}`}>Duration: 1–2 weeks across rounds</p>
-            </div>}
+            </div>
+
+            {/* Bounties */}
+            <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
+              <div className="flex items-center gap-3 mb-3">
+                <DollarSign className="text-[#D4A843] shrink-0" size={22} />
+                <h3 className={`font-serif text-xl ${textPrimary}`}>Author Bounties</h3>
+                <span className={`text-xs ${textMuted} italic`}>— per quiz pass</span>
+              </div>
+              <p className={`text-sm mb-4 ${textMuted}`}>
+                Wide authors fund a pool and pay per quiz pass. Read their book, take the 10-question quiz 
+                in 8 minutes, and pass to earn.  When the pool runs dry, the quiz stays open for fun.
+              </p>
+              <div className={`text-xs rounded-lg p-3 border-l-2 border-[#D4A843] ${isDark ? 'bg-[#1B2A4A]/60' : 'bg-[#F5F0E8]'}`}>
+                <p className={`font-semibold mb-1 ${textPrimary}`}>Example</p>
+                <p className={textMuted}>An author funds a $50 bounty pool at $1 per pass. 40 readers can pass the quiz and earn $1 each. The platform keeps 20% ($10), readers earn $40 total.</p>
+              </div>
+            </div>
 
           </div>
         </div>
 
-        {/* Prize Pool */}
+        {/* For Authors */}
         <div className="mb-16">
-          <h2 className={`font-serif text-3xl mb-8 ${textPrimary}`}>The Prize Pool</h2>
+          <h2 className={`font-serif text-3xl mb-8 ${textPrimary}`}>For Authors</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
-              <DollarSign className="text-[#D4A843] mb-3" size={22} />
-              <h3 className={`font-serif text-lg mb-2 ${textPrimary}`}>Reader-Funded</h3>
-              <p className={`text-sm ${textMuted}`}>75% of all entry fees go to winners. ReadToEarn keeps 25%.</p>
+              <ClipboardList className="text-[#D4A843] mb-3" size={22} />
+              <h3 className={`font-serif text-lg mb-2 ${textPrimary}`}>Research Marketplace</h3>
+              <p className={`text-sm ${textMuted}`}>
+                Purchase Quick Tasks, Surveys, or Panels and get real reader feedback on your covers, 
+                blurbs, hooks, concepts, and samples. Pricing starts at $14 for 25 task completions.
+              </p>
             </div>
             <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
               <BookOpen className="text-[#D4A843] mb-3" size={22} />
-              <h3 className={`font-serif text-lg mb-2 ${textPrimary}`}>Author-Sponsored</h3>
-              <p className={`text-sm ${textMuted}`}>Authors pay a flat fee to fund the prize pool. Free to enter for readers.</p>
+              <h3 className={`font-serif text-lg mb-2 ${textPrimary}`}>Listings + Quizzes</h3>
+              <p className={`text-sm ${textMuted}`}>
+                List your book in the library with an always-available quiz. Readers discover you while 
+                browsing. Single listing: $7.
+              </p>
             </div>
-          </div>
-          <div className={`rounded-xl border p-5 transition-colors ${cardBg}`}>
-            <p className={`text-sm ${textMuted}`}>
-              Pre-registration is free. No payment until the competition officially launches. If a competition is canceled due to low demand, you pay nothing.
-            </p>
-          </div>
-        </div>
-
-        {/* Leaderboard */}
-        <div className="mb-16">
-          <h2 className={`font-serif text-3xl mb-8 ${textPrimary}`}>The Leaderboard</h2>
-          <div className="space-y-3">
-            {[
-              { label: 'Sprint', desc: 'Live leaderboard updates every ~60 seconds during the active competition window.' },
-              ...(FEATURES.readathon ? [{ label: 'Read-A-Thon', desc: 'Live bingo leaderboard shows who has scored Bingos and how many squares each player has completed. Updates every ~60 seconds.' }] : []),
-              ...(FEATURES.elimination ? [{ label: 'Elimination Bracket', desc: 'Live "Survived / Eliminated" status per round. Rankings shown in the final round only.' }] : []),
-              { label: 'After Competition Closes', desc: 'Leaderboard freezes and stays visible for 7–14 days. Then archived in the Winners Archive.' },
-            ].map(({ label, desc }) => (
-              <div key={label} className={`rounded-xl border p-5 transition-colors ${cardBg}`}>
-                <p className={`text-sm font-semibold mb-1 ${textPrimary}`}>{label}</p>
-                <p className={`text-sm ${textMuted}`}>{desc}</p>
-              </div>
-            ))}
+            <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
+              <DollarSign className="text-[#D4A843] mb-3" size={22} />
+              <h3 className={`font-serif text-lg mb-2 ${textPrimary}`}>Bounties (Wide)</h3>
+              <p className={`text-sm ${textMuted}`}>
+                Fund a quiz-pass bounty pool. Readers earn when they pass your book quiz. You pay only 
+                for results. Minimum $25 pool. 20% platform fee.
+              </p>
+            </div>
+            <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
+              <Eye className="text-[#D4A843] mb-3" size={22} />
+              <h3 className={`font-serif text-lg mb-2 ${textPrimary}`}>Sensitivity Panels</h3>
+              <p className={`text-sm ${textMuted}`}>
+                Need feedback from readers with specific lived experiences? Purchase a sensitivity panel 
+                and get matched. Essential: $50 for 3 readers.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -209,28 +208,29 @@ export const HowItWorks = () => {
         <div className="mb-16">
           <h2 className={`font-serif text-3xl mb-8 ${textPrimary}`}>Payouts</h2>
           <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
-            <BarChart2 className="text-[#D4A843] mb-4" size={22} />
+            <DollarSign className="text-[#D4A843] mb-4" size={22} />
             <div className="space-y-3">
-              <p className={`text-sm ${textMuted}`}>Get paid via <span className={textPrimary}>PayPal, Wise (international)</span>, or gift cards via <span className={textPrimary}>Giftogram</span>.</p>
+              <p className={`text-sm ${textMuted}`}>Get paid via <span className={textPrimary}>Wise, bank transfer</span>, or other approved methods.</p>
               <p className={`text-sm ${textMuted}`}>Minimum cashout: <span className={textPrimary}>$10</span>.</p>
-              <p className={`text-sm ${textMuted}`}>If you earn <span className={textPrimary}>$599+ in a year</span>, we'll ask for tax info before releasing further payouts. You'll get notified at $500 and $550.</p>
-              <p className={`text-sm ${textMuted}`}>Ages 13–17: <span className={textPrimary}>gift cards only</span>.</p>
+              <p className={`text-sm ${textMuted}`}>If you earn <span className={textPrimary}>$600+ in a year</span>, we'll ask for tax info before releasing further payouts. You'll get notified at $500 and $550.</p>
+              <p className={`text-sm ${textMuted}`}>18+ only. One account per person — verified by phone + email.</p>
             </div>
           </div>
         </div>
 
         {/* Fairness */}
         <div className="mb-16">
-          <h2 className={`font-serif text-3xl mb-8 ${textPrimary}`}>Fairness & Rules</h2>
+          <h2 className={`font-serif text-3xl mb-8 ${textPrimary}`}>Trust & Safety</h2>
           <div className={`rounded-xl border p-6 transition-colors ${cardBg}`}>
             <Shield className="text-[#D4A843] mb-4" size={22} />
             <div className="space-y-3">
               {[
                 'One account per person — verified by phone number + email.',
-                '8-minute quiz timer with auto-submit to limit cheating.',
-                'Technical failures are reviewed case-by-case within 72 hours.',
-                'Quiz disputes: flag a question → reviewed by our team → retroactive credit issued if valid.',
-                'Fraudulent earnings are forfeited. Legitimate earnings prior to a ban are paid out after a 30-day review.',
+                '18+ only. No exceptions.',
+                'Multi-accounting is banned. Fraudulent earnings are forfeited.',
+                'Quiz disputes: flag a question → reviewed by our team within 72 hours.',
+                'Payouts paused until tax info is provided when near IRS thresholds.',
+                'ReadToEarn is a research marketplace, not a paid Amazon review service.',
               ].map((rule, i) => (
                 <div key={i} className="flex items-start gap-3">
                   <AlertCircle className="text-[#D4A843] shrink-0 mt-0.5" size={15} />
@@ -243,8 +243,8 @@ export const HowItWorks = () => {
 
         {/* CTA */}
         <div className="text-center">
-          <h2 className={`font-serif text-3xl mb-3 ${textPrimary}`}>Ready to compete?</h2>
-          <p className={`text-sm mb-8 ${textMuted}`}>Create your free account and pre-register for the next competition.</p>
+          <h2 className={`font-serif text-3xl mb-3 ${textPrimary}`}>Ready to start earning?</h2>
+          <p className={`text-sm mb-8 ${textMuted}`}>Create your free account and start earning today.</p>
           <button
             onClick={() => navigateTo('/signup')}
             className="inline-flex items-center gap-2 bg-[#D4A843] text-[#1B2A4A] font-semibold px-8 py-4 rounded-xl hover:bg-[#c49a3a] transition-colors text-lg"
