@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from '../hooks/useNavigate';
-import { Check, Star, Zap, Bell, Trophy, Shield, Rocket, Sparkles } from 'lucide-react';
+import { Check, Sparkles, Bell, Shield, Rocket } from 'lucide-react';
 
 export function Pricing() {
   const { isDark } = useTheme();
@@ -31,7 +31,7 @@ export function Pricing() {
           Membership Plans
         </h1>
         <p className={`text-lg ${textMuted} max-w-2xl mx-auto leading-relaxed`}>
-          Whether you're a casual trivia fan or a competitive reader, 
+          Whether you're a casual trivia fan or a dedicated reader, 
           we have a place for you. Join the community and start earning for your insights.
         </p>
       </section>
@@ -52,12 +52,10 @@ export function Pricing() {
           
           <ul className="space-y-4 mb-10 flex-1">
             {[
-              "Enter any competition",
-              "Take quizzes and earn from the prize pool",
-              "Access Author Bounties",
+              "Take quizzes and browse the library",
               "Complete Quick Tasks, Surveys, & Beta and Sensitivity Panels",
+              "Earn from active Author Bounties",
               "Cash out at $10 minimum",
-              "Public leaderboard visibility",
               "Reader Dashboard with personal stats"
             ].map((feature) => (
               <li key={feature} className="flex gap-3 text-sm items-start">
@@ -107,10 +105,8 @@ export function Pricing() {
               "Ad-free experience",
               "Access to the Referral Program",
               "Priority queue. You're first notified when new earning options open. Slots are limited and fill fast.",
-              "1 competition entry at 30% off every month.",
-              "Subscriber-only giveaway every month. Free to enter, guaranteed prize pool regardless of entrant count. Three names are drawn and win cash prizes.",
-              "Minimum cashout drops to $5.",
-
+              "Subscriber-only bonus opportunities and giveaways every month",
+              "Minimum cashout drops to $5"
             ].map((feature) => (
               <li key={feature} className="flex gap-3 text-sm items-start">
                 <Check className="w-5 h-5 text-[#D4A843] shrink-0" />
