@@ -16,14 +16,13 @@ export const PrivacyPolicy = () => {
       body: `We collect information you provide directly when you register or use the Platform, including:
 
 • Name and email address
-• Date of birth (required for age verification and COPPA compliance)
+• Date of birth (required for age verification)
 • Phone number (required for identity verification; one account per number)
 • Country of residence (required for payout eligibility)
 • Payment information when you request a cashout
-• Parent or guardian phone number, if you are between 13 and 17 years old
 • Tax identification number (SSN or equivalent) when your cumulative earnings reach $500
 
-We also collect usage data automatically, including quiz activity, reading history, competition participation, referral activity, survey and task completions, and session data.`,
+We also collect usage data automatically, including quiz activity, reading history, referral activity, survey and task completions, and session data.`,
     },
     {
       title: '2. How We Use Your Information',
@@ -32,22 +31,16 @@ We also collect usage data automatically, including quiz activity, reading histo
 • Operate and improve the Platform
 • Verify your identity and prevent fraud, including multi-account detection via phone and email
 • Determine payout eligibility based on your country
-• Process earnings and cashout requests via PayPal, Wise, or gift cards
+• Process earnings and cashout requests via Wise or bank transfer
 • Enforce the 8-minute quiz timer and other anti-cheating measures
 • Comply with legal obligations, including IRS 1099 tax reporting for users earning $600 or more in a calendar year
-• Communicate with you about your account, earnings, competitions, and platform updates
-• Administer parental consent for users aged 13–17`,
+• Communicate with you about your account, earnings, and platform updates`,
     },
     {
       title: '3. Children\'s Privacy (COPPA)',
-      body: `ReadToEarn is open to users aged 13 and older. We do not knowingly collect personal information from children under 13. Any user found to be under 13 will have their account immediately terminated and their data deleted.
+      body: `ReadToEarn is only available to users aged 18 and older. We do not knowingly collect personal information from individuals under 18. Any user found to be under 18 will have their account immediately terminated and their data deleted.
 
-For users aged 13–17 (minors):
-• A parent or guardian must verify their phone number at signup via SMS one-time passcode
-• The parent or guardian must complete a consent checkbox with a logged timestamp before the account is created
-• Both the minor's and parent's verified phone numbers are stored on the account
-• Minors are eligible for gift card payouts only. Cash transfers (PayPal and Wise) are available to users 18 and older
-• If you believe a child under 13 has created an account, contact us immediately at info@joinreadtoearn.com and we will delete that information promptly`,
+If you believe a person under 18 has created an account, contact us immediately at info@joinreadtoearn.com and we will delete that information promptly.`,
     },
     {
       title: '4. Phone Number Verification & Fraud Prevention',
@@ -55,8 +48,7 @@ For users aged 13–17 (minors):
 
 Additional fraud prevention measures include:
 • Email verification required before account activation
-• 8-minute quiz timer to prevent AI-assisted or automated quiz completion
-• 48-hour pre-registration window before competition entry fees are charged
+• 8-minute quiz timer to prevent automated quiz completion
 • 30-day fraud review hold before first affiliate payout credit
 • Technical failures reviewed case-by-case within 72 hours`,
     },
@@ -64,10 +56,9 @@ Additional fraud prevention measures include:
       title: '5. Earnings, Payouts & Tax Compliance',
       body: `Earnings are subject to the following rules:
 
-• Minimum cashout threshold: $10 for all users
-• Payment methods: PayPal (US, 18+), Wise (international, 18+), gift cards (all ages)
-• Earnings from bounties represent 80% of the author's pool; the platform retains 20%
-• Competition prize pools are funded by reader entry fees (75% to winners, 25% to platform) or by author sponsorship fees
+• Minimum cashout threshold: $10 ($5 for paid subscribers)
+• Payment methods: Wise (international), bank transfer
+• Earnings from bounties: 80% to readers, 20% platform fee
 • Affiliate earnings ($0.50/month per referred subscriber) are available to paid subscribers only and begin after the referred user has been active for 30 days
 
 Tax compliance:
@@ -81,7 +72,7 @@ Tax compliance:
       title: '6. Sharing Your Information',
       body: `We do not sell your personal information. We may share your information with:
 
-• Payment processors (PayPal, Wise, Giftogram) to fulfill cashout requests
+• Payment processors (Wise, bank transfer providers) to fulfill cashout requests
 • Hosting and infrastructure providers necessary to operate the Platform
 • The IRS or equivalent tax authority, as required by law for 1099 reporting
 • Law enforcement or regulatory bodies when required by applicable law
@@ -90,7 +81,7 @@ We do not share your reading history, quiz results, or survey responses with aut
     },
     {
       title: '7. Country Eligibility & Geographic Restrictions',
-      body: `Payout eligibility is limited to countries supported by Wise for international transfers. Your country of residence is collected at signup and determines whether you are eligible to earn and withdraw funds. Users in unsupported countries may browse the Platform but cannot participate in paid activities (bounties, competitions, surveys, quick tasks, beta reading, sensitivity reading, or affiliate programs).
+      body: `Payout eligibility is limited to countries supported by Wise for international transfers. Your country of residence is collected at signup and determines whether you are eligible to earn and withdraw funds. Users in unsupported countries may browse the Platform but cannot participate in paid activities (bounties, surveys, quick tasks, beta reading, sensitivity reading, or affiliate programs).
 
 A full list of supported countries is available at signup.`,
     },
@@ -98,9 +89,9 @@ A full list of supported countries is available at signup.`,
       title: '8. Subscriptions & Referrals',
       body: `Reader subscriptions ($4.99/month or $49.90/year) are processed through our payment provider. Subscription benefits are honored through the end of the current billing period upon cancellation.
 
-Referral codes are generated only for active paid subscribers. Referral earnings ($0.50/month per referred subscriber) are credited after the referred user has maintained an active paid subscription for 30 days. Referral credits stop when the referred user cancels. There is no cap on the number of referrals.
+Reader Affiliate Program: Referral earnings ($0.50/month per referred subscriber) are credited after the referred user has maintained an active paid subscription for 30 days. Referral credits stop when the referred user cancels. There is no cap on the number of referrals.
 
-Author Ambassador referral earnings (5% of a referred author's first listing purchase) are credited after the referred author completes their first purchase.`,
+Author Ambassador Program: Authors earn 25% of a referred author's first listing purchase. Credits are applied after the referred author completes their first purchase.`,
     },
     {
       title: '9. Data Retention',
@@ -151,7 +142,7 @@ To exercise any of these rights, contact us at info@joinreadtoearn.com. We will 
           Privacy Policy
         </h1>
         <p className="text-center text-sm mb-10" style={{ color: textSecondary }}>
-          Last updated: April 24, 2026
+          Last updated: August 4, 2026
         </p>
 
         <div
