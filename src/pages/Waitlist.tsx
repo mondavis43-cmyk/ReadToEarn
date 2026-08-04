@@ -129,10 +129,10 @@ export const Waitlist = () => {
             Coming Soon
           </div>
           <h2 className="font-serif text-5xl text-[#1B2A4A] dark:text-[#F5F0E8] mb-6 leading-tight">
-            Prove you read it.<br />Get paid for it.
+            Your reader opinion<br />is worth money.
           </h2>
           <p className="text-[#2C2C2C]/60 dark:text-gray-400 text-lg max-w-xl mx-auto">
-            Read books, pass a 10-question quiz, and earn real money.
+            Authors pay for real feedback. Complete quick tasks, take surveys, join panels — and get paid for your time.
           </p>
         </div>
 
@@ -142,18 +142,18 @@ export const Waitlist = () => {
             <div className="w-10 h-10 bg-[#D4A843]/15 dark:bg-[#D4A843]/10 rounded-lg flex items-center justify-center mb-4">
               <BookOpen className="w-5 h-5 text-[#D4A843]" />
             </div>
-            <h3 className="text-[#1B2A4A] dark:text-[#F5F0E8] font-semibold mb-2">1. Pick a book</h3>
+            <h3 className="text-[#1B2A4A] dark:text-[#F5F0E8] font-semibold mb-2">1. Pick a task</h3>
             <p className="text-[#2C2C2C]/60 dark:text-gray-400 text-sm">
-              Browse our library of popular releases, indie titles, classic literature, and more. Books with active bounties or competitions show their payout upfront.
+              Browse open quick tasks, surveys, and panels. Vote on covers, test titles, rate blurbs, or review a sample chapter.
             </p>
           </div>
           <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-6 border border-[#e8e0d5] dark:border-gray-800">
             <div className="w-10 h-10 bg-[#D4A843]/15 dark:bg-[#D4A843]/10 rounded-lg flex items-center justify-center mb-4">
               <Brain className="w-5 h-5 text-[#D4A843]" />
             </div>
-            <h3 className="text-[#1B2A4A] dark:text-[#F5F0E8] font-semibold mb-2">2. Pass the quiz</h3>
+            <h3 className="text-[#1B2A4A] dark:text-[#F5F0E8] font-semibold mb-2">2. Share your take</h3>
             <p className="text-[#2C2C2C]/60 dark:text-gray-400 text-sm">
-              Answer 10 questions in 8 minutes to prove you actually read it. Questions go deep. No skimming your way through.
+              Give real reader feedback authors use to make better books. Tasks take 1–20 minutes. Wide authors may also fund bounty quizzes worth extra.
             </p>
           </div>
           <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-6 border border-[#e8e0d5] dark:border-gray-800">
@@ -162,7 +162,7 @@ export const Waitlist = () => {
             </div>
             <h3 className="text-[#1B2A4A] dark:text-[#F5F0E8] font-semibold mb-2">3. Cash out</h3>
             <p className="text-[#2C2C2C]/60 dark:text-gray-400 text-sm">
-              Once you hit $10, redeem via bank transfer. No subscription required to start earning.
+              Once you hit $10, cash out via bank transfer or Wise. No subscription required to start earning.
             </p>
           </div>
         </div>
