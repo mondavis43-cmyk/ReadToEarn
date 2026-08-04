@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '../hooks/useNavigate';
 import { useTheme } from '../contexts/ThemeContext';
-import { ArrowLeft, DollarSign, Gift, Trophy, Target, BookCheck, Star, Wallet } from 'lucide-react';
+import { ArrowLeft, DollarSign, Gift, Target, BookCheck, Star, Wallet } from 'lucide-react';
 
 interface Profile {
   email: string;
@@ -13,7 +13,6 @@ interface Profile {
   birthday_bonus_last_claimed: number | null;
   is_upgraded: boolean;
   accuracy_rate: number;
-  wins_count: number;
   completed_this_month: number;
   payout_email: string | null;
   payout_method: 'paypal' | 'wise' | 'bank_transfer' | null;
@@ -107,7 +106,6 @@ export const Profile = () => {
       setCompletedBooks(completedResult.data as CompletedBook[]);
     }
 
-    console.log('[Profile] quiz_attempts result:', attemptsResult);
     if (attemptsResult.data) {
       const all = attemptsResult.data;
       const total = all.length;
@@ -235,10 +233,10 @@ export const Profile = () => {
             <Gift className="w-5 h-5 text-[#D4A843] flex-shrink-0" />
             <div>
               <p className={`text-sm font-semibold ${headingColor}`}>
-                You're entered in this month's giveaway 🎉
+                You're in — subscriber bonus opportunities 🎉
               </p>
               <p className={`text-xs ${subColor} mt-0.5`}>
-                3 winners drawn monthly — prizes credited directly to your balance. No action needed.
+                Subscribers get early access to limited-earning opportunities and monthly bonus draws. Credits credited directly to your balance.
               </p>
             </div>
           </div>
@@ -262,17 +260,17 @@ export const Profile = () => {
           <div className={`${cardBg} p-4 border ${cardBorder} rounded-xl text-center`}>
             <BookCheck className="w-5 h-5 mx-auto mb-2 text-green-500" />
             <p className={`text-xl font-serif ${headingColor}`}>{booksThisMonth}</p>
-            <p className={`text-[10px] uppercase ${subColor}`}>Books this Month</p>
+            <p className={`text-[10px] uppercase ${subColor}`}>Completed this Month</p>
           </div>
           <div className={`${cardBg} p-4 border ${cardBorder} rounded-xl text-center`}>
             <Target className="w-5 h-5 mx-auto mb-2 text-blue-500" />
             <p className={`text-xl font-serif ${headingColor}`}>{accuracyRate}%</p>
-            <p className={`text-[10px] uppercase ${subColor}`}>Accuracy Rate</p>
+            <p className={`text-[10px] uppercase ${subColor}`}>Quiz Accuracy</p>
           </div>
           <div className={`${cardBg} p-4 border ${cardBorder} rounded-xl text-center`}>
-            <Trophy className="w-5 h-5 mx-auto mb-2 text-[#D4A843]" />
-            <p className={`text-xl font-serif ${headingColor}`}>{profile?.wins_count ?? 0}</p>
-            <p className={`text-[10px] uppercase ${subColor}`}>Competition Wins</p>
+            <Star className="w-5 h-5 mx-auto mb-2 text-[#D4A843]" />
+            <p className={`text-xl font-serif ${headingColor}`}>{profile?.completed_this_month ?? 0}</p>
+            <p className={`text-[10px] uppercase ${subColor}`}>Tasks Completed</p>
           </div>
         </div>
 
@@ -288,8 +286,8 @@ export const Profile = () => {
               </div>
               <p className={`text-xs ${subColor}`}>
                 {profile?.is_upgraded
-                  ? 'Active: Enjoy ad-free reading, priority survey access, monthly giveaway entry, and 30% off entries.'
-                  : 'Upgrade for $4.99/mo to unlock ad-free reading, priority survey queues, monthly giveaway entry, entry discounts, and more.'}
+                  ? 'Active: Enjoy ad-free reading, priority access to limited earning opportunities, monthly subscriber bonus draws, and $5 minimum cashout.'
+                  : 'Upgrade for $4.99/mo to unlock ad-free reading, priority queues for limited tasks and surveys, monthly subscriber bonus draws, and $5 minimum cashout.'}
               </p>
             </div>
             {!profile?.is_upgraded ? (
@@ -316,7 +314,7 @@ export const Profile = () => {
             <Wallet className="w-4 h-4 text-[#D4A843]" /> Payout Settings
           </h3>
           <p className={`text-xs ${subColor} mb-4`}>
-            Where should we send your earnings? Used for cashouts, bounty rewards, and competition prizes.
+            Where should we send your earnings? Used for cashouts, task payouts, and bounty rewards.
           </p>
 
           {/* Method picker */}
@@ -340,7 +338,7 @@ export const Profile = () => {
                     : 'bg-transparent text-black/40 border-black/10 hover:border-black/30'
               }`}
             >
-              � Wise
+              Wise
             </button>
             <button
               onClick={() => setPayoutMethod('bank_transfer')}
@@ -352,7 +350,7 @@ export const Profile = () => {
                     : 'bg-transparent text-black/40 border-black/10 hover:border-black/30'
               }`}
             >
-              � Bank Transfer
+              Bank Transfer
             </button>
           </div>
 
@@ -483,7 +481,6 @@ export const Profile = () => {
             </p>
           )}
         </div>
-
 
       </div>
     </div>
