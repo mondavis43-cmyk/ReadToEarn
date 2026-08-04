@@ -77,24 +77,24 @@ export const Earn = () => {
       if (user) setUserId(user.id);
 
       const [
-        { data: bData },
         { data: tData },
         { data: sData },
         { data: bpData },
         { data: spData },
+        { data: bData },
       ] = await Promise.all([
-        supabase.from('bounties').select('*, books(title, author, cover_url)').eq('status', 'active').limit(3),
         supabase.from('quick_tasks').select('*').eq('status', 'active').limit(4),
         supabase.from('surveys').select('*').eq('status', 'active').limit(3),
         supabase.from('beta_panels').select('*').eq('status', 'active').limit(3),
         supabase.from('sensitivity_panels').select('*').eq('status', 'active').limit(3),
+        supabase.from('bounties').select('*, books(title, author, cover_url)').eq('status', 'active').limit(3),
       ]);
 
-      if (bData) setBounties(bData);
       if (tData) setTasks(tData);
       if (sData) setSurveys(sData);
       if (bpData) setBetaPanels(bpData);
       if (spData) setSensitivityPanels(spData);
+      if (bData) setBounties(bData);
 
       setLoading(false);
     };
@@ -150,47 +150,12 @@ export const Earn = () => {
         {/* Hero */}
         <div className="text-center mb-16">
           <h1 className={`font-serif text-4xl md:text-5xl mb-4 ${textPrimary}`}>
-            More Ways to Earn
+            Earn Money for Your Reader Opinion
           </h1>
           <p className={`text-base max-w-xl mx-auto ${textMuted}`}>
-            Competitions are the main event, but there's always something to do between them. Surveys, quick tasks, bounties, and beta panels keep the earnings coming in all month.
+            Authors pay for real feedback. Quick tasks, surveys, panels, and bounties — 
+            there's always something to earn from.
           </p>
-        </div>
-
-        {/* Author Bounties */}
-        <div className="mb-16">
-          <SectionHeader
-            icon={<Zap className="text-[#D4A843]" size={22} />}
-            title="Author Bounties"
-            payout="$0.50–$2.00+"
-            desc="An author sets a pool. You read their book and pass the quiz. You get paid. No ranking. No competing. Pass = earn. Every bounty you claim pays based on the author's setup."
-          />
-          {loading ? (
-            <div className={`rounded-xl border p-6 animate-pulse ${cardBg}`}><div className={`h-16 rounded ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#1B2A4A]/10'}`} /></div>
-          ) : bounties.length === 0 ? (
-            <EmptyState message="No open bounties right now. Check back soon." />
-          ) : (
-            <div className="space-y-3">
-              {bounties.map((b) => (
-                <div key={b.id} className={`rounded-xl border p-5 flex items-center justify-between transition-colors ${cardBg}`}>
-                  <div>
-                    <p className={`text-sm font-medium ${textPrimary}`}>{b.books?.title ?? 'Untitled'}</p>
-                    <p className={`text-xs ${textMuted}`}>{b.books?.author}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-[#D4A843]">${b.per_pass_amount.toFixed(2)}</p>
-                    <p className={`text-xs ${textMuted}`}>per pass</p>
-                  </div>
-                </div>
-              ))}
-              <button
-                onClick={() => navigateTo('/library')}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline mt-2"
-              >
-                See all open bounties <ArrowRight size={14} />
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Quick Tasks */}
@@ -199,7 +164,7 @@ export const Earn = () => {
             icon={<ClipboardList className="text-[#D4A843]" size={22} />}
             title="Quick Tasks"
             payout="$0.35–$0.42 each"
-            desc="Authors need quick reader opinions before they commit to big creative decisions. Vote on a cover, test a title, rate a blurb. Tasks are short, fill fast, and pay instantly on completion."
+            desc="Authors need quick reader opinions before they commit to big creative decisions. Vote on a cover, test a title, rate a blurb. 1–3 minutes per task, pays instantly on completion."
           />
           {loading ? (
             <div className={`rounded-xl border p-6 animate-pulse ${cardBg}`}><div className={`h-16 rounded ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#1B2A4A]/10'}`} /></div>
@@ -246,7 +211,7 @@ export const Earn = () => {
             icon={<MessageSquare className="text-[#D4A843]" size={22} />}
             title="Feedback Surveys"
             payout="$1.00 flat"
-            desc="Authors pay to survey readers who've read their work. You qualify based on your reading history. If you've read the author before, you may be matched to their survey."
+            desc="Help authors test cover concepts, blurbs, tropes, hooks, and positioning. 5–15 minutes of structured questions. No need to have read the book first. These are about packaging and appeal."
           />
           {loading ? (
             <div className={`rounded-xl border p-6 animate-pulse ${cardBg}`}><div className={`h-16 rounded ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#1B2A4A]/10'}`} /></div>
@@ -293,7 +258,7 @@ export const Earn = () => {
             icon={<BookOpen className="text-[#D4A843]" size={22} />}
             title="Beta Reader Panels"
             payout="$1.50 each"
-            desc="Authors upload the first chapter of their unpublished book. You read it, answer structured questions, and optionally leave your email if you'd like to be a full beta reader. Takes 15–20 minutes."
+            desc="Authors upload the first chapter or a sample of their unpublished book. You read it, answer their questions, and optionally leave your email if you'd like to connect for full beta reading off-platform. Takes 10–20 minutes."
           />
           {loading ? (
             <div className={`rounded-xl border p-6 animate-pulse ${cardBg}`}><div className={`h-16 rounded ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#1B2A4A]/10'}`} /></div>
@@ -333,14 +298,14 @@ export const Earn = () => {
             </div>
           )}
         </div>
-        
+
         {/* Sensitivity Panels */}
         <div className="mb-16">
           <SectionHeader
             icon={<Eye className="text-[#D4A843]" size={22} />}
             title="Sensitivity Reader Panels"
             payout="$10.00 each"
-            desc="Authors submitting diverse stories need readers from specific backgrounds. You read a sample chapter and answer structured questions about representation, accuracy, and authenticity. Your lived experience is the qualification."
+            desc="Authors with diverse stories need readers from specific backgrounds. If you match a book\'s specific needs, read a sample chapter and answer questions about the representation and accuracy. Your lived experience is the qualification."
           />
           {loading ? (
             <div className={`rounded-xl border p-6 animate-pulse ${cardBg}`}><div className={`h-16 rounded ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#1B2A4A]/10'}`} /></div>
@@ -375,6 +340,42 @@ export const Earn = () => {
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline mt-2"
               >
                 See all open panels <ArrowRight size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Author Bounties */}
+        <div className="mb-16">
+          <SectionHeader
+            icon={<Zap className="text-[#D4A843]" size={22} />}
+            title="Author Bounties"
+            payout="$0.50–$2.00+ per pass"
+            desc="Wide authors fund a pool and pay per quiz pass. Read their book, pass the quiz, and earn."
+          />
+          {loading ? (
+            <div className={`rounded-xl border p-6 animate-pulse ${cardBg}`}><div className={`h-16 rounded ${isDark ? 'bg-[#D4A843]/10' : 'bg-[#1B2A4A]/10'}`} /></div>
+          ) : bounties.length === 0 ? (
+            <EmptyState message="No open bounties right now. Check back soon." />
+          ) : (
+            <div className="space-y-3">
+              {bounties.map((b) => (
+                <div key={b.id} className={`rounded-xl border p-5 flex items-center justify-between transition-colors ${cardBg}`}>
+                  <div>
+                    <p className={`text-sm font-medium ${textPrimary}`}>{b.books?.title ?? 'Untitled'}</p>
+                    <p className={`text-xs ${textMuted}`}>{b.books?.author}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-[#D4A843]">${b.per_pass_amount.toFixed(2)}</p>
+                    <p className={`text-xs ${textMuted}`}>per pass</p>
+                  </div>
+                </div>
+              ))}
+              <button
+                onClick={() => navigateTo('/library')}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D4A843] hover:underline mt-2"
+              >
+                See all books with bounties <ArrowRight size={14} />
               </button>
             </div>
           )}
