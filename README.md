@@ -1,394 +1,589 @@
-ReadToEan
+# ReadToEarn Business Plan
+### Updated model (confirmed)
+
+**Positioning:** ReadToEarn is an **author research marketplace** with a book library and quizzes.
+
+**Core business:** Authors pay for real reader feedback through **Surveys, Quick Tasks, and Panels**. Readers get paid for completed work.
+
+**Secondary products:**
+- **Book Listings** (KU and Wide) with always-available quizzes
+- **Bounties** (Wide authors only) — pay readers who pass a book quiz until the pool runs out
+- Optional later: featured placement, AMAs, bulletin board, subscriptions, affiliates
+
+**Explicitly removed from the core model:**
+- Reader-funded competitions / entry fees / late fees
+- Player-funded prize pools and platform rake on entry fees
+- Sprints, Read-A-Thons, and Elimination brackets as launch products
+- User-created tournaments
+- Paying readers to compete against each other for ranked cash prizes
+
+**One-line summary:**  
+Authors get real reader feedback. Readers get paid for their time. Quizzes power discovery — and Wide-author bounties when funded. No paid reader contests.
 
 ---
 
-## Overview
+## 1. Business model overview
 
-ReadToEarn (RTE) is a quiz-based reading rewards platform where readers earn money by proving they've read books. Readers take trivia-style quizzes on books they've read, compete in structured competitions, and earn real payouts. Authors gain verified readers, discoverability, and direct engagement with their audience.
-
-**Core mechanic:** A book is announced. A time window opens. Readers take the quiz. The best performers win money from the prize pool.
-
----
-
-## Business Model
-
-### Revenue Streams
-
-**Reader-Funded Competitions**
-- Entry fees fund the prize pool
-- **75%** goes to winner(s), **25%** goes to the platform
-
-**Author-Funded Competitions**
-- Free for readers to enter (author pays upfront)
-
----
-
-## Author Products
-
-### Standard Listing
-
-Gives a book a permanent home on the platform — discoverable by organic readers, eligible for competitions, and available for user-created tournaments.
-
-| Package | Books | Price |
-|---|---|---|
-| Single | 1 | $7 |
-| Trilogy | 3 | $18 |
-| Series | 5 | $30 |
-| Catalog | 10 | $50 |
-| Imprint | 25 | $100 |
-
-**Includes:** Book page, quiz, competition eligibility, community visibility.
-
-By purchasing a standard listing, authors agree (via T&Cs) that their book is eligible to be selected for platform-run competitions.
-
----
-
-### Author Bounty
-
-Authors pay for verified reads. They only pay when a reader passes the book's quiz.
-
-- **Platform fee:** 20% of the pool
-- **Reader share:** 80% of the pool
-- **Minimum pool:** $25
-- Author controls: pool size and per-reader earn amount
-- **Refund policy:** If the bounty is unspent after 1 year, the author may request a refund of the remaining balance
-
-| Pool | Platform Keeps (20%) | Readers Earn (80%) | Example |
-|---|---|---|---|
-| $25 | $5 | $20 | 20 readers at $1, or 50 at $0.50 |
-| $50 | $10 | $40 | 40 readers at $1, or 80 at $0.50 |
-| $100 | $20 | $80 | 80 readers at $1, or 40 at $2 |
-| $200 | $40 | $160 | 160 readers at $1, or 80 at $2 |
-| $500 | $100 | $400 | 400 readers at $1 — big launch push |
-
----
-
-### Competition Sponsorship
-
-Author's book is the required read for a specific competition. Every entrant reads it and passes the quiz. Author pays a flat fee that funds the prize pool. Hybrid competitions (author sponsorship fee + reader entry fees) are supported.
-
-| Tier | Price |
+### Who pays
+| Customer | What they buy |
 |---|---|
-| Spark | $60 |
-| Boost | $120 |
-| Spotlight | $250 |
-| Grand | $500+ |
+| **All authors (KU + Wide)** | Listings, Quick Tasks, Surveys, Panels, optional features |
+| **Wide authors only** | Bounties (verified quiz-pass campaigns) |
+| **Readers** | Optional subscription later; they do **not** pay to compete |
+| **Brands (later)** | Bulletin pins, newsletter sponsorships, ads |
 
-Minimum: $60.
+### How readers earn
+1. Complete **Quick Tasks**
+2. Complete **Surveys**
+3. Complete **Panels**
+4. Pass quizzes on books with an **active Wide bounty**
+
+### How the platform makes money
+1. Research product margins (tasks / surveys / panels)
+2. Listing fees
+3. Bounty distribution fee (Wide only)
+4. Later: featured placement, subscription, affiliates, ads, sponsored newsletter
 
 ---
 
-### Quick Tasks
+## 2. KU vs Wide product split
 
-Fast gut-check input from real readers (1–3 minutes). Covers: **Cover Art Voting**, **Title Testing**, **Blurb Testing**.
+Every listed book is flagged **KU / KDP Select** or **Wide**.
 
+| Product | KU authors | Wide authors |
+|---|---|---|
+| Standard Listing + quiz | Yes | Yes |
+| Fun / free quizzes for readers | Yes (always free) | Yes (free unless bounty active) |
+| Quick Tasks | Yes | Yes |
+| Surveys (concept/packaging/sample-safe) | Yes | Yes |
+| Panels (uploaded samples) | Yes | Yes |
+| Bounties (pay per passed quiz) | **No** | **Yes** |
+| Platform spotlights / features | Eligible | Eligible |
+| Reader-paid contests | No | No |
+
+### Why this split exists
+Amazon KDP Select / Kindle Unlimited rules restrict authors from offering compensation to induce people to read KU-enrolled books.  
+Therefore:
+- **Bounties = Wide only**
+- **Research products** are framed as feedback/research, not paid full-book read acquisition
+- **KU listings** still have value through discoverability, free quizzes, feedback tools, and possible platform features
+
+Authors remain responsible for their own Amazon / KDP compliance.
+
+---
+
+## 3. Standard Listing
+
+### Purpose
+Give a book a permanent home on the platform so readers can find it, browse it, and take its quiz.
+
+### Value
+- Permanent discoverability in the ReadToEarn library
+- Book page + trivia quiz
+- Foundation for feedback products and (if Wide) bounties
+- Eligibility for platform features / spotlights when offered
+
+### What it gets
+- Book page
+- Quiz
+- Library / community visibility
+- Distribution flag: KU or Wide
+- Wide books become bounty-eligible
+- KU books remain free-quiz / research-eligible only
+
+### Pricing
+| Package | Books | Price | Per Book |
+|---|---:|---:|---:|
+| Single | 1 | $7 | $7 |
+| Trilogy | 3 | $18 | $6 |
+| Series | 5 | $30 | $6 |
+| Catalog | 10 | $50 | $5 |
+| Imprint | 25 | $100 | $4 |
+
+### Listing T&Cs should state
+- Book may be selected for platform-funded features/spotlights
+- Author warrants rights to cover/title/metadata/quiz materials
+- Author is responsible for Amazon/KDP/retailer compliance
+- KU books cannot purchase bounties while enrolled in KU/KDP Select
+- No Amazon review requirements are created by listing
+
+---
+
+## 4. Quizzes
+
+### Role in the new model
+Quizzes are **infrastructure**, not a competition sport.
+
+Uses:
+1. Fun knowledge tests in the library
+2. Discovery while browsing books
+3. Qualification layer later (optional / future)
+4. Bounty completion mechanic for Wide books
+
+### Rules
+- Trivia-style questions
+- No book text pasted into quizzes as a general practice
+- Exception: author-supplied/approved materials under terms/permission
+- Standard quiz: **10 questions**
+- Timer: **8 minutes**, then auto-submit
+- Same question set logic preferred for fairness when money is attached
+- Technical failures reviewed case-by-case within 72 hours
+- Question dispute flow: flag → review queue → valid fix may mean credit / retake / adjustment policy
+
+### Quiz availability
+| Book state | Quiz open? | Reader can earn? |
+|---|---|---|
+| KU listing | Always open | No — fun only |
+| Wide listing, no bounty | Always open | No — fun only |
+| Wide listing + active bounty | Open | Yes — until pool runs out |
+| Bounty ends | Stays open | Returns to fun only |
+
+**Important change from old plan:**  
+Quizzes are **not locked** just because no money is attached.  
+Free/fun quizzes remain available for listed books.
+
+---
+
+## 5. The Author Bounty (Wide only)
+
+### Purpose
+Let Wide authors pay for a set amount of **verified quiz passes** right now.
+
+### Value
+- Authors pay for outcomes (passed quizzes), not vague ad impressions
+- Readers earn for proven knowledge of the book
+- Strong launch / push tool for Wide books
+
+### Platform fee
+**20% distribution fee**  
+Readers receive **80%** of the bounty pool.
+
+### Author controls
+1. Total pool size  
+2. Payout per successful pass  
+
+### Example pools
+| Pool Size | Platform Keeps (20%) | Readers Earn (80%) | Example |
+|---:|---:|---:|---|
+| $25 min | $5 | $20 | 20 readers at $1, or 50 at $0.50 |
+| $50 | $10 | $40 | 40 at $1, or 80 at $0.50 |
+| $100 | $20 | $80 | 80 at $1, or 40 at $2 |
+| $200 | $40 | $160 | 160 at $1, or 80 at $2 |
+| $500 | $100 | $400 | 400 at $1 — big launch push |
+
+### Rules
+- **Wide authors only**
+- Readers never pay to take a bounty quiz
+- One earn per reader per book bounty event/policy as implemented
+- When pool runs dry, quiz remains as free/fun
+- Not an Amazon review product
+- No guarantee of sales, rankings, or retailer performance
+- Leftover unspent bounty funds: author may request refund of remainder after **1 year** (policy retained)
+
+### Refund policy for authors (bounties)
+If bounty funds remain unspent after one year, author may request refund of the leftover balance according to platform policy.
+
+---
+
+## 6. Core research marketplace products
+
+These are the **main business**.
+
+---
+
+### A) Quick Tasks
+**Reader time:** about 1–3 minutes  
+**Purpose:** Fast gut-check decisions before an author commits.
+
+**Examples**
+- Cover art voting
+- Title testing
+- Blurb testing
+- Hook / tagline testing
+- Character name testing
+- Trope bundle testing
+- Short ad creative comparisons
+
+**What the author gets**  
+Aggregated reader preferences and clear winners/losers on packaging or concept options.
+
+**What the reader does**  
+Compare options, rate/click/select favorites, submit.
+
+#### Quick Task pricing
 | Package | Completions | Author Pays | Reader Earns Each | Readers Get Total | Platform Keeps |
-|---|---|---|---|---|---|
+|---|---:|---:|---:|---:|---:|
 | Sample | 25 | $14 | $0.42 | $10.50 | $3.50 |
 | Standard | 50 | $24 | $0.38 | $19.00 | $5.00 |
 | Wide | 100 | $42 | $0.35 | $35.00 | $7.00 |
 
 ---
 
-### Author Feedback Surveys
+### B) Surveys
+**Reader time:** about 5–15 minutes  
+**Purpose:** Deeper insight on packaging, positioning, audience fit, and concepts.
 
-Authors pay to survey readers who have previously read their books — feedback on characters, writing style, plots, etc. Author chooses all questions. Any user who is a match for the survey (e.g., has read the author before) can participate.
+#### Launch-safe survey types (preferred)
+These do **not** require reading a full retail/KU book first:
+- Blurb clarity
+- Title shortlist
+- Hook / logline testing
+- Trope appeal / tropes-to-avoid
+- Comp-title positioning
+- Series concept testing
+- Pricing / format interest
+- Audience fit / reader avatar
+- Ad creative / tagline testing
+- Content preference / dealbreakers (genre-level)
+- Discovery / metadata phrase testing
+- Brand / pen-name vibe testing
+- World primer clarity using **on-site short text**
+- Release-strategy / binge-preference questions
 
-| Responses | Price | Reader Earns (flat) |
-|---|---|---|
-| 10 | $18 | $1.00 |
-| 25 | $40 | $1.00 |
-| 50 | $70 | $1.00 |
-| 100 | $125 | $1.00 |
-| 200 | $225 | $1.00 |
+#### Deferred / avoid for now
+- End-of-book reaction surveys
+- “Only if you already read this full book” paid surveys
+- Anything that functions like “go read this KU book, then get paid”
 
----
+**Why:** reduces soft-bounty risk for KU titles and avoids product complexity around already-read gating.
 
-### Beta Reader Acquisition Panel
+#### Survey pricing (retained structure)
+| Readers | Author Pays | Reader Earns Each | Platform Keeps |
+|---:|---:|---:|---:|
+| 10 | $18 | $1.00 | $8 |
+| 25 | $40 | $1.00 | $15 |
+| 50 | $70 | $1.00 | $20 |
+| 100 | $125 | $1.00 | $25 |
+| 200 | $225 | $1.00 | $25 |
 
-Author uploads their first chapter of a pre-publication book. Readers read it, answer structured questions, and optionally leave their email for beta reader recruitment. Author reviews responses and reaches out to chosen readers off-platform.
+Reader earn stays flat at **$1.00** for predictability.
 
-| Package | Responses | Price |
-|---|---|---|
-| Starter | 10 | $28 |
-| Standard | 25 | $60 |
-| Extended | 50 | $110 |
-| Pro | 100 | $200 |
-
-Reader earn is higher than surveys given the time commitment and recruitment value.
-
----
-
-### Sensitivity Reader Sample Panel
-
-Author uploads a sample chapter and specifies which identities they're seeking feedback from. Readers answer survey questions and optionally leave their email for full-manuscript sensitivity reading. Author selects and contacts chosen readers off-platform.
-
-| Package | Responses | Price |
-|---|---|---|
-| Essential | 3 | $50 |
-| Standard | 6 | $80 |
-| Thorough | 9 | $150 |
-
----
-
-### Author AMA (Free)
-
-Reddit-style Q&As on the platform. Readers submit questions; authors reply. No other social features — intentionally scoped to prevent toxicity. Runs during competition break periods.
-
----
-
-### Bulletin Board (Free)
-
-Authors submit their new release or upcoming book for free promotion to the RTE audience. Displays: cover, one-line blurb, genre, release date, and link.
+**Copy standard for surveys**
+- Authors pay for completed feedback/research responses
+- Not a paid full-book read campaign
+- No Amazon review requirement
 
 ---
 
-### Sponsored Pinned Posts (Paid — $50/month)
+### C) Panels
+**Purpose:** Readers consume an **author-uploaded sample** on-site, then give structured feedback.  
+Higher effort than surveys; higher reader pay.
 
-Pinned spots on the Bulletin Board for bookish brands, products, or services (e.g., book subscription boxes, reading accessories, themed brands). Includes image, one-line description, and link.
+#### 1) First Chapter / Beta Lite Panel
+Author uploads first chapter (or sample).  
+Reader reads sample, answers structured questions, optionally leaves email if interested in fuller beta work off-platform.
 
----
+**Author gets**
+- Opening-chapter feedback
+- Optional pipeline of interested beta readers
 
-## Competition Formats
+**Reader time:** about 15–20 minutes
 
-### Quiz Rules (All Formats)
-- 10 questions per quiz, 8-minute timer (auto-submits on expiry)
-- Questions are randomized from a pool of 11+ per book — no two users get the same 10
-- Failed quizzes earn nothing and don't count toward any totals
-- **Quiz lock:** Quizzes are locked unless the book is in an active bounty, sprint, elimination, or open Read-A-Thon. This prevents users from practicing and memorizing answers before a payout is attached.
+| Package | Readers | Author Pays | Reader Earns Each | Readers Get Total | Platform Keeps |
+|---|---:|---:|---:|---:|---:|
+| Starter | 10 | $28 | $1.50 | $15.00 | $13.00 |
+| Standard | 25 | $60 | $1.50 | $37.50 | $22.50 |
+| Extended | 50 | $110 | $1.50 | $75.00 | $35.00 |
+| Pro | 100 | $200 | $1.50 | $150.00 | $50.00 |
 
----
+Note: not every participant will leave an email. Pay is for completing the panel questions.
 
-### Format 1 — Sprint (Speed & Accuracy)
+#### 2) Full-manuscript robust beta (future / not launch)
+Author uploads larger manuscript sections; readers answer section-by-section with micro-payouts. Build later.
 
-**One winner. 100% of prize pool.**
+#### 3) Sensitivity Sample Panel
+Author uploads a sample chapter and target identity/experience feedback needs.  
+Readers who match/opt in read the sample, answer structured questions, and may share contact interest for fuller work off-platform.
 
-- One book is announced in advance
-- Competition opens at a specific date/time
-- Ranking: highest score first, fastest time as tiebreaker
-- **Tie rule:** Same score + same time → split the prize equally
+| Package | Readers | Author Pays | Reader Earns Each | Readers Get Total | Platform Keeps |
+|---|---:|---:|---:|---:|---:|
+| Essential | 3 | $50 | $10.00 | $30.00 | $20.00 |
+| Standard | 6 | $80 | $10.00 | $60.00 | $20.00 |
+| Thorough | 9 | $150 | $10.00 | $90.00 | $60.00 |
 
-**Example:** *"October Thriller Sprint — Gone Girl. Opens Friday Oct 4 at 7:00 PM. Entry: $5."*
+**Privacy note:** sensitivity panels involve more sensitive self-reported information; handle with clear consent, minimal data collection, and strong privacy policy language.
 
----
-
-### Format 2 — Read-A-Thon (Volume)
-
-**Three winners. Prize pool split 50/30/20.**
-
-- Time window: a weekend or a full week
-- Goal: pass quizzes on as many books as possible
-- Score: total pages read from **passed quizzes only**
-- Eligible books: all platform books (or a specific author's catalog if author-sponsored)
-- **While a Read-A-Thon is open:** all books on the site become available for quizzing — but only for users who paid the entry or late fee. Once the Read-A-Thon ends, all quizzes lock again.
-- Page counts from one Read-A-Thon do **not** carry over to future ones
-- **Tie rule:** Same page count → split that place's prize
-
-**Leaderboard:** Ranked by total pages. Failed quizzes add nothing — this must be clearly communicated in the UI.
-
----
-
-### Format 3 — Elimination Bracket (Trivia)
-
-**Three winners. Prize pool split 50/30/20.**
-
-- Multi-round format; each round uses a different book with a harder passing threshold
-- Miss the threshold and you're eliminated
-- **Round 1:** e.g., 100 entrants, Book A, need 8/10 to advance
-- **Round 2:** Survivors read Book B, need 9/10 to advance
-- **Finals:** Survivors take a 20-question master quiz (full question set). Highest score wins.
-- **Tie rule:** Same score on master quiz → split first place
-- **Leaderboard during rounds 1–2:** Shows "Survived / Eliminated" status only. Ranked list shown in final round only.
+#### Other panel-style products that fit here
+- Audiobook narrator vibe check (short clips)
+- Map / world-building clarity check with uploaded materials
+- First-page only stress test
 
 ---
 
-## Monthly Tournament Schedule
+## 7. Site information architecture
 
-| Days | Event | Entry Fee |
-|---|---|---|
-| 1–3 | Flash Sprint | $5 |
-| 4–7 | Break (bounties, surveys, quick tasks, Author AMA #1) | — |
-| 8–15 | Read-A-Thon | $7 |
-| 16–18 | Break (bounties, surveys, quick tasks, Author AMA #2) | — |
-| 19–30/31 | Elimination Bracket (Round 1: 3 days, Round 2: 3 days, Final: 4 days) | $10 |
+### Reader-facing
+- **Earn** — open Quick Tasks, Surveys, Panels, active Bounties
+- **Library** — browse listed books and fun quizzes
+- **Dashboard** — earnings, completed tasks, quiz history, payout status
+- **Profile / settings** — verification, payout methods, tax info when needed
 
----
+### Author-facing
+- **Research Marketplace hub** explaining Quick Tasks / Surveys / Panels
+- Individual pages for each research category
+- **Listings** management with KU/Wide flag
+- **Bounties** (shown only for Wide books)
+- Results dashboards for each purchase
 
-## Competition Lifecycle
-
-### Pre-Registration (4 Weeks Before Live Date)
-- Waitlist opens for each competition — users can pre-register without paying to show interest
-- If fewer than 12 users pre-register → competition is **canceled** (no refund needed; no payment was collected) or held until demand exists
-- If minimum (12) is met → competition launches as scheduled; dates are locked after this point
-- Payout pool is based on actual participants — if 47 paid instead of 100, the pool is smaller but the competition runs as promised
-
-### Payment Window
-- When a competition goes live, pre-registrants are notified and have **48 hours** to pay their entry fee
-- Non-registrants can also pay within this 48-hour window
-
-### Late Entry
-- After the competition launches, late entry is available at **2× the standard entry fee**
-
-### Book Eligibility
-- The same book **cannot appear in the same competition format within 90 days**
-- The same book **can** appear across different formats (e.g., Sprint then Elimination)
-
-### Payout Timing
-- A **24–48 hour review window** occurs after the competition closes before prizes are released
+### Book page states
+1. **KU listing** — Fun Quiz badge  
+2. **Wide listing** — Fun Quiz badge  
+3. **Wide + active bounty** — Earn $X badge + spots/pool remaining  
+4. Bounty complete — returns to Fun Quiz badge  
 
 ---
 
-## Leaderboards
+## 8. What was removed from the old competition model
 
-### Live Leaderboard (During Competition)
-- Active only during the competition window
-- Updates every ~60 seconds (true real-time not required)
-- Sprint: ranked by score, then time
-- Read-A-Thon: ranked by total pages from passed quizzes only
-- Elimination: shows Survived/Eliminated status during rounds 1–2; ranked only in the final
+The following are **not launch products** and are not part of the current business plan core:
 
-### Post-Competition Leaderboard
-- Frozen and kept visible for **7–14 days** after the competition closes, then archived
-- Enables winners to screenshot and share (organic social promotion)
-- Archived results form a **Winners Archive** — historical record of all competition winners
+- Reader entry fees ($3 / $5 / $7 / $10 etc.)
+- Late fees
+- Reader-funded prize pools
+- Platform keeping 25% of entry fees
+- Sprints as ranked speed contests
+- Read-A-Thons
+- Elimination brackets
+- Pre-registration → payment conversion windows for contests
+- Live tournament leaderboards / winners archive as core loops
+- Monthly champions board for contest winners
+- User-created tournaments
+- Competition sponsorship tiers tied to required-read contests
+- Time boosts sold for competition advantage
+- Subscriber mini-competitions based on contest entry
 
-### Monthly Champions Board
-- After each month closes, a pinned display shows the top winner (#1 overall) of each competition that month: Sprint, Read-A-Thon, Elimination, and Subscriber Giveaway
-- Pinned on the platform for the full month
-
----
-
-## User-Created Tournaments
-
-Any reader can create and fund their own public or private tournament. They set the book(s), format, entry fee, and invite participants.
-
-- Platform keeps **25%** (same as official tournaments)
-- **Minimum 10 participants** before a user-created tournament pays out (prevents abuse and fake-account splitting)
-- Formats available: Sprint, Read-A-Thon, Elimination Bracket
+These may remain as hidden/archived code ideas, but they are **not** the current product strategy.
 
 ---
 
-## Reader Features
+## 9. Optional / later products (keep, but not spine)
 
-### Reader Dashboard (Personal Stats)
-Each user profile displays:
-- Books passed this month
-- Total earnings this month
-- Accuracy rate (% of quizzes passed on first try)
-- Competition wins / total entered
-- Current streak (competitions entered in a row)
+### Author AMAs (free)
+Reddit-style Q&A on-platform.  
+Authors answer reader questions.  
+Useful event energy without contests.  
+No broad social feed/toxicity surface.
 
 ### Daily Trivia
-- One question per day; correct answer earns **$0.10 in site credit**
-- Credit redeemable for: competition entry discounts, time boosts, future merch
-- Not applicable toward subscription
+Small site-credit reward for a daily question.  
+Credit redeemable for non-cash perks later (boosts, merch, etc.), **not** subscription payment.  
+Revisit economics now that competition entry discounts are gone.
 
-### Time Boosts (Paid)
-All quizzes run at 8 minutes. Boosts add 2 minutes to a user's quiz timer.
+### Bulletin Board (free)
+Authors submit new/upcoming releases: cover, one-line blurb, genre, release date, link.
 
-| Pack | Price |
-|---|---|
-| 1 boost | $0.99 |
-| 6 boosts | $4.99 |
-| 15 boosts | $9.99 |
+### Sponsored Pinned Pins (paid)
+Bookish brands/products pinned on the board. Example: **$50/month**.
 
----
+### Featured placement / spotlight (paid or platform-funded)
+Homepage/genre/newsletter feature.  
+Important for KU listing value and platform discovery promises.
 
-## Reader Subscription — Account Upgrade
+### Reader subscription (later; revise perks)
+Old contest-based perks no longer apply.
 
-**$4.99/month** or **$49.90/year** (pay for 10, get 12 months)
-
-**Benefits:**
+Possible revised perks:
 - Ad-free experience
-- Priority survey queue (first notified when author/brand surveys open)
-- Early competition registration (see upcoming tournaments before general public)
-- 1 competition entry at **30% off** per month
-- **Subscribers-only Monthly Giveaway** (no extra charge): all subscribers are automatically entered; 3 names drawn each month
+- Priority access to limited survey/panel slots
+- Profile customization
+- Occasional subscriber-only bonuses / giveaways carefully structured
+- Affiliate eligibility
 
-**Giveaway split:** Platform keeps 70% of that month's subscriber revenue; 30% goes to winners (50% / 30% / 20%).
+Price idea retained: **$4.99/month** or **$49.90/year (10 pay / 12 get)**  
+Do not launch hard until core marketplace is working.
 
-**Cancellation policy:** Benefits are honored through the end of the current billing period.
+### Reader affiliate program (later)
+Paid subscribers refer other subscribers; recurring small reward (old idea: $0.50/month per active referred sub, 30-day hold).
 
----
+### Author ambassador program
+Author refers author; reward on first listing purchase.  
+Old idea example: percentage of first listing. Confirm final % later.
 
-## Affiliate & Ambassador Programs
+### Amazon / bookshop affiliate links
+Place after relevant quizzes or on book pages where appropriate.  
+Bonus revenue, not backbone.
 
-### Reader Affiliate Program (Paid Plan Only)
-- Earn **$0.50/month** for every referred account that upgrades to the paid plan
-- First payout triggers after referred friend is active for 30 days
-- Recurring each month the referred friend stays subscribed
-- Stops when referred friend cancels or lapses
-- No cap on referrals
-- **Fraud protection:** 30-day hold before first credit
-
-### Author Ambassador Program
-- Authors who refer another author who purchases a listing earn **25% of that author's first listing fee**
-
-### Book Subscription Box Referrals
-- Affiliate placements after genre-relevant quizzes (e.g., Cratejoy, OwlCrate, Once Upon a Book Club)
-- Targeted to readers who just passed a genre-matched quiz
+### Sponsored newsletter (future)
+Once list is large enough, sell placements to authors/brands.
 
 ---
 
-## Future / Planned Features
+## 10. Reader dashboard (updated)
 
-- **Sponsored Newsletter:** Once the user base reaches sufficient scale, the biweekly/monthly newsletter becomes ad inventory for bookish brands, publishers, and authors. Projected RPM of $30–100 per 1,000 subscribers for verified, targeted readership.
+Show:
+- Tasks / surveys / panels completed this month
+- Bounty quiz passes this month
+- Total earnings this month
+- Lifetime earnings
+- Accuracy rate on quizzes (optional)
+- Active bounty opportunities
+- Payout status / verification status
 
----
-
-## Payouts & Financial Rules
-
-### Payout Methods
-- PayPal (US)
-- Wise (international users)
-- Giftogram gift cards (all users; only option for users under 18)
-
-### Minimum Cashout
-- **$10 minimum** across all tiers
-
-### Tax Compliance (US)
-- Users are notified via email and in-app at **$500 earned** that tax info (SSN) will be required
-- Second warning at **$550**
-- Cashout requests pause at **$599** until SSN is provided for 1099 reporting
-- Users who refuse: *"Unverified accounts with held earnings exceeding $600 will have those funds forfeited after 180 days of inactivity on the tax info request."*
-
-### Banned Accounts
-- Earnings from flagged/fraudulent activity are **forfeited**
-- Earnings from legitimate activity prior to the ban are **paid out after a 30-day review**
+Remove contest-centric stats as primary metrics:
+- competition wins
+- competitions entered streak
 
 ---
 
-## Policies
+## 11. Trust, safety, compliance posture
 
-### Age Policy
-- **13+** with verifiable parental consent
-- Users must provide their birthday at signup
-- Users 13–17: parent phone number verified at signup + consent checkbox with logged timestamp
-- Gift cards only for users under 18; full payout methods (PayPal, Wise + gift cards) available at 18+
+### Age & accounts
+- **18+ only**
+- Email verification
+- Phone verification
+- One account per person / per phone number
 
-### Fraud Prevention
-- Phone number verification required at signup — one account per number
-- Combined with email verification
+### Payouts
+Supported methods may include:
+- Wise
+- PayPal / Venmo if/when available
+- Other approved methods
 
-### Quiz Dispute Resolution
-1. Reader flags a question
-2. Goes to a review queue
-3. Reviewed by platform admin or designated reviewer
-4. If valid: reader receives a retroactive pass or a credit
-- Technical failures reviewed case-by-case within 72 hours
+**Note:** Do not promise methods that are not actually approved/live.
 
-### Book Eligibility in Competitions
-- When an author purchases a standard listing, the T&Cs explicitly state their book is eligible to be selected for platform-run competitions
+Minimum cash-out threshold: **$10**
+
+### Tax (US-oriented policy retained)
+- Track annual earnings per user
+- Warn around **$500** and **$550**
+- Pause cash-outs above threshold until required tax info is provided for reporting (e.g., 1099 process near **$600** — confirm current IRS rules)
+- If user refuses required tax info, unreleased funds above threshold may be handled under written forfeiture/hold policy after stated inactivity period
+
+### Fraud
+- Multi-accounting banned
+- Fraudulent earnings forfeited
+- Legitimate pre-ban earnings may be paid after review (e.g., 30-day review)
+
+### Quiz / task disputes
+- Flag → queue → human/policy review
+- Technical issues reviewed within 72 hours where applicable
+
+### Geographic eligibility
+- Explicitly state supported countries/regions at signup and FAQ
+- Start narrower (recommended: US-first or small allowlist), expand later
+- Some features may be location-limited
+
+### Amazon boundary language (sitewide)
+ReadToEarn is:
+- a research marketplace
+- a library with quizzes
+- a Wide-only bounty tool for quiz passes
+
+ReadToEarn is not:
+- a paid Amazon review service
+- a KU page-read guarantee tool
+- a pay-to-enter contest/gambling site
+- a “get paid to go read this KU book” platform
 
 ---
 
-## Technical Notes
+## 12. Recommended launch scope (MVP)
 
-- **Quiz format:** 10 trivia-style questions; 8-minute timer; auto-submits on expiry
-- Questions randomized from a pool of 11+ per book (20 for elimination finals)
-- No excerpts from the book are used in quizzes — exception: author-submitted quiz questions for their own listed books (explicit permission granted)
-- **Quiz source:** Public domain and traditionally published books sourced via Google Books API and/or Open Library API
-- **Supported countries:** Explicitly stated at signup and in FAQ
-- **Live leaderboard refresh:** ~60 seconds (true real-time not required)
-- **Competition review window:** 24–48 hours post-close before prizes release
-- **Technical failure disputes:** Reviewed case-by-case within 72 hours
+### Launch with
+1. Author research hub + Quick Tasks  
+2. Surveys (safe concept/packaging templates)  
+3. Panels (first chapter / sensitivity sample at minimum)  
+4. Listings + always-on quizzes  
+5. KU vs Wide flag  
+6. Wide-only bounties  
+7. Reader Earn + Library tabs  
+8. Payouts + 18+ verification  
+9. Clear FAQ / terms  
+
+### Hold for later
+- Contests/sprints of any reader-paid kind
+- End-of-book already-read surveys
+- Full-manuscript beta system
+- Hard subscription push
+- User-created tournaments
+- Complex already-read-only gating logic
+- International wide open access
+
+---
+
+## 13. Positioning & messaging
+
+### Homepage promise
+**Get real reader feedback. Pay readers for their time.**  
+Wide authors can also run verified-read bounties.  
+Readers never pay to compete.
+
+### Author pitch
+- KU and Wide authors can test covers, blurbs, hooks, concepts, and samples
+- Wide authors can pay only for passed quizzes through bounties
+- List once; build presence in a reader library
+
+### Reader pitch
+- Earn by completing short bookish tasks, surveys, and panels
+- Browse the library and take fun quizzes
+- Earn more when Wide authors run active bounties
+
+---
+
+## 14. Unit economics (high level)
+
+### Research products
+Margin comes from difference between author price and reader payouts.
+
+### Listings
+High-margin low-touch entry product; also seeds library density.
+
+### Bounties
+20% platform fee on Wide verified-read campaigns.
+
+### Contests
+No longer a primary revenue stream.
+
+---
+
+## 15. Success metrics (updated)
+
+### Author-side
+- # research purchases / week
+- repeat purchase rate
+- listing conversion to bounty (Wide)
+- KU vs Wide mix
+- average order value by product type
+
+### Reader-side
+- # completed tasks/surveys/panels
+- bounty pass completions
+- earnings paid out
+- retention D1/D7/D30
+- fraud rate
+
+### Marketplace health
+- open task inventory sufficiency
+- time-to-fill for standard packages
+- reader quality / rejection rate
+- support ticket volume
+
+---
+
+## 16. Technical notes (retained / adjusted)
+
+- Platform includes quizzes and paid reader work tied to author purchases
+- Quizzes: 10 questions, 8-minute timer, auto-submit
+- Anti-cheat is limited/practical; no claim of perfect prevention
+- Popular public-domain / catalog enrichment via Google Books and/or Open Library API remains optional for library depth
+- Supported countries stated at signup & FAQ
+- Phone + email verification required
+- Bounty attach/detach for Wide books only
+- Research products are the primary earning surface
+
+---
+
+## 17. Final model snapshot
+
+| Layer | Product | Role |
+|---|---|---|
+| **Spine** | Quick Tasks, Surveys, Panels | Main revenue + works for any author |
+| **Catalog** | Listings + quizzes | Discovery, presence, fun quizzes |
+| **Growth add-on** | Wide bounties | Verified quiz-pass campaigns |
+| **Later** | Features, bulletin board new release promo, AMAs, ads | Expansion |
+
+---
+
+**Confirmed strategic sentence**
+
+> ReadToEarn helps authors get real reader feedback and helps readers earn money for their time. Quizzes support discovery and Wide-author bounties.
